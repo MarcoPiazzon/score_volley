@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Monitoraggio Partita Pallavolo</title>
+    <link rel="stylesheet" href="style.css">
+
+
+</head>
+
+<body>
+
+    <header>
+        <div>🏐 Monitoraggio Partita</div>
+        <div class="score">0 - 0</div>
+    </header>
+
+    <div class="main">
+
+        <!-- PARTE SUPERIORE: CAMPO -->
+        <div class="field-container">
+            <div class="court">
+                <div class="half left">
+                    <div class="player"></div>
+                    <div class="player"></div>
+                    <div class="player"></div>
+                    <div class="player"></div>
+                    <div class="player serve"></div>
+                    <div class="player"></div>
+                </div>
+                <div class="half right">
+                    <div class="player"></div>
+                    <div class="player serve"></div>
+                    <div class="player"></div>
+                    <div class="player"></div>
+                    <div class="player"></div>
+                    <div class="player"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PARTE INFERIORE: PULSANTI -->
+        <div class="controls">
+
+            <!-- Squadra A -->
+            <div class="panel left">
+                <div class="bench">
+                    <h3>Squadra A</h3>
+                    <h4>Panchina</h4>
+                    <ul>
+                        <li>Giocatore 13</li>
+                        <li>Giocatore 14</li>
+                        <li>Giocatore 15</li>
+                    </ul>
+                </div>
+
+                <div class="events">
+                    <h4>Attacco</h4>
+                    <div class="row">
+                        <button class="attack">Point</button>
+                        <button class="attack">Out</button>
+                    </div>
+
+                    <h4>Servizio</h4>
+                    <div class="row">
+                        <button class="serve">Ace</button>
+                        <button class="serve">Errore</button>
+                    </div>
+
+                    <h4>Difesa</h4>
+                    <div class="row">
+                        <button class="defence">Lost ball</button>
+                    </div>
+
+                    <h4>Muro</h4>
+                    <div class="row">
+                        <button class="block">Point</button>
+                        <button class="block">Out</button>
+                    </div>
+
+                    <h4>Foul WB</h4>
+                    <div class="row">
+                        <button class="fwb">Double</button>
+                        <button class="fwb">4 Touches</button>
+                        <button class="fwb">Raised</button>
+                    </div>
+
+                    <h4>Foul WOB</h4>
+                    <div class="row">
+                        <button>Position</button>
+                        <button>Invasion</button>
+                    </div>
+
+                    <h4>Card</h4>
+                    <div class="row">
+                        <button class="cards">Yellow</button>
+                        <button class="cards">Card</button>
+                    </div>
+
+                    <h4>Technical</h4>
+                    <div class="row">
+                        <button class="technical timeout left">Timeout</button>
+                        <button class="technical">Change</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Squadra B (specchiata) -->
+            <div class="panel right">
+                <div class="bench">
+                    <h3>Squadra B</h3>
+                    <h4>Panchina</h4>
+                    <ul>
+                        <li>Giocatore 14</li>
+                        <li>Giocatore 15</li>
+                        <li>Giocatore 16</li>
+                    </ul>
+                </div>
+
+                <div class="events">
+                    <h4>Attacco</h4>
+                    <div class="row">
+                        <button class="attack">Point</button>
+                        <button class="attack">Out</button>
+                    </div>
+
+                    <h4>Servizio</h4>
+                    <div class="row">
+                        <button class="serve">Ace</button>
+                        <button class="serve">Errore</button>
+                    </div>
+
+                    <h4>Difesa</h4>
+                    <div class="row">
+                        <button class="defence">Lost ball</button>
+                    </div>
+
+                    <h4>Muro</h4>
+                    <div class="row">
+                        <button class="block">Point</button>
+                        <button class="block">Out</button>
+                    </div>
+
+                    <h4>Foul WB</h4>
+                    <div class="row">
+                        <button class="fwb">Double</button>
+                        <button class="fwb">4 Touches</button>
+                        <button class="fwb">Raised</button>
+                    </div>
+
+                    <h4>Foul WOB</h4>
+                    <div class="row">
+                        <button>Position</button>
+                        <button>Invasion</button>
+                    </div>
+
+                    <h4>Card</h4>
+                    <div class="row">
+                        <button class="cards">Yellow</button>
+                        <button class="cards">Card</button>
+                    </div>
+
+                    <h4>Technical</h4>
+                    <div class="row">
+
+                        <button class="technical timeout right">Timeout</button>
+                        <button class="technical">Change</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    </div>
+
+</body>
+<script src="script.js"></script>
+
+</html>

@@ -1,0 +1,147 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f4f6f8;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    background: #1e3a8a;
+    color: white;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.score {
+    font-size: 28px;
+    font-weight: bold;
+}
+
+/* Layout verticale */
+.main {
+    flex: 1;
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+}
+
+/* PARTE SUPERIORE: CAMPO */
+.field-container {
+    padding: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.court {
+    position: relative;
+    width: 65%;
+    height: 85%;
+    background: #fde68a;
+    border: 4px solid #92400e;
+    border-radius: 8px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+.court::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 4px;
+    background: #92400e;
+    transform: translateX(-50%);
+}
+
+.half {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    align-items: center;
+    justify-items: center;
+}
+
+.half.left {
+    background: rgba(37, 99, 235, 0.1);
+}
+
+.half.right {
+    background: rgba(220, 38, 38, 0.1);
+}
+
+.player.selected {
+    outline: 3px solid #22c55e;
+    outline-offset: 2px;
+}
+
+.player {
+    cursor: pointer;
+
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 25px;
+    color: white;
+}
+
+.left .player {
+    background: #2563eb;
+}
+
+.right .player {
+    background: #dc2626;
+}
+
+/* PARTE INFERIORE: CONTROLLI */
+.controls {
+    padding: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.panel {
+    background: white;
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    display: grid;
+    grid-template-columns: 33% 67%;
+    gap: 12px;
+}
+
+.bench {
+    border-right: 1px solid #e5e7eb;
+    padding-right: 8px;
+}
+
+.events {
+    padding-left: 8px;
+}
+
+.panel h3 {
+    margin-top: 0;
+}
+
+.panel button {
+    width: auto;
+    margin: 0 6px 6px 0;
+    padding: 6px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+}
