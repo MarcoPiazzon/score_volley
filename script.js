@@ -1,5 +1,5 @@
 class Match {
-  constructor(squadA, squadB) {
+  constructor(squadA, squadB, servingSquad) {
     this.squadA = squadA;
     this.squadB = squadB;
 
@@ -8,7 +8,8 @@ class Match {
     this.setPoints = 25;
     this.tieBreakPoints = 15;
 
-    this.servingSquad = null;
+    this.servingSquad = servingSquad;
+    this.currentSelectedPlayer = new Array();
     this.history = [];
   }
 
@@ -30,11 +31,20 @@ class Match {
       .forEach((p) => p.classList.remove("serve"));
   }
 
-  scorePoint(player, type) {
+  //value: serve per determinare se il punto va alla squadra del giocatore oppure no
+  scorePoint(player, value, type) {
     const squad = player.team === "A" ? this.squadA : this.squadB;
     const opponent = squad === this.squadA ? this.squadA : this.squadB;
 
-    player.addStat(type);
+    if (this.squadA.players.includes(player)) {
+      if (value) this.squadA.scorePoint();
+      else this.squadB.scorePoint();
+    } else {
+      if (value) this.squadB.scorePoint();
+      else this.squadA.scorePoint();
+    }
+
+    //player.addStats(type); // per ora lo teniamo così
 
     //cambio servizio
     if (this.servingSquad !== squad) {
@@ -42,8 +52,15 @@ class Match {
       squad.rotate();
     }
 
+    this.updateScore();
     this.logEvent(player, type);
     this.checkSetEnd();
+  }
+
+  updateScore() {
+    const score = document.querySelectorAll(".score")[0];
+
+    score.innerHTML = "" + this.squadA.score + " - " + this.squadB.score;
   }
 
   checkSetEnd() {
@@ -133,6 +150,9 @@ class Squad {
 
   scorePoint() {
     this.score++;
+    console.log(
+      "aumentato score a " + this.score + " per la squadra " + this.name
+    );
   }
 
   resetScore() {
@@ -150,9 +170,39 @@ class Squad {
   }
 
   rotate() {
-    // rotazione semplice (ultimo → primo)
-    this.players.unshift(this.players.pop());
-    this.servingPlayer = this.players[0];
+    // ordine FIVB visto dall’alto
+    // indici DOM:   0  1  2  3  4  5
+    // posizioni:    1  2  3  4  5  6
+    // mapping:     [3, 1, 5, 2, 6, 4]
+
+    // 1️⃣ rotazione LOGICA (shift ciclico)
+    const first = this.players.shift();
+    this.players.push(first);
+
+    // 2️⃣ recupero DOM della metà campo
+    const half =
+      this.side === "left"
+        ? document.querySelector(".half.left")
+        : document.querySelector(".half.right");
+
+    const divs = Array.from(half.querySelectorAll(".player"));
+
+    // 3️⃣ snapshot dei player attuali in DOM order
+    const values = divs.map((div) => players_map.get(div));
+
+    // 4️⃣ nuovo ordine secondo la tua logica originale
+    const newOrder = [];
+    newOrder[0] = values[2]; // 3
+    newOrder[1] = values[0]; // 1
+    newOrder[2] = values[4]; // 5
+    newOrder[3] = values[1]; // 2
+    newOrder[4] = values[5]; // 6
+    newOrder[5] = values[3]; // 4
+
+    // 5️⃣ aggiornamento grafico
+    newOrder.forEach((player) => {
+      half.appendChild(player.dom);
+    });
   }
 
   getStats() {
@@ -165,10 +215,11 @@ class Squad {
 }
 
 class Player {
-  constructor(id, team, role) {
+  constructor(id, team, role, dom) {
     this.id = id; // numero giocatore
     this.team = team; // 'A' o 'B'
     this.role = role; // Palleggiatore, Centrale, ecc.
+    this.dom = dom; //Riferimento al div nel campo
     this.stats = {
       touches: 0, //palloni toccati durante la partita intera
 
@@ -217,17 +268,10 @@ class Player {
 
 const squadA = new Squad("A");
 const squadB = new Squad("B");
+const players_map = new Map(); //per mappare div con player
+const match = new Match(squadA, squadB, squadA); //forzo l'inizio batuta della squadra A
 
 let selectedPlayer = null;
-let currentSelectedPlayer = new Array();
-let stackPlayersSquad1 = new Array(1, 2, 3, 4, 5, 66);
-let stackPlayersSquad2 = new Array(7, 8, 9, 10, 11, 12);
-let servePlayerSquad1 = document.getElementsByClassName("serve")[0];
-let servePlayerSquad2 = document.getElementsByClassName("serve")[1];
-let score1 = 0;
-let score2 = 0;
-let playerToServe = 1;
-let playerToServeTemp = null;
 let timeoutSquad1 = 3;
 let timeoutSquad2 = 3;
 let counterPlayerTouched = 0;
@@ -241,10 +285,6 @@ let buttonsTechnical = document.querySelectorAll(".technical");
 let playersSquad1 = document.querySelectorAll(".left .player");
 let playersSquad2 = document.querySelectorAll(".right .player");
 let players = document.querySelectorAll(" .player");
-
-const players_map = new Map();
-
-let currentSet = 5;
 
 let isYellow = false;
 let isRed = false;
@@ -365,40 +405,6 @@ let json = {
   },
 };
 
-function updateScore() {
-  document.querySelector(".score").textContent = score1 + " - " + score2;
-
-  //se siamo quinto set
-  if (currentSet === 5) {
-    if (score1 === 15 && score2 <= 13) {
-      alert("sq sx vince set");
-    } else if (score2 === 15 && score1 <= 13) {
-      alert("sq sx vince set");
-    }
-
-    if (score1 > 15 && score1 === score2 + 2) {
-      alert("sq sx vince set vantaggi");
-    } else if (score2 > 15 && score2 === score1 + 2) {
-      alert("sq dx vince set vanttaggi");
-    }
-  }
-
-  //sq sx vince set regolamentari
-  if (score1 === 25 && score2 <= 23) {
-    alert("sq sx vince set");
-  } else if (score2 === 25 && score1 <= 23) {
-    alert("sq sx vince set");
-  }
-
-  if (score1 > 25 && score1 === score2 + 2) {
-    alert("sq sx vince set vantaggi");
-  } else if (score2 > 25 && score2 === score1 + 2) {
-    alert("sq dx vince set vanttaggi");
-  }
-
-  currentSet += 1;
-}
-
 function disableAllPlayers() {
   console.log("fatto");
   players.forEach((p1) => p1.classList.remove("selected"));
@@ -410,89 +416,25 @@ function highlightPlayer(p) {
   selectedPlayer = p;
 }
 
-function rotate(s, squad) {
-  let pos = [5, 3, 1, 2, 4, 6];
-  //console.log(s);
-  let first = s[0];
-  s.shift();
-  s.push(first);
-  //console.log(s);
-  //console.log("." + squad + ".player");
-  const divs = document.querySelectorAll("." + squad + " .player"); // supponendo div all'interno di .grid
-
-  // Estrazione dei valori numerici
-  let values = Array.from(divs, (d) => parseInt(d.textContent));
-
-  // Creiamo un array vuoto per i nuovi valori
-  let newValues = [];
-
-  // Assegniamo i valori secondo il nuovo ordine desiderato
-  newValues[0] = values[2]; // Div0 <- 3
-  newValues[1] = values[0]; // Div1 <- 1
-  newValues[2] = values[4]; // Div2 <- 5
-  newValues[3] = values[1]; // Div3 <- 2
-  newValues[4] = values[5]; // Div4 <- 6
-  newValues[5] = values[3]; // Div5 <- 4
-
-  // Aggiorniamo i div con i nuovi valori
-  divs.forEach((div, i) => (div.textContent = newValues[i]));
-}
-
 document.addEventListener("DOMContentLoaded", () => {
-  for (let i = 0; i < playersSquad1.length; i++) {
-    playersSquad1[i].innerText = stackPlayersSquad1.at(i);
-  }
-
-  for (let i = 0; i < playersSquad2.length; i++) {
-    playersSquad2[i].innerText = stackPlayersSquad2.at(i);
-  }
-
-  //disabilito i pulsanti che non servono
-  buttonsAttack.forEach((p1) => (p1.disabled = true));
-  buttonsDefence.forEach((p1) => (p1.disabled = true));
-  buttonsBlock.forEach((p1) => (p1.disabled = true));
-  buttonsFwb.forEach((p1) => (p1.disabled = true));
-
-  console.log(stackPlayersSquad1.at(0));
-
-  if (playerToServe === 1) {
-    //serve squadra di sx
-    currentSelectedPlayer.push(servePlayerSquad1.innerText);
-    highlightPlayer(servePlayerSquad1);
-
-    playersSquad1.forEach((p1) => {
-      if (!p1.classList.contains("serve")) {
-        p1.style.pointerEvents = "none";
-      }
-    });
-  } else {
-    //serve squadra di dx
-    currentSelectedPlayer.push(servePlayerSquad2.innerText);
-    highlightPlayer(servePlayerSquad2);
-
-    playersSquad2.forEach((p1) => {
-      if (!p1.classList.contains("serve")) {
-        p1.style.pointerEvents = "none";
-      }
-    });
-  }
-
-  //inizializzo i timeout
-  timeoutButtons = document.querySelectorAll(".timeout");
-  timeoutButtons[0].innerHTML += timeoutSquad1;
-  timeoutButtons[1].innerHTML += timeoutSquad2;
-
+  //inizializzo tutti i player
   players.forEach((p) => {
     //OO
     const id = p.textContent.trim();
     const role = null; //per ora non gestito
     const team = p.closest(".half").classList.contains("left") ? "A" : "B";
 
-    const player = new Player(id, team, role);
+    const player = new Player(id, team, role, p);
     players_map.set(p, player);
 
-    if (team === "A") squadA.addPlayer(player);
-    else squadB.addPlayer(player);
+    if (team === "A") {
+      squadA.addPlayer(player);
+      if (p.classList.contains("serve")) squadA.servingPlayer = player;
+    } else {
+      squadB.addPlayer(player);
+
+      if (p.classList.contains("serve")) squadA.servingPlayer = player;
+    }
 
     p.addEventListener("click", () => {
       players.forEach((pl) => pl.classList.remove("selected"));
@@ -564,7 +506,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       selectedPlayer = p;
       highlightPlayer(selectedPlayer);
-      currentSelectedPlayer.push(p.innerHTML);
+      match.currentSelectedPlayer.push(p.innerHTML);
     });
   });
   console.log(squadA);
@@ -575,6 +517,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
   console.log("----------");
 
+  //serve squadra di sx
+  match.currentSelectedPlayer.push(match.servingSquad.servingPlayer);
+
+  //console.log(match.servingSquad.servingPlayer.dom);
+  highlightPlayer(match.servingSquad.servingPlayer.dom); //match.servingSquad.servingPlayer
+
+  //questo è da rifare
+  /*
+  playersSquad1.forEach((p1) => {
+    if (!p1.classList.contains("serve")) {
+      p1.style.pointerEvents = "none";
+    }
+  });
+
+  playersSquad2.forEach((p1) => {
+    if (!p1.classList.contains("serve")) {
+      p1.style.pointerEvents = "none";
+    }
+  });*/
+
   console.log(players_map);
   document.querySelectorAll(".events button").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -583,231 +545,36 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      const isLeftButton = btn.closest(".panel").classList.contains("left");
-
-      console.log(isLeftButton);
-
-      const isLeftTeam = selectedPlayer
-        .closest(".half")
-        .classList.contains("left");
       const label = btn.textContent.toLowerCase();
 
-      playerToServeTemp = playerToServe;
       players.forEach((pl) => pl.classList.remove("selected"));
       if (label === "point") {
+        console.log(players_map.get(selectedPlayer));
         //decido di chi è il punto
-        if (isLeftTeam) {
-          score1++;
-          console.log(playerToServe);
-          console.log(isLeftButton);
-          //decido se la squadra deve fare giro
-          if (playerToServe === 2 && isLeftButton) {
-            rotate(stackPlayersSquad1, "left");
-          }
-          highlightPlayer(servePlayerSquad1);
-          playerToServe = 1;
-        } else {
-          score2++;
-          if (playerToServe === 1 && !isLeftButton) {
-            rotate(stackPlayersSquad2, "right");
-          }
-          highlightPlayer(servePlayerSquad2);
-          playerToServe = 2;
-        }
-
-        //json
-
-        json.sets.set1.events.push({
-          events1: {
-            typeEvent: "point",
-            squadToSet: playerToServeTemp,
-            playerToSet: selectedPlayer.innerHTML, //player who makes the serve
-            touchOfPlayers: currentSelectedPlayer,
-            squadWhoWinPoint: playerToServe, //Squadra A --> 1 e Squadra B --> 2
-            pointMode: "point", //point or out
-            isAce: false, //true or false
-          },
-        });
-
-        console.log(JSON.stringify(json, null, 2));
+        match.scorePoint(players_map.get(selectedPlayer), true, null); //per ora tengo null
       } else if (label === "out") {
-        //decido di chi è il punto
-        if (isLeftTeam) {
-          score2++;
-          console.log(playerToServe);
-          console.log(isLeftButton);
-
-          if (playerToServe === 1 && isLeftButton) {
-            rotate(stackPlayersSquad2, "right");
-          }
-          highlightPlayer(servePlayerSquad2);
-          playerToServe = 2;
-        } else {
-          score1++;
-          //decido se la squadra deve fare giro
-          if (playerToServe === 2 && !isLeftButton) {
-            rotate(stackPlayersSquad1, "left");
-          }
-          highlightPlayer(servePlayerSquad1);
-          playerToServe = 1;
-        }
+        match.scorePoint(players_map.get(selectedPlayer), false, null); //per ora tengo null
       } else if (label === "ace") {
-        disableAllPlayers();
-        if (isLeftTeam) {
-          score1++;
-          highlightPlayer(servePlayerSquad1);
-        } else {
-          score2++;
-          highlightPlayer(servePlayerSquad2);
-        }
+        match.scorePoint(players_map.get(selectedPlayer), true, null); //per ora tengo null
       } else if (label === "errore") {
-        disableAllPlayers();
-        if (isLeftTeam) {
-          score2++;
-          rotate(stackPlayersSquad2, "right");
-          highlightPlayer(servePlayerSquad2);
-          playerToServe = 2;
-        } else {
-          score1++;
-          rotate(stackPlayersSquad2, "left");
-          highlightPlayer(servePlayerSquad1);
-          playerToServe = 1;
-        }
+        match.scorePoint(players_map.get(selectedPlayer), false, null); //per ora tengo null
       } else if (label === "lost ball") {
-        if (isLeftTeam) {
-          score2++;
-          console.log(playerToServe);
-          console.log(isLeftButton);
-
-          if (playerToServe === 1 && isLeftButton) {
-            rotate(stackPlayersSquad2, "right");
-          }
-          highlightPlayer(servePlayerSquad2);
-          playerToServe = 2;
-        } else {
-          score1++;
-          //decido se la squadra deve fare giro
-          if (playerToServe === 2 && !isLeftButton) {
-            rotate(stackPlayersSquad1, "left");
-          }
-          highlightPlayer(servePlayerSquad1);
-          playerToServe = 1;
-        }
+        match.scorePoint(players_map.get(selectedPlayer), false, null); //per ora tengo null
       } else if (label === "double") {
-        if (isLeftTeam) {
-          score2++;
-          console.log(playerToServe);
-          console.log(isLeftButton);
-
-          if (playerToServe === 1 && isLeftButton) {
-            rotate(stackPlayersSquad2, "right");
-          }
-          highlightPlayer(servePlayerSquad2);
-          playerToServe = 2;
-        } else {
-          score1++;
-          //decido se la squadra deve fare giro
-          if (playerToServe === 2 && !isLeftButton) {
-            rotate(stackPlayersSquad1, "left");
-          }
-          highlightPlayer(servePlayerSquad1);
-          playerToServe = 1;
-        }
+        match.scorePoint(players_map.get(selectedPlayer), false, null); //per ora tengo null
       } else if (label === "4 touches") {
-        if (isLeftTeam) {
-          score2++;
-          console.log(playerToServe);
-          console.log(isLeftButton);
-
-          if (playerToServe === 1 && isLeftButton) {
-            rotate(stackPlayersSquad2, "right");
-          }
-          highlightPlayer(servePlayerSquad2);
-          playerToServe = 2;
-        } else {
-          score1++;
-          //decido se la squadra deve fare giro
-          if (playerToServe === 2 && !isLeftButton) {
-            rotate(stackPlayersSquad1, "left");
-          }
-          highlightPlayer(servePlayerSquad1);
-          playerToServe = 1;
-        }
+        match.scorePoint(players_map.get(selectedPlayer), false, null); //per ora tengo null
       } else if (label === "raised") {
-        if (isLeftTeam) {
-          score2++;
-          console.log(playerToServe);
-          console.log(isLeftButton);
-
-          if (playerToServe === 1 && isLeftButton) {
-            rotate(stackPlayersSquad2, "right");
-          }
-          highlightPlayer(servePlayerSquad2);
-          playerToServe = 2;
-        } else {
-          score1++;
-          //decido se la squadra deve fare giro
-          if (playerToServe === 2 && !isLeftButton) {
-            rotate(stackPlayersSquad1, "left");
-          }
-          highlightPlayer(servePlayerSquad1);
-          playerToServe = 1;
-        }
+        match.scorePoint(players_map.get(selectedPlayer), false, null); //per ora tengo null
       } else if (label === "position") {
+        match.scorePoint(players_map.get(selectedPlayer), false, null); //per ora tengo null
       } else if (label === "invasion") {
-        if (isLeftTeam) {
-          score2++;
-          console.log(playerToServe);
-          console.log(isLeftButton);
-
-          if (playerToServe === 1 && isLeftButton) {
-            rotate(stackPlayersSquad2, "right");
-          }
-          highlightPlayer(servePlayerSquad2);
-          playerToServe = 2;
-        } else {
-          score1++;
-          //decido se la squadra deve fare giro
-          if (playerToServe === 2 && !isLeftButton) {
-            rotate(stackPlayersSquad1, "left");
-          }
-          highlightPlayer(servePlayerSquad1);
-          playerToServe = 1;
-        }
+        match.scorePoint(players_map.get(selectedPlayer), false, null); //per ora tengo null
       } else if (label === "yellow") {
         isYellow = true;
       } else if (label === "red") {
         isRed = true;
       } else if (label === "change") {
-      }
-
-      //quando premi sui pulsanti di cards e techinical bisogna riattivare TUTTI i membri delle squadre e, solo dopo, ripristinare il tutto
-
-      //determino a quale squadra spetta battere
-      currentSelectedPlayer = new Array();
-      updateScore();
-
-      //disabilito i giocatori prima della battuta
-      if (playerToServe === 1) {
-        //serve squadra di sx
-        currentSelectedPlayer.push(servePlayerSquad1.innerText);
-        highlightPlayer(servePlayerSquad1);
-
-        playersSquad1.forEach((p1) => {
-          if (!p1.classList.contains("serve")) {
-            p1.style.pointerEvents = "none";
-          }
-        });
-      } else {
-        //serve squadra di dx
-        currentSelectedPlayer.push(servePlayerSquad2.innerText);
-        highlightPlayer(servePlayerSquad2);
-
-        playersSquad2.forEach((p1) => {
-          if (!p1.classList.contains("serve")) {
-            p1.style.pointerEvents = "none";
-          }
-        });
       }
 
       //ripristino i pulsanti che servono
@@ -821,4 +588,15 @@ document.addEventListener("DOMContentLoaded", () => {
       buttonsFwb.forEach((p1) => (p1.disabled = true));
     });
   });
+
+  //disabilito i pulsanti che non servono
+  buttonsAttack.forEach((p1) => (p1.disabled = true));
+  buttonsDefence.forEach((p1) => (p1.disabled = true));
+  buttonsBlock.forEach((p1) => (p1.disabled = true));
+  buttonsFwb.forEach((p1) => (p1.disabled = true));
+
+  //inizializzo i timeout (da rifare)
+  timeoutButtons = document.querySelectorAll(".timeout");
+  timeoutButtons[0].innerHTML += timeoutSquad1;
+  timeoutButtons[1].innerHTML += timeoutSquad2;
 });
