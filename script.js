@@ -1,3 +1,223 @@
+class Match {
+  constructor(squadA, squadB) {
+    this.squadA = squadA;
+    this.squadB = squadB;
+
+    this.currentSet = 1;
+    this.maxSet = 5;
+    this.setPoints = 25;
+    this.tieBreakPoints = 15;
+
+    this.servingSquad = null;
+    this.history = [];
+  }
+
+  startMatch(servingSquad) {
+    this.servingSquad = servingSquad;
+    this.assignServe();
+  }
+
+  assignServe() {
+    this.clearServe();
+    if (this.servingSquad.servingPlayer) {
+      this.servingSquad.servingPlayer.dom.classList.add("serve");
+    }
+  }
+
+  clearServe() {
+    document
+      .querySelectorAll(".player")
+      .forEach((p) => p.classList.remove("serve"));
+  }
+
+  scorePoint(player, type) {
+    const squad = player.team === "A" ? this.squadA : this.squadB;
+    const opponent = squad === this.squadA ? this.squadA : this.squadB;
+
+    player.addStat(type);
+
+    //cambio servizio
+    if (this.servingSquad !== squad) {
+      this.servingSquad = squad;
+      squad.rotate();
+    }
+
+    this.logEvent(player, type);
+    this.checkSetEnd();
+  }
+
+  checkSetEnd() {
+    const target =
+      this.currentSet === this.maxSet ? this.tieBreakPoints : this.setPoints;
+
+    if (
+      this.squadA.score >= target &&
+      this.squadA.score - this.squadB.score >= 2
+    )
+      this.winSet(this.squadA);
+
+    if (this.squadB >= target && this.squadB.score - this.squadA.score >= 2)
+      this.winSet(this.squadB);
+  }
+
+  winSet(winner) {
+    winner.setsWon++;
+    this.squadA.resetScore();
+    this.squadB.resetScore();
+
+    // fare cambio cambio
+    if (this.currentSet !== this.maxSet) {
+      //campio cambio
+      this.swapCourts();
+    }
+
+    this.currentSet++;
+  }
+
+  swapCourts() {
+    //da fare
+  }
+
+  logEvent(player, type) {
+    this.history.push({
+      set: this.currentSet,
+      team: player.team,
+      playerId: player.id,
+      role: player.role,
+      type,
+      timestamp: Date.now(),
+    });
+  }
+
+  isMatchOver() {
+    return this.squadA.setsWon === 3 || this.squadB.setsWon === 3;
+  }
+
+  exportJson() {
+    return {
+      currentSet: this.currentSet,
+      squads: {
+        A: {
+          score: this.squadA.score,
+          setsWon: this.squadA.setsWon,
+          players: this.squadA.getStats(),
+        },
+        B: {
+          score: this.squadB.score,
+          setsWon: this.squadB.setsWon,
+          players: this.squadB.getStats(),
+        },
+      },
+      history: this.history,
+    };
+  }
+}
+
+class Squad {
+  constructor(name) {
+    this.name = name;
+    this.players = [];
+    this.bench = [];
+    this.score = 0;
+    this.setsWon = 0;
+    this.servingPlayer = null;
+  }
+
+  addPlayer(player) {
+    this.players.push(player);
+  }
+
+  addBenchPlayer(player) {
+    this.bench.push(player);
+  }
+
+  scorePoint() {
+    this.score++;
+  }
+
+  resetScore() {
+    this.score = 0;
+  }
+
+  winSet() {
+    this.setsWon++;
+    this.resetScore();
+  }
+
+  setPlayer(player) {
+    if (!this.players.includes(player)) return;
+    this.servingPlayer = player;
+  }
+
+  rotate() {
+    // rotazione semplice (ultimo → primo)
+    this.players.unshift(this.players.pop());
+    this.servingPlayer = this.players[0];
+  }
+
+  getStats() {
+    return this.players.map((p) => ({
+      id: p.id,
+      role: p.role,
+      stats: p.stats,
+    }));
+  }
+}
+
+class Player {
+  constructor(id, team, role) {
+    this.id = id; // numero giocatore
+    this.team = team; // 'A' o 'B'
+    this.role = role; // Palleggiatore, Centrale, ecc.
+    this.stats = {
+      touches: 0, //palloni toccati durante la partita intera
+
+      //Attack
+      attackWin: 0, //attacchi vinti
+      attackErr: 0, //attacchi sbagliati (solo fuori)
+      totalAttack: 0, // attacchi totali fatti nella partita
+
+      //Serve
+      ace: 0, //ace totali
+      serves: 0, //battute totali
+      servesErr: 0, //errori totali in battuta
+      linea_pestata: 0, //da capire come fare
+
+      //Ricezione
+      defensePos: 0, //ricezioni corrette
+      defenseNeg: 0, //ricezioni sbagliate
+
+      //Lost Ball
+      lostBall: 0, //palle perse o passaggi sbagliati
+
+      //Block
+      blockWin: 0, //da capire come fare
+
+      //Foul WB
+      foul_double: 0, //doppe
+      foul_four_touches: 0, //4 tocchi
+      foul_raised: 0, //sollevata
+
+      //Foul WOB
+      foul_position: 0, //fallo di posizione
+      foul_invasion: 0, //fallo di invasione
+
+      //Card
+      card_yellow: 0, //cartellini gialli
+      card_red: 0, //cartelini rossi
+    };
+  }
+
+  addStat(type) {
+    if (this.stats[type] !== undefined) {
+      this.stats[type]++;
+    }
+  }
+}
+
+const squadA = new Squad("A");
+const squadB = new Squad("B");
+
 let selectedPlayer = null;
 let currentSelectedPlayer = new Array();
 let stackPlayersSquad1 = new Array(1, 2, 3, 4, 5, 66);
@@ -20,6 +240,12 @@ let buttonsCards = document.querySelectorAll(".cards");
 let buttonsTechnical = document.querySelectorAll(".technical");
 let playersSquad1 = document.querySelectorAll(".left .player");
 let playersSquad2 = document.querySelectorAll(".right .player");
+let players = document.querySelectorAll(" .player");
+
+const players_map = new Map();
+
+let currentSet = 5;
+
 let isYellow = false;
 let isRed = false;
 let isChange = false;
@@ -141,6 +367,41 @@ let json = {
 
 function updateScore() {
   document.querySelector(".score").textContent = score1 + " - " + score2;
+
+  //se siamo quinto set
+  if (currentSet === 5) {
+    if (score1 === 15 && score2 <= 13) {
+      alert("sq sx vince set");
+    } else if (score2 === 15 && score1 <= 13) {
+      alert("sq sx vince set");
+    }
+
+    if (score1 > 15 && score1 === score2 + 2) {
+      alert("sq sx vince set vantaggi");
+    } else if (score2 > 15 && score2 === score1 + 2) {
+      alert("sq dx vince set vanttaggi");
+    }
+  }
+
+  //sq sx vince set regolamentari
+  if (score1 === 25 && score2 <= 23) {
+    alert("sq sx vince set");
+  } else if (score2 === 25 && score1 <= 23) {
+    alert("sq sx vince set");
+  }
+
+  if (score1 > 25 && score1 === score2 + 2) {
+    alert("sq sx vince set vantaggi");
+  } else if (score2 > 25 && score2 === score1 + 2) {
+    alert("sq dx vince set vanttaggi");
+  }
+
+  currentSet += 1;
+}
+
+function disableAllPlayers() {
+  console.log("fatto");
+  players.forEach((p1) => p1.classList.remove("selected"));
 }
 
 function highlightPlayer(p) {
@@ -151,12 +412,12 @@ function highlightPlayer(p) {
 
 function rotate(s, squad) {
   let pos = [5, 3, 1, 2, 4, 6];
-  console.log(s);
+  //console.log(s);
   let first = s[0];
   s.shift();
   s.push(first);
-  console.log(s);
-  console.log("." + squad + ".player");
+  //console.log(s);
+  //console.log("." + squad + ".player");
   const divs = document.querySelectorAll("." + squad + " .player"); // supponendo div all'interno di .grid
 
   // Estrazione dei valori numerici
@@ -178,7 +439,6 @@ function rotate(s, squad) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  const players = document.querySelectorAll(".player");
   for (let i = 0; i < playersSquad1.length; i++) {
     playersSquad1[i].innerText = stackPlayersSquad1.at(i);
   }
@@ -223,6 +483,17 @@ document.addEventListener("DOMContentLoaded", () => {
   timeoutButtons[1].innerHTML += timeoutSquad2;
 
   players.forEach((p) => {
+    //OO
+    const id = p.textContent.trim();
+    const role = null; //per ora non gestito
+    const team = p.closest(".half").classList.contains("left") ? "A" : "B";
+
+    const player = new Player(id, team, role);
+    players_map.set(p, player);
+
+    if (team === "A") squadA.addPlayer(player);
+    else squadB.addPlayer(player);
+
     p.addEventListener("click", () => {
       players.forEach((pl) => pl.classList.remove("selected"));
       counterPlayerTouched++;
@@ -291,13 +562,20 @@ document.addEventListener("DOMContentLoaded", () => {
       } else if (isRed) {
         console.log("cartellino rosso");
       }
-
-      highlightPlayer(p);
       selectedPlayer = p;
+      highlightPlayer(selectedPlayer);
       currentSelectedPlayer.push(p.innerHTML);
     });
   });
+  console.log(squadA);
 
+  console.log("---------------");
+
+  console.log(squadB);
+
+  console.log("----------");
+
+  console.log(players_map);
   document.querySelectorAll(".events button").forEach((btn) => {
     btn.addEventListener("click", () => {
       if (!selectedPlayer) {
@@ -374,6 +652,7 @@ document.addEventListener("DOMContentLoaded", () => {
           playerToServe = 1;
         }
       } else if (label === "ace") {
+        disableAllPlayers();
         if (isLeftTeam) {
           score1++;
           highlightPlayer(servePlayerSquad1);
@@ -382,14 +661,17 @@ document.addEventListener("DOMContentLoaded", () => {
           highlightPlayer(servePlayerSquad2);
         }
       } else if (label === "errore") {
+        disableAllPlayers();
         if (isLeftTeam) {
           score2++;
           rotate(stackPlayersSquad2, "right");
           highlightPlayer(servePlayerSquad2);
+          playerToServe = 2;
         } else {
           score1++;
           rotate(stackPlayersSquad2, "left");
           highlightPlayer(servePlayerSquad1);
+          playerToServe = 1;
         }
       } else if (label === "lost ball") {
         if (isLeftTeam) {
