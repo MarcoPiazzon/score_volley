@@ -1,5 +1,5 @@
 class Match {
-  constructor(squadA, squadB, servingSquad) {
+  constructor(squadA, squadB) {
     this.squadA = squadA;
     this.squadB = squadB;
 
@@ -8,8 +8,8 @@ class Match {
     this.setPoints = 25;
     this.tieBreakPoints = 15;
 
-    this.servingSquad = servingSquad;
-    this.currentSelectedPlayer = new Array();
+    this.servingSquad = null;
+    this.currentSelectedPlayer = new Array(); //array di Player
     this.history = [];
   }
 
@@ -20,8 +20,13 @@ class Match {
 
   assignServe() {
     this.clearServe();
+    this.servingSquad.setPlayer();
+    console.log(this.servingSquad.servingPlayer);
     if (this.servingSquad.servingPlayer) {
       this.servingSquad.servingPlayer.dom.classList.add("serve");
+      this.servingSquad.servingPlayer.dom.classList.add("selected");
+      console.log("ora batte il");
+      console.log(this.servingSquad.servingPlayer);
     }
   }
 
@@ -33,8 +38,9 @@ class Match {
 
   //value: serve per determinare se il punto va alla squadra del giocatore oppure no
   scorePoint(player, value, type) {
+    console.log(player);
     const squad = player.team === "A" ? this.squadA : this.squadB;
-    const opponent = squad === this.squadA ? this.squadA : this.squadB;
+    const opponent = squad === this.squadA ? this.squadB : this.squadA;
 
     if (this.squadA.players.includes(player)) {
       if (value) this.squadA.scorePoint();
@@ -45,15 +51,34 @@ class Match {
     }
 
     //player.addStats(type); // per ora lo teniamo così
+    //perché il punto l'ha fatto la squadra opposta della squadra dell'ultimo giocatore che ha toccato il pallone
+    if (!value) {
+      console.log("ha fatto punto " + opponent.name);
+    } else console.log("ha fatto punto: " + squad.name);
+
+    //console.log(squad); //squadra che ha fatto punto
+    console.log(this.servingSquad); //squadra che ha battuto il set
+    console.log(value);
 
     //cambio servizio
-    if (this.servingSquad !== squad) {
+    if (this.servingSquad !== squad && value) {
+      console.log("1 cambio battutas, ora tocca a: " + squad.name);
       this.servingSquad = squad;
       squad.rotate();
+    } else if (this.servingSquad === squad && !value) {
+      //questo vuol dire che l'ultimo giocatore che ha toccato palla è della stessa squadra che ha battuto ma hanno perso il punto lo stesso
+      console.log("2 cambio battutas, ora tocca a: " + opponent.name);
+      this.servingSquad = opponent;
+      opponent.rotate();
     }
+
+    this.assignServe();
 
     this.updateScore();
     this.logEvent(player, type);
+
+    this.currentSelectedPlayer = new Array();
+    this.currentSelectedPlayer.push(this.servingSquad.servingPlayer);
     this.checkSetEnd();
   }
 
@@ -73,12 +98,17 @@ class Match {
     )
       this.winSet(this.squadA);
 
-    if (this.squadB >= target && this.squadB.score - this.squadA.score >= 2)
+    if (
+      this.squadB.score >= target &&
+      this.squadB.score - this.squadA.score >= 2
+    ) {
       this.winSet(this.squadB);
+    }
   }
 
   winSet(winner) {
     winner.setsWon++;
+    alert("vince la squadra: " + winner.name);
     this.squadA.resetScore();
     this.squadB.resetScore();
 
@@ -131,13 +161,15 @@ class Match {
 }
 
 class Squad {
-  constructor(name) {
+  constructor(name, side) {
     this.name = name;
+    this.side = side;
     this.players = [];
     this.bench = [];
     this.score = 0;
     this.setsWon = 0;
     this.servingPlayer = null;
+    this.timeout = 3;
   }
 
   addPlayer(player) {
@@ -164,9 +196,11 @@ class Squad {
     this.resetScore();
   }
 
-  setPlayer(player) {
-    if (!this.players.includes(player)) return;
-    this.servingPlayer = player;
+  setPlayer() {
+    console.log(this.players);
+
+    if (this.side === "left") this.servingPlayer = this.players[4];
+    else this.servingPlayer = this.players[1];
   }
 
   rotate() {
@@ -175,11 +209,9 @@ class Squad {
     // posizioni:    1  2  3  4  5  6
     // mapping:     [3, 1, 5, 2, 6, 4]
 
-    // 1️⃣ rotazione LOGICA (shift ciclico)
-    const first = this.players.shift();
-    this.players.push(first);
-
     // 2️⃣ recupero DOM della metà campo
+
+    console.log(this.side);
     const half =
       this.side === "left"
         ? document.querySelector(".half.left")
@@ -187,6 +219,8 @@ class Squad {
 
     const divs = Array.from(half.querySelectorAll(".player"));
 
+    console.log("pre ordine");
+    console.log(divs);
     // 3️⃣ snapshot dei player attuali in DOM order
     const values = divs.map((div) => players_map.get(div));
 
@@ -203,6 +237,11 @@ class Squad {
     newOrder.forEach((player) => {
       half.appendChild(player.dom);
     });
+
+    console.log("nuovo ordine");
+    console.log(newOrder);
+
+    this.players = newOrder;
   }
 
   getStats() {
@@ -266,15 +305,13 @@ class Player {
   }
 }
 
-const squadA = new Squad("A");
-const squadB = new Squad("B");
+const squadA = new Squad("A", "left");
+const squadB = new Squad("B", "right");
 const players_map = new Map(); //per mappare div con player
-const match = new Match(squadA, squadB, squadA); //forzo l'inizio batuta della squadra A
+const match = new Match(squadA, squadB); //forzo l'inizio batuta della squadra A
 
 let selectedPlayer = null;
-let timeoutSquad1 = 3;
-let timeoutSquad2 = 3;
-let counterPlayerTouched = 0;
+
 let buttonsAttack = document.querySelectorAll(".attack");
 let buttonsServe = document.querySelectorAll(".serve");
 let buttonsDefence = document.querySelectorAll(".defence");
@@ -285,10 +322,6 @@ let buttonsTechnical = document.querySelectorAll(".technical");
 let playersSquad1 = document.querySelectorAll(".left .player");
 let playersSquad2 = document.querySelectorAll(".right .player");
 let players = document.querySelectorAll(" .player");
-
-let isYellow = false;
-let isRed = false;
-let isChange = false;
 
 let json = {
   squad1: "Terraglio",
@@ -413,7 +446,8 @@ function disableAllPlayers() {
 function highlightPlayer(p) {
   console.log(p);
   p.classList.add("selected");
-  selectedPlayer = p;
+  selectedPlayer = players_map.get(p);
+  match.currentSelectedPlayer.push(selectedPlayer);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -429,18 +463,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (team === "A") {
       squadA.addPlayer(player);
-      if (p.classList.contains("serve")) squadA.servingPlayer = player;
     } else {
       squadB.addPlayer(player);
-
-      if (p.classList.contains("serve")) squadA.servingPlayer = player;
     }
 
     p.addEventListener("click", () => {
       players.forEach((pl) => pl.classList.remove("selected"));
-      counterPlayerTouched++;
 
-      if (counterPlayerTouched != 0) {
+      if (match.currentSelectedPlayer.length != 0) {
         buttonsAttack.forEach((p1) => (p1.disabled = false));
         buttonsDefence.forEach((p1) => (p1.disabled = false));
         buttonsBlock.forEach((p1) => (p1.disabled = false));
@@ -449,64 +479,7 @@ document.addEventListener("DOMContentLoaded", () => {
         buttonsCards.forEach((p1) => (p1.disabled = true));
       }
 
-      playersSquad1.forEach((p1) => {
-        if (!p1.classList.contains("serve")) {
-          p1.style.pointerEvents = "auto";
-        }
-      });
-
-      playersSquad2.forEach((p1) => {
-        if (!p1.classList.contains("serve")) {
-          p1.style.pointerEvents = "auto";
-        }
-      });
-
-      console.log("test" + isYellow);
-      if (isYellow) {
-        console.log("cartellino giallo");
-        //riattivo tutti i player
-
-        playersSquad1.forEach((p1) => {
-          p1.style.pointerEvents = "auto";
-        });
-
-        playersSquad2.forEach((p1) => {
-          p1.style.pointerEvents = "auto";
-        });
-
-        //inserisco nel json
-
-        //ripristino com'era prima
-        //disabilito i giocatori in battuta
-        if (playerToServe === 1) {
-          //serve squadra di sx
-          currentSelectedPlayer.push(servePlayerSquad1.innerText);
-          highlightPlayer(servePlayerSquad1);
-
-          playersSquad1.forEach((p1) => {
-            if (!p1.classList.contains("serve")) {
-              p1.style.pointerEvents = "none";
-            }
-          });
-        } else {
-          //serve squadra di dx
-          currentSelectedPlayer.push(servePlayerSquad2.innerText);
-          highlightPlayer(servePlayerSquad2);
-
-          playersSquad2.forEach((p1) => {
-            if (!p1.classList.contains("serve")) {
-              p1.style.pointerEvents = "none";
-            }
-          });
-        }
-
-        isYellow = false;
-      } else if (isRed) {
-        console.log("cartellino rosso");
-      }
-      selectedPlayer = p;
-      highlightPlayer(selectedPlayer);
-      match.currentSelectedPlayer.push(p.innerHTML);
+      highlightPlayer(p);
     });
   });
   console.log(squadA);
@@ -518,6 +491,10 @@ document.addEventListener("DOMContentLoaded", () => {
   console.log("----------");
 
   //serve squadra di sx
+
+  match.startMatch(squadA);
+
+  console.log(match.servingSquad);
   match.currentSelectedPlayer.push(match.servingSquad.servingPlayer);
 
   //console.log(match.servingSquad.servingPlayer.dom);
@@ -549,33 +526,42 @@ document.addEventListener("DOMContentLoaded", () => {
 
       players.forEach((pl) => pl.classList.remove("selected"));
       if (label === "point") {
-        console.log(players_map.get(selectedPlayer));
+        console.log(players_map.get(selectedPlayer.dom));
         //decido di chi è il punto
-        match.scorePoint(players_map.get(selectedPlayer), true, null); //per ora tengo null
+        match.scorePoint(players_map.get(selectedPlayer.dom), true, null); //per ora tengo null
       } else if (label === "out") {
-        match.scorePoint(players_map.get(selectedPlayer), false, null); //per ora tengo null
+        match.scorePoint(players_map.get(selectedPlayer.dom), false, null); //per ora tengo null
       } else if (label === "ace") {
-        match.scorePoint(players_map.get(selectedPlayer), true, null); //per ora tengo null
+        match.scorePoint(
+          players_map.get(match.currentSelectedPlayer[0].dom),
+          true,
+          null
+        ); //per ora tengo null
       } else if (label === "errore") {
-        match.scorePoint(players_map.get(selectedPlayer), false, null); //per ora tengo null
+        match.scorePoint(players_map.get(selectedPlayer.dom), false, null); //per ora tengo null
       } else if (label === "lost ball") {
-        match.scorePoint(players_map.get(selectedPlayer), false, null); //per ora tengo null
+        match.scorePoint(players_map.get(selectedPlayer.dom), false, null); //per ora tengo null
       } else if (label === "double") {
-        match.scorePoint(players_map.get(selectedPlayer), false, null); //per ora tengo null
+        match.scorePoint(players_map.get(selectedPlayer.dom), false, null); //per ora tengo null
       } else if (label === "4 touches") {
-        match.scorePoint(players_map.get(selectedPlayer), false, null); //per ora tengo null
+        match.scorePoint(players_map.get(selectedPlayer.dom), false, null); //per ora tengo null
       } else if (label === "raised") {
-        match.scorePoint(players_map.get(selectedPlayer), false, null); //per ora tengo null
+        match.scorePoint(players_map.get(selectedPlayer.dom), false, null); //per ora tengo null
       } else if (label === "position") {
-        match.scorePoint(players_map.get(selectedPlayer), false, null); //per ora tengo null
+        match.scorePoint(players_map.get(selectedPlayer.dom), false, null); //per ora tengo null
       } else if (label === "invasion") {
-        match.scorePoint(players_map.get(selectedPlayer), false, null); //per ora tengo null
+        match.scorePoint(players_map.get(selectedPlayer.dom), false, null); //per ora tengo null
       } else if (label === "yellow") {
         isYellow = true;
       } else if (label === "red") {
         isRed = true;
       } else if (label === "change") {
       }
+
+      //ripristino il selected player
+      console.log("ripristino");
+      console.log(match.servingSquad.servingPlayer);
+      selectedPlayer = match.servingSquad.servingPlayer;
 
       //ripristino i pulsanti che servono
       buttonsTechnical.forEach((p1) => (p1.disabled = false));
@@ -597,6 +583,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   //inizializzo i timeout (da rifare)
   timeoutButtons = document.querySelectorAll(".timeout");
-  timeoutButtons[0].innerHTML += timeoutSquad1;
-  timeoutButtons[1].innerHTML += timeoutSquad2;
+  /*timeoutButtons[0].innerHTML += timeoutSquad1;
+  timeoutButtons[1].innerHTML += timeoutSquad2;*/
 });
