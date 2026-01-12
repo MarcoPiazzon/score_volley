@@ -101,6 +101,28 @@ header {
     background: #dc2626;
 }
 
+.selected-out {
+    cursor: pointer;
+
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 25px;
+    color: white;
+}
+
+.left .selected-out {
+    background: #2563eb;
+}
+
+.right .selected-out {
+    background: #dc2626;
+}
+
 /* PARTE INFERIORE: CONTROLLI */
 .controls {
     padding: 16px;

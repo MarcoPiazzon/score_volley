@@ -172,6 +172,48 @@ class Squad {
     this.timeout = 3;
   }
 
+  addToCourt(player,position){
+    player.onCourt = true;
+    player.position = position;
+    this.players[position - 1] = player;
+  }
+
+  addToBench(player){
+    player.onCourt = false;
+    player.position = null;
+    this.bench.push(player);
+  }
+
+  substitute(outPlayer, inPlayer){
+    console.log("test-----");
+    console.log(outPlayer);
+    console.log(inPlayer);
+    if(!outPlayer.onCourt){
+      throw new Error("Il giocatore da sostituire non è in campo");
+    }
+    if(inPlayer.onCourt){
+      throw new Error("Il giocatore entrante è già in campo");
+    }
+
+    const pos = this.players.findIndex(p => p.id === outPlayer.id);
+
+    inPlayer.dom.classList.remove("selected-out");
+    inPlayer.dom.classList.add("player");
+    this.players[pos] = inPlayer;
+
+    outPlayer.onCourt = false;
+    inPlayer.onCourt = true;
+
+    outPlayer.dom.classList.remove("player");
+    
+    outPlayer.dom.classList.add("selected-out");
+    this.bench = this.bench.filter(p => p !== inPlayer);
+    this.bench.push(outPlayer);
+
+    console.log("end--");
+    console.log(this.players);
+  }
+
   addPlayer(player) {
     this.players.push(player);
   }
@@ -254,11 +296,13 @@ class Squad {
 }
 
 class Player {
-  constructor(id, team, role, dom) {
+  constructor(id, team, role, dom, onCourt) {
     this.id = id; // numero giocatore
     this.team = team; // 'A' o 'B'
     this.role = role; // Palleggiatore, Centrale, ecc.
     this.dom = dom; //Riferimento al div nel campo
+    this.position = null;
+    this.onCourt = onCourt; //se il giocatore è in campo
     this.stats = {
       touches: 0, //palloni toccati durante la partita intera
 
@@ -322,6 +366,7 @@ let buttonsTechnical = document.querySelectorAll(".technical");
 let playersSquad1 = document.querySelectorAll(".left .player");
 let playersSquad2 = document.querySelectorAll(".right .player");
 let players = document.querySelectorAll(" .player");
+let sub = document.querySelectorAll(".selected-out");
 
 let json = {
   squad1: "Terraglio",
@@ -450,6 +495,35 @@ function highlightPlayer(p) {
   match.currentSelectedPlayer.push(selectedPlayer);
 }
 
+function updateCourtDom(squad){
+  
+  const halfElement = document.querySelector(`.half.${squad.side}`);
+
+  console.log(halfElement);
+  // svuota la metà per inserire i player ordinati
+  halfElement.innerHTML = '';
+
+  // inserisci i div dei player nella giusta posizione
+  squad.players.forEach(player => {
+    halfElement.appendChild(player.dom); // ⚡ inserisce fisicamente nel DOM
+    player.dom.textContent = player.id + '\n' + (player.role?.charAt(0) || '');
+    player.dom.classList.add('player'); // aggiungi classi necessarie
+  });
+}
+
+function updateBenchDOM(squad){
+  
+  const benchContainer = document.querySelector(`#bench-${squad.side}`);
+  benchContainer.innerHTML = "";
+
+  squad.bench.forEach(player => {
+    benchContainer.appendChild(player.dom);
+  });
+}
+
+selectedOutPlayer = null; //da mettere dentro a match
+changeMode = true;
+
 document.addEventListener("DOMContentLoaded", () => {
   //inizializzo tutti i player
   players.forEach((p) => {
@@ -458,7 +532,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const role = null; //per ora non gestito
     const team = p.closest(".half").classList.contains("left") ? "A" : "B";
 
-    const player = new Player(id, team, role, p);
+    const player = new Player(id, team, role, p, true); //true perché sono i titolari
     players_map.set(p, player);
 
     if (team === "A") {
@@ -479,16 +553,53 @@ document.addEventListener("DOMContentLoaded", () => {
         buttonsCards.forEach((p1) => (p1.disabled = true));
       }
 
+      if(changeMode){
+        selectedOutPlayer = players_map.get(p);
+        //p.classList.add('selected-out');
+        return;
+      }
+
       highlightPlayer(p);
     });
   });
-  console.log(squadA);
 
-  console.log("---------------");
+  console.log(sub);
+  sub.forEach((p) => {
+    //OO
+    const id = p.textContent.trim();
+    const role = null; //per ora non gestito
+    const team = p.closest(".panel").classList.contains("left") ? "A" : "B";
 
-  console.log(squadB);
+    const player = new Player(id, team, role, p, false); //false perché sono i titolari
+    players_map.set(p, player);
 
-  console.log("----------");
+    if (team === "A") {
+      squadA.addBenchPlayer(player);
+    } else {
+      squadB.addBenchPlayer(player);
+    }
+    p.addEventListener("click", () => {
+      if(changeMode && selectedOutPlayer){
+        squad = (squadA.players.includes(selectedOutPlayer)) ? squadA : squadB; //se il player appartiene alla squadA
+        console.log("squad");
+        console.log(squad);
+        squad.substitute(selectedOutPlayer, players_map.get(p));
+        updateCourtDom(squad);
+        updateBenchDOM(squad);
+
+        changeMode = false;
+        selectedOutPlayer = null;
+          
+      }
+    });
+  });
+  //console.log(squadA);
+
+  //console.log("---------------");
+
+  //console.log(squadB);
+
+  //console.log("----------");
 
   //serve squadra di sx
 
@@ -523,7 +634,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const label = btn.textContent.toLowerCase();
-
+      console.log("label");
       players.forEach((pl) => pl.classList.remove("selected"));
       if (label === "point") {
         console.log(players_map.get(selectedPlayer.dom));
@@ -556,9 +667,12 @@ document.addEventListener("DOMContentLoaded", () => {
       } else if (label === "red") {
         isRed = true;
       } else if (label === "change") {
+        changeMode = true;
+        selectedOutPlayer = null;
+        console.log("modalità cambio attiva");
       }
-
-      //ripristino il selected player
+      if(!changeMode){
+        //ripristino il selected player
       console.log("ripristino");
       console.log(match.servingSquad.servingPlayer);
       selectedPlayer = match.servingSquad.servingPlayer;
@@ -572,6 +686,8 @@ document.addEventListener("DOMContentLoaded", () => {
       buttonsDefence.forEach((p1) => (p1.disabled = true));
       buttonsBlock.forEach((p1) => (p1.disabled = true));
       buttonsFwb.forEach((p1) => (p1.disabled = true));
+      }
+      
     });
   });
 
