@@ -7,10 +7,65 @@ class Match {
     this.maxSet = 5;
     this.setPoints = 25;
     this.tieBreakPoints = 15;
+    this.changeFieldMaxSet = true; //se true ancora da fare, se false già fatto
 
     this.servingSquad = null;
     this.currentSelectedPlayer = new Array(); //array di Player
     this.history = [];
+
+    this.cardMode = null; //per modalità cartellino
+  }
+
+
+
+  swapSides(){
+    //Scambia le squadre
+    console.log("test di prova");
+    console.log(this.squadA);
+    console.log(this.squadB);
+
+    [this.squadA, this.squadB] = [this.squadB, this.squadA];
+
+    this.squadA.swapInnerSide();
+    this.squadB.swapInnerSide();
+    
+    console.log("dopo swap");
+    console.log(this.squadA);
+    console.log(this.squadB);
+
+    //aggiorna riferimento team
+    this.squadA.players.forEach(p => p.team = 'A');
+    this.squadA.bench.forEach(p => p.team = 'A');
+
+    this.squadB.players.forEach(p => p.team = 'B');
+    this.squadB.bench.forEach(p => p.team = 'B');
+
+    //aggiorna il DOM
+    this.renderAll();
+  }
+
+  renderAll(){
+    updateCourtDom(this.squadA);
+    updateCourtDom(this.squadB);
+
+    updateBenchDOM(this.squadA);
+    updateBenchDOM(this.squadB);
+
+    this.updateScore();
+
+    /* 
+    updateTimeoutUI('A');
+    updateTimeoutUI('B');
+    */
+  }
+  
+
+  enableCardMode(type){
+    this.cardMode = type;
+  }
+
+  disableCardMode(type){
+    this.cardMode = null;
   }
 
   startMatch(servingSquad) {
@@ -104,25 +159,39 @@ class Match {
     ) {
       this.winSet(this.squadB);
     }
+
+    //se sono al quinto set controllo se devo fare cambio campo
+    if(this.currentSet === this.maxSet && this.changeFieldMaxSet){
+      //console.log("controllo quinto set");
+      if(this.squadA.score >= this.tieBreakPoints/2 || this.squadB.score >= this.tieBreakPoints/2){
+        //console.log("cambio quinto set");
+        this.swapSides();
+        this.changeFieldMaxSet = false;
+      }
+      
+    }
   }
 
   winSet(winner) {
     winner.setsWon++;
     alert("vince la squadra: " + winner.name);
+
+    //riporto il punteggio a 0-0
     this.squadA.resetScore();
     this.squadB.resetScore();
 
-    // fare cambio cambio
+    //resetto i timeout
+    this.squadA.resetTimeouts();
+    this.squadB.resetTimeouts();
+
+    // fare cambio campo
     if (this.currentSet !== this.maxSet) {
-      //campio cambio
-      this.swapCourts();
+      //cambio campo
+      this.swapSides();
     }
 
+    console.log("sets: " + squadA.setsWon + " - " + squadB.setsWon);
     this.currentSet++;
-  }
-
-  swapCourts() {
-    //da fare
   }
 
   logEvent(player, type) {
@@ -169,7 +238,23 @@ class Squad {
     this.score = 0;
     this.setsWon = 0;
     this.servingPlayer = null;
-    this.timeout = 3;
+    this.timeout = 0;
+  }
+
+  swapInnerSide(){
+    this.side = this.side === "left" ? "right" : "left"; 
+  }
+
+  takeTimeout(){
+    if(this.timeout >= 2){
+      return false; //timeout finiti
+    }
+    this.timeout++;
+    return true;
+  }
+
+  resetTimeouts(){
+    this.timeout = 0;
   }
 
   addToCourt(player,position){
@@ -193,6 +278,8 @@ class Squad {
     }
     if(inPlayer.onCourt){
       throw new Error("Il giocatore entrante è già in campo");
+    }else if(inPlayer.stats.card_red > 0){
+      throw new Error("Il giocatore non può entrare perché espluso");
     }
 
     const pos = this.players.findIndex(p => p.id === outPlayer.id);
@@ -320,6 +407,7 @@ class Player {
       //Ricezione
       defensePos: 0, //ricezioni corrette
       defenseNeg: 0, //ricezioni sbagliate
+      totalRicezione: 0,
 
       //Lost Ball
       lostBall: 0, //palle perse o passaggi sbagliati
@@ -336,16 +424,90 @@ class Player {
       foul_position: 0, //fallo di posizione
       foul_invasion: 0, //fallo di invasione
 
+      totalFoul: 0,
+
       //Card
       card_yellow: 0, //cartellini gialli
       card_red: 0, //cartelini rossi
+
+      totalCard: 0,
     };
+  }
+  
+  /* Stats */
+
+  addTouchesStats(){
+    this.stats.touches++;
+  }
+
+  addAttackStats(type){
+    if(type==="win")
+      this.stats.attackWin++;
+    else
+      this.stats.attackErr++;
+
+    this.stats.totalAttack++;
+  }
+
+  addServeStats(type){
+    if(type==="ace")
+      this.stats.ace++;
+    else if(type==="err")
+      this.stats.servesErr++;
+    else
+      this.stats.linea_pestata++;
+
+    this.stats.serves++;
+  }
+
+  addRicezioneStats(type){
+    if(type==="pos")
+      this.stats.defensePos++;
+    else
+      this.stats.defenseNeg++;
+
+    this.stats.totalRicezione++;
+  }
+      
+  addLostBallStats(){
+    this.stats.lostBall++;
+  }
+
+  addBlockStats(){
+    this.stats.blockWin++;
+  }
+
+  addFoulWBStats(type){
+    if(type==="double")
+      this.stats.foul_double++;
+    else if(type==="four_touches")
+      this.stats.foul_four_touches++;
+    else 
+      this.stats.foul_raised++;
+
+    this.stats.totalFoul;
+  }
+
+  addFoulWOBStats(type){
+    if(type==="position")
+      this.stats.foul_position++;
+    else
+      this.stats.foul_invasion++;
+
+    this.stats.totalFoul;
   }
 
   addStat(type) {
     if (this.stats[type] !== undefined) {
       this.stats[type]++;
     }
+  }
+
+  giveCard(type){
+    if(type === 'yellow') this.stats.card_yellow++;
+    if(type === 'red') this.stats.card_red++;
+
+    this.stats.totalCard++;
   }
 }
 
@@ -521,8 +683,17 @@ function updateBenchDOM(squad){
   });
 }
 
+function updatePlayerCardUI(player, type) {
+  if (type === 'yellow') {
+    player.dom.classList.add('card-yellow');
+  }
+  if (type === 'red') {
+    player.dom.classList.add('card-red');
+  }
+}
+
 selectedOutPlayer = null; //da mettere dentro a match
-changeMode = true;
+changeMode = false;
 
 document.addEventListener("DOMContentLoaded", () => {
   //inizializzo tutti i player
@@ -553,12 +724,24 @@ document.addEventListener("DOMContentLoaded", () => {
         buttonsCards.forEach((p1) => (p1.disabled = true));
       }
 
+      const player = players_map.get(p);
+      console.log("changeMode:" + changeMode);
       if(changeMode){
-        selectedOutPlayer = players_map.get(p);
-        //p.classList.add('selected-out');
+        selectedOutPlayer = player;
         return;
       }
 
+      console.log("cardMode: " + match.cardMode);
+      if(match.cardMode){
+        console.log("assegno giallo");
+        player.giveCard(match.cardMode);
+        console.log(player);
+        updatePlayerCardUI(player, match.cardMode);
+        match.disableCardMode();
+        return;
+      }
+      
+      player.addTouchesStats();
       highlightPlayer(p);
     });
   });
@@ -578,6 +761,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       squadB.addBenchPlayer(player);
     }
+
     p.addEventListener("click", () => {
       if(changeMode && selectedOutPlayer){
         squad = (squadA.players.includes(selectedOutPlayer)) ? squadA : squadB; //se il player appartiene alla squadA
@@ -590,7 +774,20 @@ document.addEventListener("DOMContentLoaded", () => {
         changeMode = false;
         selectedOutPlayer = null;
           
+        highlightPlayer(match.servingSquad.servingPlayer.dom);
       }
+
+      console.log("cardMode: " + match.cardMode);
+      if(match.cardMode){
+        const player = players_map.get(p);
+        console.log("assegno giallo");
+        player.giveCard(match.cardMode);
+        console.log(player);
+        updatePlayerCardUI(player, match.cardMode);
+        match.disableCardMode();
+        return;
+      }
+
     });
   });
   //console.log(squadA);
@@ -606,28 +803,15 @@ document.addEventListener("DOMContentLoaded", () => {
   match.startMatch(squadA);
 
   console.log(match.servingSquad);
-  match.currentSelectedPlayer.push(match.servingSquad.servingPlayer);
 
   //console.log(match.servingSquad.servingPlayer.dom);
+  match.servingSquad.servingPlayer.addTouchesStats(); 
   highlightPlayer(match.servingSquad.servingPlayer.dom); //match.servingSquad.servingPlayer
-
-  //questo è da rifare
-  /*
-  playersSquad1.forEach((p1) => {
-    if (!p1.classList.contains("serve")) {
-      p1.style.pointerEvents = "none";
-    }
-  });
-
-  playersSquad2.forEach((p1) => {
-    if (!p1.classList.contains("serve")) {
-      p1.style.pointerEvents = "none";
-    }
-  });*/
 
   console.log(players_map);
   document.querySelectorAll(".events button").forEach((btn) => {
     btn.addEventListener("click", () => {
+
       if (!selectedPlayer) {
         alert("Seleziona prima un giocatore");
         return;
@@ -636,59 +820,87 @@ document.addEventListener("DOMContentLoaded", () => {
       const label = btn.textContent.toLowerCase();
       console.log("label");
       players.forEach((pl) => pl.classList.remove("selected"));
+
+      const player = players_map.get(selectedPlayer.dom);
       if (label === "point") {
-        console.log(players_map.get(selectedPlayer.dom));
+        console.log(player);
         //decido di chi è il punto
-        match.scorePoint(players_map.get(selectedPlayer.dom), true, null); //per ora tengo null
+        match.scorePoint(player, true, null); //per ora tengo null
+        player.addAttackStats("win");
       } else if (label === "out") {
-        match.scorePoint(players_map.get(selectedPlayer.dom), false, null); //per ora tengo null
+        match.scorePoint(player, false, null); //per ora tengo null
+        player.addAttackStats("err");
       } else if (label === "ace") {
         match.scorePoint(
           players_map.get(match.currentSelectedPlayer[0].dom),
           true,
           null
         ); //per ora tengo null
+        player.addServeStats("ace");
       } else if (label === "errore") {
-        match.scorePoint(players_map.get(selectedPlayer.dom), false, null); //per ora tengo null
+        match.scorePoint(player, false, null); //per ora tengo null
+        player.addServeStats("err");
       } else if (label === "lost ball") {
-        match.scorePoint(players_map.get(selectedPlayer.dom), false, null); //per ora tengo null
+        match.scorePoint(player, false, null); //per ora tengo null
+        player.addLostBallStats();
       } else if (label === "double") {
-        match.scorePoint(players_map.get(selectedPlayer.dom), false, null); //per ora tengo null
+        match.scorePoint(player, false, null); //per ora tengo null
+        player.addFoulWBStats("double");
       } else if (label === "4 touches") {
-        match.scorePoint(players_map.get(selectedPlayer.dom), false, null); //per ora tengo null
+        match.scorePoint(player, false, null); //per ora tengo null
+        player.addFoulWBStats("four_touches");
       } else if (label === "raised") {
-        match.scorePoint(players_map.get(selectedPlayer.dom), false, null); //per ora tengo null
+        match.scorePoint(player, false, null); //per ora tengo null
+        player.addFoulWBStats("raised");
       } else if (label === "position") {
-        match.scorePoint(players_map.get(selectedPlayer.dom), false, null); //per ora tengo null
+        match.scorePoint(player, false, null); //per ora tengo null
+        player.addFoulWOBStats("position");
       } else if (label === "invasion") {
-        match.scorePoint(players_map.get(selectedPlayer.dom), false, null); //per ora tengo null
+        match.scorePoint(player, false, null); //per ora tengo null
+        player.addFoulWOBStats("invasion");
       } else if (label === "yellow") {
-        isYellow = true;
+        //console.log("abilito giallo");
+        match.enableCardMode('yellow');
       } else if (label === "red") {
-        isRed = true;
+        match.enableCardMode('red');
       } else if (label === "change") {
         changeMode = true;
         selectedOutPlayer = null;
         console.log("modalità cambio attiva");
+      }else if(label === "timeout"){
+        //da tenere in stand by fino alla fine dell'implementazione del cambio campo
+        /*const team = btn.classList.contains("left") ? "A" : "B";
+        if(team === 'A'){
+          match
+        }*/
+
       }
+
       if(!changeMode){
         //ripristino il selected player
-      console.log("ripristino");
-      console.log(match.servingSquad.servingPlayer);
-      selectedPlayer = match.servingSquad.servingPlayer;
+        console.log("ripristino");
+        console.log(match.servingSquad.servingPlayer);
+        selectedPlayer = match.servingSquad.servingPlayer;
 
-      //ripristino i pulsanti che servono
-      buttonsTechnical.forEach((p1) => (p1.disabled = false));
-      buttonsCards.forEach((p1) => (p1.disabled = false));
+        //ripristino i pulsanti che servono
+        buttonsTechnical.forEach((p1) => (p1.disabled = false));
+        buttonsCards.forEach((p1) => (p1.disabled = false));
 
-      //disabilito i pulsanti che non servono
-      buttonsAttack.forEach((p1) => (p1.disabled = true));
-      buttonsDefence.forEach((p1) => (p1.disabled = true));
-      buttonsBlock.forEach((p1) => (p1.disabled = true));
-      buttonsFwb.forEach((p1) => (p1.disabled = true));
+        //disabilito i pulsanti che non servono
+        buttonsAttack.forEach((p1) => (p1.disabled = true));
+        buttonsDefence.forEach((p1) => (p1.disabled = true));
+        buttonsBlock.forEach((p1) => (p1.disabled = true));
+        buttonsFwb.forEach((p1) => (p1.disabled = true));
       }
       
+      console.log(match.servingSquad);
     });
+  });
+
+  //pulsante di swap
+  const btnSwap = document.querySelector(".swap");
+  btnSwap.addEventListener("click", () => {
+    match.swapSides();
   });
 
   //disabilito i pulsanti che non servono

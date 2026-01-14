@@ -1,6 +1,22 @@
 cambi con la panchina
+1. da fare diversi test per capire se gli oggetti player non si mischiano
+2. mettere limite cambi (da cercare regole)
+
 assegnazione cartellini
+
+1. Funziona ma da cambiare la grafica
+2. 
+
 timeout
 cambio squadre a fine set
+
+1. Funziona, da fare diversi test per capire se gli oggetti player non si mischiano
+
 inizializzazione partita con inserimento di formazioni
+
+
+
 json
+
+player
+match

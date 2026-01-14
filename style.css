@@ -167,3 +167,10 @@ header {
     flex-wrap: wrap;
     align-items: center;
 }
+ /* Cartellini */
+.card-yellow {
+  box-shadow: 0 0 0 3px gold;
+}
+.card-red {
+  box-shadow: 0 0 0 3px red;
+}
