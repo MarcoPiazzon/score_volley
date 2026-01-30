@@ -1,0 +1,56 @@
+{
+  "match": {
+    "squadA": {
+      "stats": {
+        "touches": 1,
+        "attackWin": 0,
+        "attackErr": 0,
+        "totalAttack": 0,
+        "ace": 0,
+        "serves": 0,
+        "servesErr": 0,
+        "serverErrLine": 0,
+        "defensePos": 0,
+        "defenseNeg": 0,
+        "totalRicezione": 0,
+        "ball_lost": 0,
+        "blockWin": 0,
+        "foul_double": 0,
+        "foul_four_touches": 0,
+        "foul_raised": 0,
+        "foul_position": 0,
+        "foul_invasion": 0,
+        "total_foul": 0,
+        "card_yellow": 0,
+        "card_red": 0,
+        "totalCard": 0
+      }
+    },
+    "squadB": {
+      "stats": {
+        "touches": 0,
+        "attackWin": 0,
+        "attackErr": 0,
+        "totalAttack": 0,
+        "ace": 35,
+        "serves": 39,
+        "servesErr": 4,
+        "serverErrLine": 0,
+        "defensePos": 0,
+        "defenseNeg": 0,
+        "totalRicezione": 0,
+        "ball_lost": 0,
+        "blockWin": 0,
+        "foul_double": 0,
+        "foul_four_touches": 0,
+        "foul_raised": 0,
+        "foul_position": 0,
+        "foul_invasion": 0,
+        "total_foul": 0,
+        "card_yellow": 0,
+        "card_red": 0,
+        "totalCard": 0
+      }
+    }
+  }
+}

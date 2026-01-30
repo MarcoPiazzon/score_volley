@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Dashboard Statistiche Squadre</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0b1f2a;
+            color: white;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-top: 0;
+        }
+
+        .stat-row {
+            margin-bottom: 18px;
+        }
+
+        .stat-label {
+            text-align: center;
+            margin-bottom: 6px;
+            font-weight: bold;
+        }
+
+        .stat-values {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .stat-values .winner {
+            color: #e11d48;
+            font-weight: bold;
+        }
+
+        .bar {
+            position: relative;
+            height: 10px;
+            background: #102a3a;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .bar-center {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #1e3a4c;
+        }
+
+        .bar-left,
+        .bar-right {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+        }
+
+        .bar-left {
+            right: 50%;
+            background: #e5e7eb;
+        }
+
+        .bar-right {
+            left: 50%;
+            background: #e11d48;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>📊 Statistiche Squadre</h1>
+
+
+    <input type="file" id="fileInput" accept="application/json" />
+
+    <div class="controls">
+        <label>
+            <input type="radio" name="mode" value="match" checked /> Match
+        </label>
+        <label>
+            <input type="radio" name="mode" value="set" /> Set
+        </label>
+        <select id="setSelector" disabled></select>
+    </div>
+
+
+    <div id="statsBody"></div>
+
+    <script type="module">
+        import { STAT } from './enums.js';
+
+        // --- DATI MOCK (sostituire con JSON reale) ---
+
+        const statsConfig = [
+            //Tocchi
+            {
+                key: STAT.TOUCHES,
+                label: 'Tocchi',
+                type: 'absolute'
+            },
+            //Attacchi
+            {
+                key: STAT.TOTAL_ATTACK,
+                label: 'Attacchi totali',
+                type: 'absolute'
+            },
+            {
+                key: STAT.ATTACK_WIN,
+                label: 'Attachi vinti',
+                type: 'relative',
+                base: STAT.TOTAL_ATTACK
+            },
+            {
+                key: STAT.ATTACK_ERR,
+                label: 'Attachi falliti',
+                type: 'relative',
+                base: STAT.TOTAL_ATTACK
+            },
+            /*SERVES*/
+            {
+                key: STAT.TOTAL_SERVES,
+                label: 'Battute totali',
+                type: 'absolute'
+            },
+            {
+                key: STAT.SERVES,
+                label: 'Battute non sbagliate',
+                type: 'relative',
+                base: STAT.TOTAL_SERVES
+            },
+            {
+                key: STAT.ACE,
+                label: 'Ace',
+                type: 'relative',
+                base: STAT.TOTAL_SERVES
+            },
+            {
+                key: STAT.SERVES_ERR,
+                label: 'Battute sbagliate',
+                type: 'relative',
+                base: STAT.TOTAL_SERVES
+            },
+            //Palle perse
+            {
+                key: STAT.BALL_LOST,
+                label: 'Palle perse',
+                type: 'absolute'
+            },
+            //Falli
+            {
+                key: STAT.TOTAL_FOUL,
+                label: 'Falli totali',
+                type: 'absolute'
+            },
+            {
+                key: STAT.FOUL_DOUBLE,
+                label: 'Falli di doppia',
+                type: 'relative',
+                base: STAT.TOTAL_FOUL
+            },
+            {
+                key: STAT.FOUL_FOUR_DOUBLE,
+                label: 'Falli di quattro tocchi',
+                type: 'relative',
+                base: STAT.TOTAL_FOUL
+            },
+            {
+                key: STAT.FOUL_RAISED,
+                label: 'Falli di sollevata',
+                type: 'relative',
+                base: STAT.TOTAL_FOUL
+            },
+
+            {
+                key: STAT.FOUL_POSITION,
+                label: 'Falli di posizione',
+                type: 'relative',
+                base: STAT.TOTAL_FOUL
+            },
+
+            {
+                key: STAT.FOUL_INVASION,
+                label: 'Falli di invasione',
+                type: 'relative',
+                base: STAT.TOTAL_FOUL
+            },
+            //Cartellini
+            {
+                key: STAT.TOTAL_CARD,
+                label: 'Cartellini totali',
+                type: 'absolute'
+            },
+            {
+                key: STAT.CARD_YELLOW,
+                label: 'Cartellini gialli',
+                type: 'relative',
+                base: STAT.TOTAL_CARD
+            },
+            {
+                key: STAT.CARD_RED,
+                label: 'Cartellini rossi',
+                type: 'relative',
+                base: STAT.TOTAL_CARD
+            },
+        ];
+
+        const container = document.getElementById('statsBody');
+
+
+
+        let matchData = null;
+        let setsData = [];
+        let currentMode = 'match';
+        let currentSetIndex = 0;
+
+        const fileInput = document.getElementById('fileInput');
+        const statsBody = document.getElementById('statsBody');
+        const setSelector = document.getElementById('setSelector');
+        const teamAHeader = document.getElementById('teamAHeader');
+        const teamBHeader = document.getElementById('teamBHeader');
+
+        fileInput.addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                const json = JSON.parse(reader.result);
+                console.log(json);
+                matchData = json.match;
+                setsData = json.sets || [];
+                console.log(setsData);
+                populateSetSelector();
+                render();
+            };
+            reader.readAsText(file);
+        });
+
+        document.querySelectorAll('input[name="mode"]').forEach(radio => {
+            radio.addEventListener('change', e => {
+                currentMode = e.target.value;
+                setSelector.disabled = currentMode !== 'set';
+                render();
+            });
+        });
+
+        setSelector.addEventListener('change', e => {
+            currentSetIndex = parseInt(e.target.value, 10);
+            render();
+        });
+
+        function populateSetSelector() {
+            setSelector.innerHTML = '';
+            setsData.forEach((_, i) => {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = `Set ${i + 1}`;
+                setSelector.appendChild(opt);
+            });
+        }
+
+
+
+        function getSquadsStats() {
+            if (currentMode === 'match') {
+                return {
+                    A: matchData.squadA.stats,
+                    B: matchData.squadB.stats
+                };
+            }
+
+            const set = setsData[currentSetIndex];
+            if (!set) return null;
+
+            console.log(set);
+            return {
+                A: set.stats.squads.A,
+                B: set.stats.squads.B
+            };
+        }
+
+        function render() {
+            if (!matchData) return;
+
+            console.log(matchData);
+
+            const stats = getSquadsStats();
+            if (!stats) return;
+
+            statsBody.innerHTML = '';
+
+            /*Object.values(STAT).forEach(stat => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+        <td class="label">${stat}</td>
+        <td>${stats.A[stat] || 0}</td>
+        <td>${stats.B[stat] || 0}</td>
+      `;
+                statsBody.appendChild(tr);
+            });*/
+            statsConfig.forEach(stat => {
+                const aVal = matchData.squadA.stats[stat.key] || 0;
+                const bVal = matchData.squadB.stats[stat.key] || 0;
+
+                let aPerc = 0;
+                let bPerc = 0;
+
+                if (stat.type === 'absolute') {
+                    const total = aVal + bVal || 1;
+                    aPerc = aVal / total;
+                    bPerc = bVal / total;
+                }
+
+                if (stat.type === 'relative') {
+                    const aBase = matchData.squadA.stats[stat.base] || 1;
+                    const bBase = matchData.squadB.stats[stat.base] || 1;
+                    aPerc = aVal / aBase;
+                    bPerc = bVal / bBase;
+                }
+
+                const row = document.createElement('div');
+                row.className = 'stat-row';
+
+                row.innerHTML = `
+      <div class="stat-values">
+        <div class="${aPerc > bPerc ? 'winner' : ''}">${aVal} (${Math.round(aPerc * 100)}%)</div>
+        <div class="stat-label">${stat.label}</div>
+        <div class="${bPerc > aPerc ? 'winner' : ''}">${bVal} (${Math.round(bPerc * 100)}%)</div>
+      </div>
+      <div class="bar">
+        <div class="bar-left" style="width: calc(50% * ${aPerc});"></div>
+        <div class="bar-right" style="width: calc(50% * ${bPerc});"></div>
+        <div class="bar-center"></div>
+      </div>
+    `;
+
+                container.appendChild(row);
+            });
+
+        }
+    </script>
+
+</body>
+
+</html>

@@ -1,22 +1,64 @@
 cambi con la panchina
-1. da fare diversi test per capire se gli oggetti player non si mischiano
-2. mettere limite cambi (da cercare regole)
+3. mettere limite cambi (da cercare regole)
 
 assegnazione cartellini
 
-1. Funziona ma da cambiare la grafica
-2. 
+2. Funziona ma da cambiare la grafica
 
 timeout
+
+da fare completamente
 cambio squadre a fine set
 
-1. Funziona, da fare diversi test per capire se gli oggetti player non si mischiano
+da usare le funzioni export di handler dentro a script, per rimuovere i duplicati
 
 inizializzazione partita con inserimento di formazioni
 
+//Undo
+
+ok
+
+//timeline
+
+da fare
 
 
-json
+<div id="timeline"></div>
+#timeline {
+max-height: 300px;
+overflow-y: auto;
+background: #f8fafc;
+border: 1px solid #e5e7eb;
+padding: 8px;
+}
 
-player
-match
+.timeline-item {
+padding: 6px 10px;
+margin-bottom: 4px;
+cursor: pointer;
+border-radius: 4px;
+}
+
+.timeline-item:hover {
+background: #e5e7eb;
+}
+
+this.renderTimeline();
+renderTimeline() {
+const container = document.getElementById('timeline');
+container.innerHTML = '';
+
+this.pointHistory.forEach((snap, i) => {
+const div = document.createElement('div');
+div.className = 'timeline-item';
+div.textContent =
+`Punto ${snap.pointNumber} – ` +
+`A ${snap.score.A} | ${snap.score.B} B`;
+
+div.onclick = () => {
+this.restoreFromSnapshot(snap);
+};
+
+container.appendChild(div);
+});
+}

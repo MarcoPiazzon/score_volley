@@ -13,16 +13,104 @@
 
     <header>
         <div>🏐 Monitoraggio Partita</div>
+        <div class="stats">🏐 Statistiche
+
+            <div id="popupOverlay" class="popup-overlay hidden">
+                <div class="popup">
+                    <button class="close">✕</button>
+                    <div id="popupContent">
+                        <div id="dashboardSquadTemplate">
+
+                            <style>
+                                .dashboard {
+                                    background: #0b1f2a;
+                                    color: #e5e7eb;
+                                    padding: 20px;
+                                    min-height: 100%;
+                                    font-family: Arial;
+                                }
+
+                                .dashboard h1 {
+                                    margin-top: 0;
+                                }
+
+                                .bar {
+                                    display: flex;
+                                    align-items: center;
+                                    margin: 10px 0;
+                                    background: #102a3a;
+                                    border-radius: 10px;
+                                    overflow: hidden;
+                                    height: 36px;
+                                    position: relative;
+                                }
+
+                                .bar .left,
+                                .bar .right {
+                                    height: 100%;
+                                    transition: width .3s;
+                                }
+
+                                .bar .left {
+                                    background: #2563eb;
+                                }
+
+                                .bar .right {
+                                    background: #16a34a;
+                                }
+
+                                .bar .label {
+                                    position: absolute;
+                                    width: 100%;
+                                    text-align: center;
+                                    font-weight: bold;
+                                    z-index: 2;
+                                }
+                            </style>
+
+                            <div class="dashboard">
+                                <h1>📊 Statistiche Squadre</h1>
+
+
+                                <input type="file" id="fileInput" accept="application/json" />
+
+                                <div class="controls">
+                                    <label>
+                                        <input type="radio" name="mode" value="match" checked /> Match
+                                    </label>
+                                    <label>
+                                        <input type="radio" name="mode" value="set" /> Set
+                                    </label>
+                                    <select id="setSelector" disabled></select>
+                                </div>
+
+
+                                <div id="statsBody"></div>
+
+                            </div>
+
+
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+
         <div class="score">0 - 0</div>
     </header>
 
-    
+
     <div class="main">
 
         <!-- PARTE SUPERIORE: CAMPO -->
-         
+
         <div class="field-container">
             <button class="swap">SCAMBIA</button>
+            <button class="undo">UNDO</button>
+            <button class="export">EXPORT</button>
             <div class="court">
                 <div class="half left">
                     <div class="player">1</div>
@@ -179,7 +267,11 @@
 
     </div>
 
+
+    <script type="module" src="script.js"></script>
 </body>
-<script src="script.js"></script>
+
+
+
 
 </html>

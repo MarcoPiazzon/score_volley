@@ -1,0 +1,36 @@
+this.history = []; // questo segna tutto come events (punti,card,sub,timeout)
+
+this.history.push({
+      typeEvent: typeEvent,
+      squadToSet: this.servingSquad,
+      playerToSet: this.servingSquad.servingPlayer,
+      touchOfPlayers: this.currentSelectedPlayer, 
+      playerId: player.id,
+      squadWhoWinPoint: player.team,
+      pointMode: value,
+      isAce: isAce,
+      timestamp: Date.now(),
+});
+
+this.pointHistory = []; //per ora SOLO con i punti
+
+return {
+      pointNumber: pointNumber,
+      scoringTeam: scoringTeam,
+      playerWhoServed: this.servingSquad.servingPlayer,
+      servingSquad: this.servingSquad,
+      score: {
+        A: this.squadA.score,
+        B: this.squadB.score
+      },
+      squads: {
+        A: this.squadA.toJSON(),
+        B: this.squadB.toJSON()
+      },
+      timestamp: new Date().toISOString()
+};
+
+
+dashboard --> per segnare i punti
+dashboard_sets --> per vedere le statistiche dei singoli player nel match o singolo set
+dashboard_squad --> per vedere le statistiche delle singole squad nel match o singolo set
