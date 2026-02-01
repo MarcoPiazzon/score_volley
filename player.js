@@ -7,6 +7,8 @@ export class Player {
     this.role = role; // Palleggiatore, Centrale, ecc.
     this.dom = dom; //Riferimento al div nel campo
     this.position = null;
+    this.name = "ciao";
+    this.surname = "test";
     this.onCourt = onCourt; //se il giocatore è in campo
     this.stats = {
       [STAT.TOUCHES]: 0, //palloni toccati durante la partita intera

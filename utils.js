@@ -1,3 +1,16 @@
+import { STAT } from "./enums.js";
+import {
+  match,
+  buttonsAttack,
+  buttonsDefence,
+  buttonsBlock,
+  buttonsFwb,
+  buttonsTechnical,
+  buttonsCards,
+  buttonsServe,
+  assignStats,
+} from "./script.js";
+
 export function onCourtClickHandler(e) {
   const div = e.currentTarget;
   clickEventListener(div);
@@ -8,7 +21,8 @@ export function clickEventListener(p) {
   const players = document.querySelectorAll(" .player");
   players.forEach((pl) => pl.classList.remove("selected"));
 
-  if (match.currentSelectedPlayer.length != 0) {
+  console.log(match);
+  if (match.currentSelectedPlayers.length != 0) {
     buttonsAttack.forEach((p1) => (p1.disabled = false));
     buttonsDefence.forEach((p1) => (p1.disabled = false));
     buttonsBlock.forEach((p1) => (p1.disabled = false));
@@ -35,14 +49,16 @@ export function clickEventListener(p) {
   }
 
   const player = match.players_map.get(p);
-  console.log("changeMode:" + changeMode);
-  if (changeMode) {
+  console.log("changeMode:" + match.changeMode);
+  if (match.changeMode) {
     console.log("parte1");
     match.selectedOutPlayer = player;
     return;
   }
 
-  const squad = squadA.players.includes(player) ? squadA : squadB;
+  const squad = match.squadA.players.includes(player)
+    ? match.squadA
+    : match.squadB;
   //console.log("cardMode: " + match.cardMode);
   if (match.cardMode) {
     //console.log("assegno giallo");
@@ -74,10 +90,10 @@ export function onSubClickHandler(e) {
 }
 
 export function clickEventSub(p) {
-  if (changeMode && match.selectedOutPlayer) {
-    const squad = squadA.players.includes(match.selectedOutPlayer)
-      ? squadA
-      : squadB; //se il player appartiene alla squadA
+  if (match.changeMode && match.selectedOutPlayer) {
+    const squad = match.squadA.players.includes(match.selectedOutPlayer)
+      ? match.squadA
+      : match.squadB; //se il player appartiene alla squadA
     console.log("squad");
     //console.log(squad);
 
@@ -95,7 +111,7 @@ export function clickEventSub(p) {
 
     console.log("player_map");
     console.log(match.players_map);
-    changeMode = false;
+    match.changeMode = false;
     match.resetSelectedOutPlayer();
 
     match.highlightPlayer(match.servingSquad.servingPlayer.dom);
@@ -104,7 +120,9 @@ export function clickEventSub(p) {
   //console.log("cardMode: " + match.cardMode);
   if (match.cardMode) {
     const player = match.players_map.get(p);
-    const squad = squadA.players.includes(p) ? squadA : squadB; //se il player appartiene alla squadA
+    const squad = match.squadA.players.includes(p)
+      ? match.squadA
+      : match.squadB; //se il player appartiene alla squadA
     console.log("assegno " + match.cardMode);
 
     if (match.cardMode === CARD_TYPE.CARD_RED)

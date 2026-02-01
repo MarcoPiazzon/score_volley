@@ -8,18 +8,20 @@ import { updateCourtDOM, updateBenchDOM } from "./utils.js";
 const squadA = new Squad("A", "left");
 const squadB = new Squad("B", "right");
 //per mappare div con player
-const match = new Match(squadA, squadB); //forzo l'inizio batuta della squadra A
+export const match = new Match(squadA, squadB); //forzo l'inizio batuta della squadra A
 
-let buttonsAttack = document.querySelectorAll(".attack");
-let buttonsServe = document.querySelectorAll(".serve");
-let buttonsDefence = document.querySelectorAll(".defence");
-let buttonsBlock = document.querySelectorAll(".block");
-let buttonsFwb = document.querySelectorAll(".fwb");
-let buttonsCards = document.querySelectorAll(".cards");
-let buttonsTechnical = document.querySelectorAll(".technical");
-let timeoutButtons = document.querySelectorAll(".timeout");
+export let buttonsAttack = document.querySelectorAll(".attack");
+export let buttonsServe = document.querySelectorAll(".serve");
+export let buttonsDefence = document.querySelectorAll(".defence");
+export let buttonsBlock = document.querySelectorAll(".block");
+export let buttonsFwb = document.querySelectorAll(".fwb");
+export let buttonsCards = document.querySelectorAll(".cards");
+export let buttonsTechnical = document.querySelectorAll(".technical");
+export let timeoutButtons = document.querySelectorAll(".timeout");
+let scoreLeft = document.querySelectorAll(".scorebar.left");
+let scoreRight = document.querySelectorAll(".scorebar.right");
 let players = document.querySelectorAll(" .player");
-let sub = document.querySelectorAll(".selected-out");
+let sub = document.querySelectorAll(".bench-player");
 
 let json = {
   squad1: "Terraglio",
@@ -141,10 +143,15 @@ function disableAllPlayers() {
 }
 
 function updatePlayerCardUI(player, type) {
-  player.dom.classList.add(type);
-}
+  const cardsDiv = player.dom.querySelector(".cards");
 
-let changeMode = false;
+  console.log(type);
+
+  const card = document.createElement("div");
+  card.classList.add("card", type.split("-")[1]); // "yellow" o "red"
+
+  cardsDiv.appendChild(card);
+}
 
 function onCourtClickHandler(e) {
   const div = e.currentTarget;
@@ -185,8 +192,8 @@ function clickEventListener(p) {
   }
 
   const player = match.players_map.get(p);
-  console.log("changeMode:" + changeMode);
-  if (changeMode) {
+  console.log("changeMode:" + match.changeMode);
+  if (match.changeMode) {
     console.log("parte1");
     match.selectedOutPlayer = player;
     return;
@@ -224,7 +231,7 @@ function onSubClickHandler(e) {
 }
 
 function clickEventSub(p) {
-  if (changeMode && match.selectedOutPlayer) {
+  if (match.changeMode && match.selectedOutPlayer) {
     let squad = squadA.players.includes(match.selectedOutPlayer)
       ? squadA
       : squadB; //se il player appartiene alla squadA
@@ -245,7 +252,7 @@ function clickEventSub(p) {
 
     console.log("player_map");
     console.log(match.players_map);
-    changeMode = false;
+    match.changeMode = false;
     match.resetSelectedOutPlayer();
     resetButton();
     match.highlightPlayer(match.servingSquad.servingPlayer.dom);
@@ -283,7 +290,7 @@ function assignStatsOnlySquad(squad, type) {
 /**
  * funzione che assegna tutte le statistiche a player,squad e set
  */
-function assignStats(player, squad, type) {
+export function assignStats(player, squad, type) {
   //player
   player.addStat(type);
 
@@ -337,7 +344,9 @@ document.addEventListener("DOMContentLoaded", () => {
     //OO
     const id = p.textContent.trim();
     const role = null; //per ora non gestito
-    const team = p.closest(".panel").classList.contains("left") ? "A" : "B";
+    const team = p.closest(".bench-quarter").classList.contains("left")
+      ? "A"
+      : "B";
 
     const player = new Player(id, team, role, p, false); //false perché sono i titolari
     match.players_map.set(p, player);
@@ -347,6 +356,9 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       squadB.addBenchPlayer(player);
     }
+
+    p.querySelectorAll(".player-name")[0].innerHTML =
+      player.name + " " + player.surname;
 
     p.addEventListener("click", onSubClickHandler);
   });
@@ -421,7 +433,7 @@ document.addEventListener("DOMContentLoaded", () => {
           true,
           "point",
         ); //per ora tengo null
-      } else if (label === "errore") {
+      } else if (label === "serve error") {
         assignStats(player, squad, STAT.SERVES_ERR);
         assignStats(player, squad, STAT.TOTAL_SERVES);
 
@@ -455,13 +467,13 @@ document.addEventListener("DOMContentLoaded", () => {
         assignStats(player, squad, STAT.TOTAL_FOUL);
 
         match.scorePoint(player, false, "point"); //per ora tengo null
-      } else if (label === "yellow") {
+      } else if (label === "yellow card") {
         //console.log("abilito giallo");
         match.enableCardMode(CARD_TYPE.CARD_YELLOW);
-      } else if (label === "red") {
+      } else if (label === "red card") {
         match.enableCardMode(CARD_TYPE.CARD_RED);
       } else if (label === "change") {
-        changeMode = true;
+        match.changeMode = true;
         match.selectedOutPlayer = null;
         console.log("modalità cambio attiva");
       } else if (label === "timeout") {
@@ -472,7 +484,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }*/
       }
 
-      if (!changeMode) {
+      if (!match.changeMode) {
         resetButton();
       }
 

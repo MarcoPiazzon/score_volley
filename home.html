@@ -98,19 +98,19 @@
 
         </div>
 
-
-        <div class="score">0 - 0</div>
     </header>
 
-
+    <button class="swap">SCAMBIA</button>
+    <button class="undo">UNDO</button>
+    <button class="export">EXPORT</button>
     <div class="main">
 
         <!-- PARTE SUPERIORE: CAMPO -->
 
         <div class="field-container">
-            <button class="swap">SCAMBIA</button>
-            <button class="undo">UNDO</button>
-            <button class="export">EXPORT</button>
+
+
+            <!-- old
             <div class="court">
                 <div class="half left">
                     <div class="player">1</div>
@@ -128,13 +128,98 @@
                     <div class="player">11</div>
                     <div class="player">12</div>
                 </div>
+            </div>-->
+
+            <div class="court">
+
+                <!-- SQUADRA A -->
+                <div class="half-container left">
+
+                    <div class="scorebar left">
+                        <div class="field-score">0</div>
+                        <div class="set-score">0</div>
+                    </div>
+
+                    <div class="half left">
+                        <div class="player">1
+                            <div class="badges"></div>
+                            <div class="cards">
+                            </div>
+                        </div>
+                        <div class="player">2
+                            <div class="badges"></div>
+                            <div class="cards"></div>
+                        </div>
+                        <div class="player">3
+                            <div class="badges"></div>
+                            <div class="cards"></div>
+                        </div>
+                        <div class="player">4
+                            <div class="badges"></div>
+                            <div class="cards"></div>
+                        </div>
+                        <div class="player">5
+                            <div class="badges"></div>
+                            <div class="cards"></div>
+                        </div>
+                        <div class="player">6
+                            <div class="badges"></div>
+                            <div class="cards"></div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- SQUADRA B -->
+                <div class="half-container right">
+
+                    <div class="scorebar right">
+                        <div class="set-score">0</div>
+                        <div class="field-score">0</div>
+                    </div>
+
+                    <div class="half right">
+                        <div class="player">7
+
+                            <div class="badges"></div>
+                            <div class="cards"></div>
+                        </div>
+                        <div class="player">8
+
+                            <div class="badges"></div>
+                            <div class="cards"></div>
+                        </div>
+                        <div class="player">9
+
+                            <div class="badges"></div>
+                            <div class="cards"></div>
+                        </div>
+                        <div class="player">10
+
+                            <div class="badges"></div>
+                            <div class="cards"></div>
+                        </div>
+                        <div class="player">11
+
+                            <div class="badges"></div>
+                            <div class="cards"></div>
+                        </div>
+                        <div class="player">12
+
+                            <div class="badges"></div>
+                            <div class="cards"></div>
+                        </div>
+                    </div>
+
+                </div>
+
             </div>
+
         </div>
 
         <!-- PARTE INFERIORE: PULSANTI -->
-        <div class="controls">
+        <!-- <div class="controls">
 
-            <!-- Squadra A -->
             <div class="panel left">
                 <div class="bench">
                     <h3>Squadra A</h3>
@@ -197,7 +282,6 @@
                 </div>
             </div>
 
-            <!-- Squadra B (specchiata) -->
             <div class="panel right">
                 <div class="bench">
                     <h3>Squadra B</h3>
@@ -261,7 +345,110 @@
                 </div>
             </div>
 
+        </div> -->
+        <div class="controls">
+
+            <!-- QUARTO 1 — BENCH A -->
+            <div class="bench bench-quarter left">
+                <h3>Squadra A</h3>
+                <h4>Panchina</h4>
+                <div id="bench-left">
+                    <div class="bench-player">
+                        <div class="selected-out">
+                            13
+                            <div class="cards"></div>
+                        </div>
+                        <div class="player-name"></div>
+                    </div>
+                    <div class="bench-player">
+                        <div class="selected-out">
+                            14
+                            <div class="cards"></div>
+                        </div>
+                        <div class="player-name"></div>
+                    </div>
+                    <div class="bench-player">
+                        <div class="selected-out">
+                            15
+                            <div class="cards"></div>
+                        </div>
+                        <div class="player-name"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- QUARTO 2 + 3 — EVENTS (UNICO BLOCCO) -->
+            <div class="events-quarter">
+
+                <!-- Qui dentro rimane TUTTA la tua sezione events (A e B) -->
+                <div class="events">
+
+                    <div class="events-row three">
+                        <button class="attack">POINT</button>
+                        <button class="attack">OUT</button>
+                        <button class="defence">LOST BALL</button>
+                    </div>
+
+
+                    <div class="events-row two">
+                        <button class="serve">ACE</button>
+                        <button class="serve">SERVE ERROR</button>
+                    </div>
+
+                    <div class="events-row three">
+                        <button class="fwb">DOUBLE</button>
+                        <button class="fwb">4 TOUCHES</button>
+                        <button class="fwb">RAISED</button>
+                    </div>
+
+                    <div class="events-row two">
+                        <button class="fwob">POSITION</button>
+                        <button class="fwob">INVASION</button>
+                    </div>
+
+                    <div class="events-row two">
+                        <button class="cards">YELLOW CARD</button>
+                        <button class="cards">RED CARD</button>
+                    </div>
+
+                </div>
+
+
+            </div>
+
+            <!-- QUARTO 4 — BENCH B -->
+            <div class="bench bench-quarter right">
+                <h3>Squadra B</h3>
+                <h4>Panchina</h4>
+                <div id="bench-right">
+
+                    <div class="bench-player">
+                        <div class="selected-out">
+                            16
+                            <div class="cards"></div>
+                        </div>
+                        <div class="player-name"></div>
+                    </div>
+                    <div class="bench-player">
+                        <div class="selected-out">
+                            17
+                            <div class="cards"></div>
+                        </div>
+                        <div class="player-name"></div>
+                    </div>
+                    <div class="bench-player">
+                        <div class="selected-out">
+                            18
+                            <div class="cards"></div>
+                        </div>
+                        <div class="player-name"></div>
+                    </div>
+
+                </div>
+            </div>
+
         </div>
+
 
     </div>
 

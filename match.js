@@ -18,6 +18,7 @@ export class Match {
     this.players_map = new Map();
     this.selectedPlayer = null;
     this.selectedOutPlayer = null;
+    this.changeMode = false;
 
     //rules
     this.maxSet = 5;
@@ -81,6 +82,19 @@ export class Match {
 
   highlightPlayer(p) {
     //console.log(p);
+    // rimuovi la palla da tutti
+    document
+      .querySelectorAll(".player .badges")
+      .forEach((b) => (b.innerHTML = ""));
+
+    console.log(p);
+
+    const badge = document.createElement("div");
+    badge.classList.add("ball");
+    badge.textContent = "🏐";
+
+    p.querySelector(".badges").appendChild(badge);
+
     p.classList.add("selected");
     this.selectedPlayer = this.players_map.get(p);
     this.currentSelectedPlayers.push(this.selectedPlayer);
@@ -133,7 +147,7 @@ export class Match {
   _restorePlayerData(player, snap) {
     //controllo se il snap
 
-    player.role = snap.role;
+    //player.role = snap.role;
     player.stats = { ...snap.stats };
   }
 
@@ -560,6 +574,7 @@ export class Match {
     updateBenchDOM(this.squadB);
 
     this.updateScore();
+    this.updateScore();
 
     /* 
     updateTimeoutUI('A');
@@ -627,8 +642,7 @@ export class Match {
     this.servingSquad.setPlayer();
     //console.log(this.servingSquad.servingPlayer);
     if (this.servingSquad.servingPlayer) {
-      this.servingSquad.servingPlayer.dom.classList.add("serve");
-      this.servingSquad.servingPlayer.dom.classList.add("selected");
+      this.highlightPlayer(this.servingSquad.servingPlayer.dom);
       //console.log("ora batte il");
       //console.log(this.servingSquad.servingPlayer);
     }
@@ -694,9 +708,20 @@ export class Match {
   }
 
   updateScore() {
-    const score = document.querySelectorAll(".score")[0];
+    //squadA
+    let score = document.querySelectorAll(".scorebar." + this.squadA.side)[0];
 
-    score.innerHTML = "" + this.squadA.score + " - " + this.squadB.score;
+    console.log(score);
+    score.querySelectorAll(".field-score")[0].innerHTML = this.squadA.score;
+    score.querySelectorAll(".set-score")[0].innerHTML = this.squadA.setsWon;
+
+    //squadB
+    score = document.querySelectorAll(".scorebar." + this.squadB.side)[0];
+
+    score.querySelectorAll(".field-score")[0].innerHTML = this.squadB.score;
+    score.querySelectorAll(".set-score")[0].innerHTML = this.squadB.setsWon;
+
+    console.log(score);
   }
 
   checkSetEnd() {
