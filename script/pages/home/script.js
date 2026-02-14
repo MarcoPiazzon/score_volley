@@ -211,7 +211,7 @@ async function sendMatchInformation() {
   let teamAId = match.squadA.id;
   let teamBId = match.squadB.id;
 
-  console.log(
+  /*console.log(
     JSON.stringify({
       teamAId,
       teamBId,
@@ -236,7 +236,25 @@ async function sendMatchInformation() {
     const text = await res.text();
     console.error("server errore", text);
     return;
-  }
+  }*/
+
+  const json = JSON.stringify({
+    teamAId,
+    teamBId,
+    match,
+  });
+
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "data.json";
+  document.body.appendChild(a);
+  a.click();
+
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 
   //const data = await res.json();
 
@@ -244,7 +262,7 @@ async function sendMatchInformation() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  loadTeams();
+  //loadTeams();
   //inizializzo tutti i player
   players.forEach((p) => {
     //OO
