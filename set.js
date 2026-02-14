@@ -84,17 +84,6 @@ export class Sset {
     this.stats.squads[team][key]++;
   }
 
-  toJSON_stats_squad() {
-    return {
-      squadA: {
-        stats: this.stats.squads.A,
-      },
-      squadB: {
-        stats: this.stats.squads.B,
-      },
-    };
-  }
-
   toJSON() {
     return {
       number: this.number,
@@ -105,12 +94,12 @@ export class Sset {
       startingLineUp: this.startingLineup,
 
       squadA: {
-        players: this.stats.squads.A.players.map((p) => p.toJSON()),
-        bench: this.stats.squads.A.bench.map((p) => p.toJSON()),
+        players: this.stats.squads.A,
+        bench: this.stats.squads.A,
       },
       squadB: {
-        players: this.stats.squads.B.players.map((p) => p.toJSON()),
-        bench: this.stats.squads.B.bench.map((p) => p.toJSON()),
+        players: this.stats.squads.B,
+        bench: this.stats.squads.B,
       },
       events: this.events, // eventi SOLO di questo set
       winner: this.winner,

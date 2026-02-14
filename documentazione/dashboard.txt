@@ -1,0 +1,175 @@
+Ottima idea — il JSON che hai ora è perfetto per questo tipo di interfaccia 📊
+Ti propongo una soluzione pulita, modulare e scalabile, coerente con le classi che stai usando.
+
+🧠 Concetto generale
+
+
+Carichi il file JSON
+
+
+Estrarre tutti i giocatori (Squadra A + B, campo + panchina)
+
+
+Normalizzi i dati in un array unico
+
+
+Renderizzi una tabella
+
+
+I pulsanti in alto ordinano (sort) l’array
+
+
+Ri-render della tabella
+
+
+👉 Nessuna modifica al JSON
+👉 Nessuna dipendenza dal DOM della partita
+
+📁 Struttura logica
+stats-view/
+├── index.html
+├── stats.js
+└── match.json
+
+
+1️⃣ Modello dati (PlayerStats)
+Non riusi Player della partita: qui è solo lettura
+class PlayerStats {
+  constructor(data) {
+    this.id = data.id;
+    this.team = data.team;
+    this.role = data.role;
+    this.stats = data.stats;
+  }
+
+  getStat(key) {
+    return this.stats[key] ?? 0;
+  }
+}
+
+
+2️⃣ Caricamento JSON + flatten giocatori
+let players = [];
+
+async function loadMatchStats() {
+  const res = await fetch('match.json');
+  const data = await res.json();
+
+  const extractPlayers = squad => [
+    ...squad.onCourt,
+    ...squad.bench
+  ].map(p => new PlayerStats(p));
+
+  players = [
+    ...extractPlayers(data.squadA),
+    ...extractPlayers(data.squadB)
+  ];
+
+  renderTable(players);
+}
+
+
+3️⃣ Pulsanti filtro (HTML)
+<div id="filters">
+  <button data-stat="attackWin">Punti</button>
+  <button data-stat="ace">Ace</button>
+  <button data-stat="serves">Battute</button>
+  <button data-stat="defensePos">Difese +</button>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Giocatore</th>
+      <th>Squadra</th>
+      <th>Ruolo</th>
+      <th>Valore</th>
+    </tr>
+  </thead>
+  <tbody id="tableBody"></tbody>
+</table>
+
+
+4️⃣ Ordinamento (core della classifica)
+function sortByStat(statKey) {
+  const sorted = [...players].sort(
+    (a, b) => b.getStat(statKey) - a.getStat(statKey)
+  );
+
+  renderTable(sorted, statKey);
+}
+
+
+5️⃣ Render tabella
+function renderTable(list, statKey = null) {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+
+  list.forEach((p, index) => {
+    const tr = document.createElement('tr');
+
+    tr.innerHTML = `
+      <td>${index + 1}</td>
+      <td>${p.id}</td>
+      <td>${p.team}</td>
+      <td>${p.role ?? '-'}</td>
+      <td>${statKey ? p.getStat(statKey) : ''}</td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+}
+
+
+6️⃣ Collegamento pulsanti
+document.querySelectorAll('#filters button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    sortByStat(btn.dataset.stat);
+  });
+});
+
+
+7️⃣ Init
+loadMatchStats();
+
+
+✨ Risultato UX
+
+
+Premi Ace → classifica ace (dal migliore al peggiore)
+
+
+Premi Punti → classifica realizzatori
+
+
+Premi Battute → chi ha servito di più
+
+
+Ordinamento decrescente
+
+
+Ranking numerato automatico
+
+
+
+🔥 Extra facili (se vuoi)
+Posso aggiungerti:
+
+
+🥇🥈🥉 medaglie ai primi 3
+
+
+evidenziazione squadra
+
+
+filtro solo Squadra A / B
+
+
+multi-colonna
+
+
+grafici (bar / radar)
+
+
+Dimmi 👉 tabella minimal o dashboard avanzata?

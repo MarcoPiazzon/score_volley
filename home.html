@@ -1,16 +1,23 @@
 <!DOCTYPE html>
 <html lang="it">
 
+<script>
+    const TOKEN = localStorage.getItem("token");
+    if (!TOKEN) {
+        window.location.href = "login.html";
+    }
+    const API = "http://localhost:3000/api";
+
+</script>
+
+
 <head>
     <meta charset="UTF-8" />
     <title>Monitoraggio Partita Pallavolo</title>
     <link rel="stylesheet" href="style.css">
-
-
 </head>
 
 <body>
-
     <header>
         <div>🏐 Monitoraggio Partita</div>
         <div class="stats">🏐 Statistiche
@@ -411,6 +418,10 @@
                         <button class="cards">RED CARD</button>
                     </div>
 
+                    <div class="events-row two">
+                        <button class="">CHANGE</button>
+                        <button class="">TIMEOUT</button>
+                    </div>
                 </div>
 
 

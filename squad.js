@@ -8,7 +8,8 @@ import {
 
 export class Squad {
   constructor(name, side) {
-    this.name = name;
+    ((this.id = 1), //per ora di default
+      (this.name = name));
     this.side = side;
     this.players = [];
     this.bench = [];
@@ -65,22 +66,17 @@ export class Squad {
     return {
       name: this.name,
       score: this.score,
-      sets: this.setsWon,
+      setsWon: this.setsWon,
       timeout: this.timeout,
       players: this.players.map((p) => p.toJSON()),
       bench: this.bench.map((p) => p.toJSON()),
     };
   }
 
-  toJSON_stats_squad() {
-    return {
-      stats: this.stats,
-    };
-  }
-
   swapInnerSide() {
     this.side = this.side === "left" ? "right" : "left";
   }
+
 
   takeTimeout() {
     if (this.timeout >= 2) {
@@ -106,10 +102,15 @@ export class Squad {
     this.bench.push(player);
   }
 
-  substitute(outPlayer, inPlayer) {
-    //console.log("test-----");
-    console.log(outPlayer);
-    console.log(inPlayer);
+  /**
+   * Funzione che fa lo swap di due player, sia dentro a squad che players_map
+   * @param {*} outPlayer player che esce
+   * @param {*} inPlayer player che entra
+   * @param {*} players_map 
+   */
+  substitute(outPlayer, inPlayer, players_map) {
+    //console.log(outPlayer);
+    //console.log(inPlayer);
     if (!outPlayer.onCourt) {
       throw new Error("Il giocatore da sostituire non è in campo");
     }
@@ -123,30 +124,61 @@ export class Squad {
 
     const pos = this.players.findIndex((p) => p.id === outPlayer.id);
 
-    inPlayer.dom.classList.remove("selected-out");
-    inPlayer.dom.classList.add("player");
-    this.players[pos] = inPlayer;
+    /* InPlayer */
+    const innerInPlayer = inPlayer.dom.querySelector(".selected-out");
 
-    outPlayer.onCourt = false;
+    players_map.delete(inPlayer.dom);
 
-    //perché senno non funziona la sostituzione del playerOut
-    outPlayer.dom.removeEventListener("click", onCourtClickHandler);
-    outPlayer.dom.addEventListener("click", onSubClickHandler);
+    innerInPlayer.classList.remove("selected-out");
+    innerInPlayer.classList.add("player");
 
     inPlayer.onCourt = true;
+    inPlayer.dom = innerInPlayer;
+
+    const newBadgesInPlayer = document.createElement("div");
+    newBadgesInPlayer.classList.add("badges");
+    inPlayer.dom.appendChild(newBadgesInPlayer);
 
     //perchè senno non funziona il player in campo
     inPlayer.dom.removeEventListener("click", onSubClickHandler);
     inPlayer.dom.addEventListener("click", onCourtClickHandler);
 
-    outPlayer.dom.classList.remove("player");
+    players_map.set(inPlayer.dom, inPlayer);
 
+    this.players[pos] = inPlayer;
+
+    /* Outplayer */
+
+    players_map.delete(outPlayer.dom);
+
+    outPlayer.dom.classList.remove("player");
     outPlayer.dom.classList.add("selected-out");
+
+    outPlayer.onCourt = false;
+
+    const createDivNameSurnamePlayer = document.createElement("div");
+    createDivNameSurnamePlayer.classList.add("player-name");
+    createDivNameSurnamePlayer.innerHTML =
+      outPlayer.name + " " + outPlayer.surname;
+
+    const newBenchPlayer = document.createElement("div");
+    newBenchPlayer.classList.add("bench-player");
+    newBenchPlayer.appendChild(outPlayer.dom);
+
+    outPlayer.dom = newBenchPlayer;
+    outPlayer.dom.appendChild(createDivNameSurnamePlayer);
+    console.log(newBenchPlayer);
+
+    //perché senno non funziona la sostituzione del playerOut
+    outPlayer.dom.removeEventListener("click", onCourtClickHandler);
+    outPlayer.dom.addEventListener("click", onSubClickHandler);
+
+    players_map.set(outPlayer.dom, outPlayer);
+
+    console.log(inPlayer);
+
     this.bench = this.bench.filter((p) => p !== inPlayer);
     this.bench.push(outPlayer);
-
-    //console.log("end--");
-    //console.log(this.players);
   }
   /*
   onCourtClickHandler(e) {
@@ -254,14 +286,26 @@ export class Squad {
     }
   }*/
 
+  /**
+   * Aggiunge un giocatore ai player in campo
+   * @param {*} player giocatore
+   */
   addPlayer(player) {
     this.players.push(player);
   }
 
+  
+  /**
+   * Aggiunge un giocatore ai player in panchin
+   * @param {*} player giocatore
+   */
   addBenchPlayer(player) {
     this.bench.push(player);
   }
 
+  /**
+   * Aggiunge un punto alla squad
+   */
   scorePoint() {
     this.score++;
     console.log(
@@ -273,6 +317,9 @@ export class Squad {
     this.score = 0;
   }
 
+  /**
+   * Aggiunge un set alla squad
+   */
   winSet() {
     this.setsWon++;
     this.resetScore();
@@ -293,7 +340,10 @@ export class Squad {
     }));
   }
 
-  /* Stats */
+  /**
+   * Aggiunge la statistica al player
+   * @param {*} type oggetto di tipo STAT
+   */
   addStat(type) {
     if (this.stats[type] !== undefined) {
       this.stats[type]++;

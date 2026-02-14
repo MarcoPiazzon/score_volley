@@ -1,0 +1,32 @@
+GET:
+
+prendo tutte le squadre di un coach OK teams.js
+/api/teams
+
+prendo tutti i match di una singola squadra OK teams.js
+/api/teams/:id/matches
+
+prendo un match dato id 
+/api/matches/:id
+
+prendo tutti i players di una squadra OK teams.js
+/api/teams/:id/players
+
+prendo un player dato id OK players.js
+/api/players/:id
+
+
+
+POST: 
+
+login OK auth.js
+/api/login
+
+register OK auth.js
+/api/register
+
+inserisco match a fine partita OK matches.js
+/api/matches
+
+nelle chiamamte get bisogna sempre tenere conto dei permessi del coach che richiede i dati,
+ovvero se lui è abilitato a vedere quelle squadre.

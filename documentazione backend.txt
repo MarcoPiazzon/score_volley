@@ -1,0 +1,31 @@
+GET:
+
+prendo un match dato id (da modificare)
+ORA: /api/matches/:id
+DOPO: /api/teams/:id/matches/:id
+
+prendo un player dato id (da modificare)
+ORA: /api/players/:id
+DOPO: /api/teams/:id/players/:id
+
+prendo tutte le squadre di un coach
+/api/teams
+
+//prendo tutti i match di una singola squadra
+/api/teams/:id/matches
+
+POST: 
+
+login
+/api/login
+
+register
+/api/register
+
+inserisco match a fine partita
+/api/matches
+
+caricare il file json in matches post partit
+
+nelle chiamamte get bisogna sempre tenere conto dei permessi del coach che richiede i dati,
+ovvero se lui è abilitato a vedere quelle squadre.

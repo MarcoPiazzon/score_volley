@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Profilo Giocatore</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0b1f2a;
+            color: #e5e7eb;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1,
+        h2 {
+            margin-top: 0;
+        }
+
+        .section {
+            margin-bottom: 32px;
+        }
+
+        .stat-list {
+            background: #102a3a;
+            border-radius: 10px;
+            padding: 16px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid #1e3a4c;
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-name {
+            color: #93c5fd;
+        }
+
+        .stat-value {
+            font-weight: bold;
+        }
+
+        select {
+            margin-bottom: 12px;
+            padding: 6px;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>👤 Profilo Giocatore</h1>
+
+    <select id="setSelector"></select>
+
+    <div class="section">
+        <h2 id="sectionTitle">Statistiche Match</h2>
+        <div id="statsContainer" class="stat-list"></div>
+    </div>
+
+    <script type="module">
+
+        // ---- CONFIG STATISTICHE PLAYER ----
+        const playerStatsConfig = [
+            { key: 'SERVES', label: 'Battute', type: 'absolute' },
+            { key: 'SERVES_ERR', label: 'Battute sbagliate', type: 'relative', over: 'SERVES' },
+            { key: 'ACE', label: 'Ace', type: 'relative', over: 'SERVES' },
+            { key: 'TOTAL_ATTACK', label: 'Attacchi totali', type: 'absolute' },
+            { key: 'ATTACK_WIN', label: 'Attacchi vincenti', type: 'relative', over: 'TOTAL_ATTACK' },
+            { key: 'ATTACK_ERR', label: 'Attacchi sbagliati', type: 'relative', over: 'TOTAL_ATTACK' },
+            { key: 'TOTAL_RECEIVE', label: 'Ricezioni totali', type: 'absolute' },
+            { key: 'DEF_POS', label: 'Ricezioni positive', type: 'relative', over: 'TOTAL_RECEIVE' },
+            { key: 'DEF_NEG', label: 'Ricezioni negative', type: 'relative', over: 'TOTAL_RECEIVE' },
+            { key: 'BLOCK_WIN', label: 'Muri punto', type: 'absolute' },
+            { key: 'BALL_LOST', label: 'Palle perse', type: 'relative', over: 'TOUCHES' }
+        ];
+
+        // ---- JSON DI ESEMPIO PLAYER ----
+        const playerJson = {
+            playerId: 'p12',
+            name: 'Mario Rossi',
+            number: 7,
+            role: 'Opposto',
+            match: {
+                stats: {
+                    TOUCHES: 52,
+                    SERVES: 18,
+                    SERVES_ERR: 4,
+                    ACE: 3,
+                    TOTAL_ATTACK: 22,
+                    ATTACK_WIN: 11,
+                    ATTACK_ERR: 5,
+                    TOTAL_RECEIVE: 12,
+                    DEF_POS: 9,
+                    DEF_NEG: 3,
+                    BLOCK_WIN: 2,
+                    BALL_LOST: 6
+                }
+            },
+            sets: {
+                1: { stats: { SERVES: 6, SERVES_ERR: 2, ACE: 1, TOTAL_ATTACK: 7, ATTACK_WIN: 3 } },
+                2: { stats: { SERVES: 5, SERVES_ERR: 1, ACE: 1, TOTAL_ATTACK: 8, ATTACK_WIN: 5 } },
+                3: { stats: { SERVES: 7, SERVES_ERR: 1, ACE: 1, TOTAL_ATTACK: 7, ATTACK_WIN: 3 } }
+            }
+        };
+
+        const statsContainer = document.getElementById('statsContainer');
+        const setSelector = document.getElementById('setSelector');
+        const sectionTitle = document.getElementById('sectionTitle');
+
+        // ---- INIT SELECT ----
+        setSelector.innerHTML = `<option value="match">Match Totale</option>` +
+            Object.keys(playerJson.sets).map(s => `<option value="${s}">Set ${s}</option>`).join('');
+
+        setSelector.addEventListener('change', renderStats);
+
+        renderStats();
+
+        function renderStats() {
+            const selected = setSelector.value;
+            const stats = selected === 'match'
+                ? playerJson.match.stats
+                : playerJson.sets[selected].stats;
+
+            sectionTitle.textContent = selected === 'match'
+                ? 'Statistiche Match'
+                : `Statistiche Set ${selected}`;
+
+            statsContainer.innerHTML = '';
+
+            playerStatsConfig.forEach(cfg => {
+                const value = stats[cfg.key] || 0;
+                let text = `${value}`;
+
+                if (cfg.type === 'relative') {
+                    const total = stats[cfg.over] || 0;
+                    const perc = total > 0 ? Math.round((value / total) * 100) : 0;
+                    text += ` (${perc}%)`;
+                }
+
+                const row = document.createElement('div');
+                row.className = 'stat-row';
+                row.innerHTML = `<div class="stat-name">${cfg.label}</div><div class="stat-value">${text}</div>`;
+                statsContainer.appendChild(row);
+            });
+        }
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,11 @@
+sezione a sx con il punteggio
+
+mostrare i set nella partita (conta quanti set sono prenseti in match.sets)
+quando seleziono un set, viene caricato il set mostrando punteggio punto per punto
+quando premo su un risultato, viene caricato il punto sul campo
+
+pre. punto: (precedente punto) carica il punto precedente
+suc. punto (prossimo punto): carica il punto successivo
+mostra punto: viene mostrato, passaggio per passaggio, il punto dalla battuta alla fine (sorta di animazione)
+ind. punto (indietro punto): mostra il passaggio precedente del punto
+ava. punto (avanti punto): mostra il passaggio successivo del punto

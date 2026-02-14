@@ -49,6 +49,8 @@ export function clickEventListener(p) {
   }
 
   const player = match.players_map.get(p);
+  console.log("test player");
+  console.log(player);
   console.log("changeMode:" + match.changeMode);
   if (match.changeMode) {
     console.log("parte1");
@@ -75,13 +77,13 @@ export function clickEventListener(p) {
     //console.log(player);
     updatePlayerCardUI(player, match.cardMode);
     match.disableCardMode();
-    match.highlightPlayer(match.servingSquad.servingPlayer.dom);
+    match.highlightPlayer(match.servingSquad.servingPlayer);
     resetButton();
     return;
   }
 
   assignStats(player, squad, "touches");
-  match.highlightPlayer(p);
+  match.highlightPlayer(player);
 }
 
 export function onSubClickHandler(e) {
@@ -144,15 +146,20 @@ export function clickEventSub(p) {
 export function updateCourtDOM(squad) {
   const halfElement = document.querySelector(`.half.${squad.side}`);
 
+  squad.players.forEach((player) => {
+    console.log(player.dom);
+  });
+
   //console.log(halfElement);
   // svuota la metà per inserire i player ordinati
   halfElement.innerHTML = "";
 
   // inserisci i div dei player nella giusta posizione
   squad.players.forEach((player) => {
+    //console.log(player.dom);
     halfElement.appendChild(player.dom); // ⚡ inserisce fisicamente nel DOM
-    player.dom.textContent = player.id + "\n" + (player.role?.charAt(0) || "");
-    player.dom.classList.add("player"); // aggiungi classi necessarie
+    //player.dom.textContent = player.id + "\n" + (player.role?.charAt(0) || "");
+    //player.dom.classList.add("player"); // aggiungi classi necessarie
   });
 }
 

@@ -1,0 +1,78 @@
+CREATE TABLE users (
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  name TEXT NOT NULL,
+  surname TEXT NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,
+  birth_date DATE,
+  gender TEXT,
+  phone_number TEXT
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+INSERT INTO users (name, surname, email, password)
+VALUES
+('Marco', 'Rossi', 'marco@club.it', 'hashed_pw_1'),
+('Luca', 'Bianchi', 'luca@club.it', 'hashed_pw_2');
+
+
+CREATE TABLE teams (
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  name TEXT,
+  address TEXT
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+INSERT INTO teams (name, address)
+VALUES
+('Terraglio Volley', 'Terraglio'),
+('Volley Padova', 'Padova'),
+('Volley Treviso', 'Treviso');
+
+CREATE TABLE team_coaches (
+  user_id INT REFERENCES users(id) ON DELETE CASCADE,
+  team_id INT REFERENCES teams(id) ON DELETE CASCADE,
+  role TEXT DEFAULT 'coach',
+  PRIMARY KEY(user_id, team_id)
+);
+
+INSERT INTO team_coaches (user_id, team)
+(1,1),
+(1,2);
+
+CREATE TABLE players (
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  number INT,
+  first_name TEXT,
+  last_name TEXT,
+  role TEXT,
+  team_id INT REFERENCES teams(id),
+  stats JSONB DEFAULT '{}'
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+INSERT INTO players (number, first_name, last_name, role, team_id, stats)
+VALUES
+(1, 'Andrea', 'De Luca', 'Palleggiatore', 1, '{}'),
+(2, 'Marco', 'Verdi', 'Schiacciatore', 1, '{}'),
+(3, 'Luca', 'Neri', 'Centrale', 1, '{}'),
+(5, 'Filippo', 'Storti', 'Palleggiatore', 1, '{}'),
+(9, 'Marco', 'Rossi', 'Schiacciatore', 1, '{}'),
+(10, 'Matteo', 'Bruno', 'Centrale', 1, '{}'),
+(12, 'Giovanni', 'De Rossi', 'Palleggiatore', 1, '{}'),
+(15, 'Roberto', 'Trapani', 'Schiacciatore', 1, '{}'),
+(20, 'Nero', 'Curtolo', 'Centrale', 1, '{}'),
+(27, 'Federico', 'Vian', 'Palleggiatore', 1, '{}'),
+(28, 'Marco', 'Loren', 'Schiacciatore', 1, '{}'),
+(30, 'Luca', 'Crescenzi', 'Centrale', 1, '{}');
+
+CREATE TABLE matches (
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  date TIMESTAMP DEFAULT NOW(),
+  team_a_id INT REFERENCES teams(id),
+  team_b_id INT REFERENCES teams(id),
+  match_json JSONB,
+  created_by INT REFERENCES users(id)
+  created_at TIMESTAMP DEFAULT NOW()
+);
+

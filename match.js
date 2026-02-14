@@ -1,3 +1,4 @@
+import { STAT } from "./enums.js";
 import { Sset } from "./set.js"; // ❌ se il file è Squad.js
 import {
   onCourtClickHandler,
@@ -22,6 +23,7 @@ export class Match {
 
     //rules
     this.maxSet = 5;
+    this.setsToWin = 3;
     this.setPoints = 25;
     this.tieBreakPoints = 15;
     this.changeFieldMaxSet = true; //se true ancora da fare, se false già fatto
@@ -34,10 +36,10 @@ export class Match {
     this.cardMode = null; //per modalità cartellino
   }
 
-  resetSelectedOutPlayer() {
-    this.selectedOutPlayer = null;
-  }
-
+  /**
+   * Inizializzo un nuovo set
+   * @returns set
+   */
   startNewSet() {
     const set = new Sset(this.currentSetNumber);
 
@@ -55,6 +57,17 @@ export class Match {
     return set;
   }
 
+  /**
+   * Reset selectedOutplayer alla fine di ogni punto
+   */
+  resetSelectedOutPlayer() {
+    this.selectedOutPlayer = null;
+  }
+
+  /**
+   * Inserisco il winnerteam dentro a set con incremento setsWon in squad
+   * @param {*} winnerTeam oggetto squad
+   */
   endSet(winnerTeam) {
     this.currentSet.winner = winnerTeam;
 
@@ -65,8 +78,68 @@ export class Match {
     this.currentSet = null;
   }
 
+  /**
+   * Metodo principale per la gestione dell'undo
+   */
+  undoLastEvent() {
+    if (this.undoHistory.length == 1) {
+      throw new Error("inizio partita, non puoi farlo");
+    } else if (this.undoHistory.length > 0) {
+      const snapshot = this.undoHistory.pop();
+      console.log(snapshot);
+
+      if (snapshot.type === "sub") {
+        const squad = this.squadA.players.includes(snapshot.inPlayer)
+          ? this.squadA
+          : this.squadB; //se il player appartiene alla squadA
+        const pos = squad.players.findIndex(
+          (p) => p.id === snapshot.inPlayer.id,
+        );
+
+        console.log(pos);
+
+        snapshot.outPlayer.dom.classList.remove("selected-out");
+        snapshot.outPlayer.dom.classList.add("player");
+        squad.players[pos] = snapshot.outPlayer;
+
+        snapshot.outPlayer.onCourt = true;
+
+        console.log(squad.players);
+        //perchè senno non funziona il player in campo
+        snapshot.outPlayer.dom.removeEventListener("click", onSubClickHandler);
+        snapshot.outPlayer.dom.addEventListener("click", onCourtClickHandler);
+
+        snapshot.inPlayer.dom.classList.remove("player");
+        snapshot.inPlayer.dom.classList.add("selected-out");
+
+        snapshot.inPlayer.onCourt = false;
+
+        //perché senno non funziona la sostituzione del playerOut
+        snapshot.inPlayer.dom.removeEventListener("click", onCourtClickHandler);
+        snapshot.inPlayer.dom.addEventListener("click", onSubClickHandler);
+
+        squad.bench = squad.bench.filter((p) => p !== snapshot.outPlayer);
+        squad.bench.push(snapshot.inPlayer);
+
+        updateCourtDOM(squad);
+        updateBenchDOM(squad);
+      } else if (snapshot.type === "point")
+        this.restoreFromSnapshot(
+          this.undoHistory.at(this.undoHistory.length - 1),
+        );
+      else {
+        //sub
+        snapshot.calledBy.timeout--;
+      }
+    } else throw new Error("non posso farlo");
+  }
+
+  /**
+   *
+   * @param {*} snapshot istanza contenuta in undoHistory
+   */
   restoreFromSnapshot(snapshot) {
-    console.log(snapshot.type);
+    console.log(snapshot);
 
     //console.log(this.servingSquad);
     this.servingSquad = snapshot.servingSquad;
@@ -74,32 +147,16 @@ export class Match {
     this._restoreSquad(this.squadA, snapshot.squads.A);
     this._restoreSquad(this.squadB, snapshot.squads.B);
 
-    this.updateScore();
-    this._updateCourtDOM();
+    this.renderAll();
 
-    this.highlightPlayer(snapshot.playerWhoServed.dom);
+    this.highlightPlayer(snapshot.playerWhoServed);
   }
 
-  highlightPlayer(p) {
-    //console.log(p);
-    // rimuovi la palla da tutti
-    document
-      .querySelectorAll(".player .badges")
-      .forEach((b) => (b.innerHTML = ""));
-
-    console.log(p);
-
-    const badge = document.createElement("div");
-    badge.classList.add("ball");
-    badge.textContent = "🏐";
-
-    p.querySelector(".badges").appendChild(badge);
-
-    p.classList.add("selected");
-    this.selectedPlayer = this.players_map.get(p);
-    this.currentSelectedPlayers.push(this.selectedPlayer);
-  }
-
+  /**
+   * Metodo di supporto
+   * @param {*} squad squadra contenuta in match (this)
+   * @param {*} snap squadra salvata nell'instanza di snapshot
+   */
   _restoreSquad(squad, snap) {
     squad.score = snap.score;
     squad.setsWon = snap.setsWon;
@@ -108,10 +165,13 @@ export class Match {
     this._restorePlayers(squad, snap);
   }
 
+  /**
+   * Metodo di supporto
+   * @param {*} squad squadra contenuta in match (this)
+   * @param {*} snap squadra salvata nell'instanza di snapshot
+   */
   _restorePlayers(squad, snap) {
     const allPlayers = [...squad.players, ...squad.bench];
-
-    //console.log(allPlayers);
 
     squad.players = snap.players.map((sp) => {
       const p = allPlayers.find((pl) => pl.id === sp.id);
@@ -120,8 +180,6 @@ export class Match {
       return p;
     });
 
-    //console.log(snap);
-    console.log(this.players_map);
     squad.bench = snap.bench
       .map((sp) => {
         // cerco il Player vivo nella mappa
@@ -144,49 +202,16 @@ export class Match {
     console.log(this.players_map);
   }
 
+  /**
+   * Metodo di supporto
+   * @param {*} squad squadra contenuta in match (this)
+   * @param {*} snap squadra salvata nell'instanza di snapshot
+   */
   _restorePlayerData(player, snap) {
-    //controllo se il snap
-
     //player.role = snap.role;
     player.stats = { ...snap.stats };
   }
 
-  /*_updateCourtDOM() {
-    this._updateHalf(this.squadA, ".half.left");
-    this._updateHalf(this.squadB, ".half.right");
-  }
-
-  _updateHalf(squad, selector) {
-    const halfElement = document.querySelector(`.half.${squad.side}`);
-
-    //console.log(halfElement);
-    // svuota la metà per inserire i player ordinati
-    halfElement.innerHTML = "";
-
-    // inserisci i div dei player nella giusta posizione
-    squad.players.forEach((player) => {
-      halfElement.appendChild(player.dom); // ⚡ inserisce fisicamente nel DOM
-      player.dom.textContent =
-        player.id + "\n" + (player.role?.charAt(0) || "");
-      player.dom.classList.add("player"); // aggiungi classi necessarie
-    });
-    /*const half = document.querySelector(selector);
-    const slots = half.querySelectorAll(".player");
-
-    console.log(this.squadA);
-    console.log(half);
-    console.log(slots);
-    squad.players.forEach((player, i) => {
-      const div = slots[i];
-      div.textContent = player.id;
-      player.dom = div;
-      this.players_map.set(div, player);
-    });
-
-    console.log(squad.players);
-  }*/
-
-  //type serve per indicare cosa sto caricando (point,card, sub)
   addToSnapshotPoint(team) {
     const snapshot = this.toSnapshotPoint(
       team,
@@ -248,214 +273,8 @@ export class Match {
     };
   }
 
-  undoLastEvent() {
-    if (this.undoHistory.length == 1) {
-      throw new Error("inizio partita, non puoi farlo");
-    } else if (this.undoHistory.length > 0) {
-      const snapshot = this.undoHistory.pop();
-      console.log(snapshot);
-
-      if (snapshot.type === "sub") {
-        const squad = this.squadA.players.includes(snapshot.inPlayer)
-          ? this.squadA
-          : this.squadB; //se il player appartiene alla squadA
-        const pos = squad.players.findIndex(
-          (p) => p.id === snapshot.inPlayer.id,
-        );
-
-        console.log(pos);
-
-        snapshot.outPlayer.dom.classList.remove("selected-out");
-        snapshot.outPlayer.dom.classList.add("player");
-        squad.players[pos] = snapshot.outPlayer;
-
-        snapshot.outPlayer.onCourt = true;
-
-        console.log(squad.players);
-        //perchè senno non funziona il player in campo
-        snapshot.outPlayer.dom.removeEventListener("click", onSubClickHandler);
-        snapshot.outPlayer.dom.addEventListener("click", onCourtClickHandler);
-
-        snapshot.inPlayer.dom.classList.remove("player");
-        snapshot.inPlayer.dom.classList.add("selected-out");
-
-        snapshot.inPlayer.onCourt = false;
-
-        //perché senno non funziona la sostituzione del playerOut
-        snapshot.inPlayer.dom.removeEventListener("click", onCourtClickHandler);
-        snapshot.inPlayer.dom.addEventListener("click", onSubClickHandler);
-
-        squad.bench = squad.bench.filter((p) => p !== snapshot.outPlayer);
-        squad.bench.push(snapshot.inPlayer);
-
-        updateCourtDOM(squad);
-        updateBenchDOM(squad);
-      } else if (snapshot.type === "point")
-        this.restoreFromSnapshot(
-          this.undoHistory.at(this.undoHistory.length - 1),
-        );
-      else {
-        //sub
-        snapshot.calledBy.timeout--;
-      }
-    } else throw new Error("non posso farlo");
-  }
-  /*
-  onCourtClickHandler(e) {
-    const div = e.currentTarget;
-    clickEventListener(div);
-  }
-
-  clickEventListener(p) {
-    console.log("remp");
-    players.forEach((pl) => pl.classList.remove("selected"));
-
-    if (match.currentSelectedPlayers.length != 0) {
-      buttonsAttack.forEach((p1) => (p1.disabled = false));
-      buttonsDefence.forEach((p1) => (p1.disabled = false));
-      buttonsBlock.forEach((p1) => (p1.disabled = false));
-      buttonsFwb.forEach((p1) => (p1.disabled = false));
-      buttonsTechnical.forEach((p1) => (p1.disabled = true));
-      buttonsCards.forEach((p1) => (p1.disabled = true));
-      buttonsServe.forEach((p1) => (p1.disabled = true));
-    }
-
-    const player = match.players_map.get(p);
-    console.log("changeMode:" + changeMode);
-    if (changeMode) {
-      console.log("parte1");
-      match.selectedOutPlayer = player;
-      return;
-    }
-
-    let squad = squadA.players.includes(player) ? squadA : squadB;
-    //console.log("cardMode: " + match.cardMode);
-    if (match.cardMode) {
-      //console.log("assegno giallo");
-      const player = match.players_map.get(p);
-      console.log("assegno giallo");
-
-      assignStats(player, squad, "yellow_card");
-      assignStats(player, squad, "totalCard");
-
-      match.logEventCard(player, "card", match.cardMode);
-      //console.log(player);
-      updatePlayerCardUI(player, match.cardMode);
-      match.disableCardMode();
-      match.highlightPlayer(match.servingSquad.servingPlayer.dom);
-      resetButton();
-      return;
-    }
-
-    assignStats(player, squad, "touches");
-    match.highlightPlayer(p);
-  }
-
-  onSubClickHandler(e) {
-    const div = e.currentTarget;
-    clickEventSub(div);
-  }
-
-  clickEventSub(p) {
-    if (changeMode && match.selectedOutPlayer) {
-      let squad = squadA.players.includes(match.selectedOutPlayer)
-        ? squadA
-        : squadB; //se il player appartiene alla squadA
-      console.log("squad");
-      //console.log(squad);
-
-      match.addToSnapshotSub(
-        match.selectedOutPlayer.team,
-        match.selectedOutPlayer,
-        match.players_map.get(p),
-      );
-      squad.substitute(match.selectedOutPlayer, match.players_map.get(p));
-
-      updateCourtDom(squad);
-      updateBenchDOM(squad);
-
-      match.logEventSubstitute(
-        match.selectedOutPlayer,
-        match.players_map.get(p),
-      );
-
-      console.log("player_map");
-      console.log(match.players_map);
-      changeMode = false;
-      match.resetSelectedOutPlayer();
-
-      match.highlightPlayer(match.servingSquad.servingPlayer.dom);
-    }
-
-    //console.log("cardMode: " + match.cardMode);
-    if (match.cardMode) {
-      const player = match.players_map.get(p);
-      const squad = squadA.players.includes(p) ? squadA : squadB; //se il player appartiene alla squadA
-      console.log("assegno " + match.cardMode);
-
-      if (match.cardMode === "red") assignStats(player, squad, "red_card");
-      else assignStats(player, squad, "yellow_card");
-
-      match.logEventCard(player, "card", match.cardMode);
-      //console.log(player);
-      updatePlayerCardUI(player, match.cardMode);
-      match.disableCardMode();
-      match.highlightPlayer(match.servingSquad.servingPlayer.dom);
-      resetButton();
-      return;
-    }
-  }*/
-
   //metodo per esportare json quando premo il pulsante
   exportJson() {
-    console.log("ciao");
-
-    let j = {
-      match: {
-        squadA: this.squadA.toJSON(),
-        squadB: this.squadB.toJSON(),
-      },
-    };
-
-    /* per dashboard_squad.html */
-    let squad_stats = {
-      match: {
-        squadA: this.squadA.toJSON_stats_squad(),
-        squadB: this.squadB.toJSON_stats_squad(),
-      },
-      sets: this.sets.map((set) => ({
-        //number: set.number,
-        //score: { A: set.scoreA, B: set.scoreB },
-        //winner: set.winner,
-        stats: {
-          squads: set.stats.squads,
-          //players: Object.fromEntries(set.stats.players),
-        },
-        //events: set.events,
-      })),
-    };
-    /*
-     let j = {
-      match: {
-        squadA: this.squadA.toJSON(),
-        suqadB: this.squadB.toJSON(),
-      }
-    };
-      QUESTO FUNZIONA PERFETTAMENTE
-    var data = JSON.stringify(j, null, 2); // pretty print
-
-    var blob = new Blob([data], { type: "application/json" });
-    var url = URL.createObjectURL(blob);
-
-    var a = document.createElement("a");
-    a.href = url;
-    a.download = "players_stats_totalmatch.json";
-    document.body.appendChild(a);
-    a.click();
-
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-*/
     var data = JSON.stringify(squad_stats, null, 2); // pretty print
 
     var blob = new Blob([data], { type: "application/json" });
@@ -469,98 +288,12 @@ export class Match {
 
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-
-    /*var data = JSON.stringify(this.history, null, 2); // pretty print
-
-    var blob = new Blob([data], { type: "application/json" });
-    var url = URL.createObjectURL(blob);
-
-    var a = document.createElement("a");
-    a.href = url;
-    a.download = "history.json";
-    document.body.appendChild(a);
-    a.click();
-
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    data = JSON.stringify(this.undoHistory, null, 2); // pretty print
-
-    blob = new Blob([data], { type: "application/json" });
-    url = URL.createObjectURL(blob);
-
-    a = document.createElement("a");
-    a.href = url;
-    a.download = "undoHistory.json";
-    document.body.appendChild(a);
-    a.click();
-
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    data = JSON.stringify(this.sets, null, 2); // pretty print
-
-    blob = new Blob([data], { type: "application/json" });
-    url = URL.createObjectURL(blob);
-
-    a = document.createElement("a");
-    a.href = url;
-    a.download = "sets.json";
-    document.body.appendChild(a);
-    a.click();
-
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);*/
-    /*
-    toJSON() {
-  return {
-    squads: {
-      A: this.squadA.toJSON(),
-      B: this.squadB.toJSON()
-    },
-    sets: this.sets.map(set => ({
-      number: set.number,
-      score: { A: set.scoreA, B: set.scoreB },
-      winner: set.winner,
-      stats: {
-        squads: set.stats.squads,
-        players: Object.fromEntries(set.stats.players)
-      },
-      events: set.events
-    })),
-    history: this.history
-  };
-}
- */
   }
-  /*
-  playTimeline(delay = 500) {
-    this.undoHistory.forEach((s, i) => {
-      setTimeout(() => this.restoreFromSnapshot(s), i * delay);
-    });
-  }*/
 
   swapSides() {
-    //Scambia le squadre
-    //console.log("swap sides");
-    //console.log(this.squadA);
-    //console.log(this.squadB);
-
-    [this.squadA, this.squadB] = [this.squadB, this.squadA];
-
+    //swap SquadA
     this.squadA.swapInnerSide();
     this.squadB.swapInnerSide();
-
-    //console.log("dopo swap");
-    //console.log(this.squadA);
-    //console.log(this.squadB);
-
-    //aggiorna riferimento team
-    this.squadA.players.forEach((p) => (p.team = "A"));
-    this.squadA.bench.forEach((p) => (p.team = "A"));
-
-    this.squadB.players.forEach((p) => (p.team = "B"));
-    this.squadB.bench.forEach((p) => (p.team = "B"));
 
     //aggiorna il DOM
     this.renderAll();
@@ -589,8 +322,6 @@ export class Match {
     // mapping:     [3, 1, 5, 2, 6, 4]
 
     // 2️⃣ recupero DOM della metà campo
-
-    //console.log(this.side);
     const half =
       squad.side === "left"
         ? document.querySelector(".half.left")
@@ -598,8 +329,6 @@ export class Match {
 
     const divs = Array.from(half.querySelectorAll(".player"));
 
-    //console.log("pre ordine");
-    //console.log(divs);
     // 3️⃣ snapshot dei player attuali in DOM order
     const values = divs.map((div) => this.players_map.get(div));
 
@@ -617,9 +346,6 @@ export class Match {
       half.appendChild(player.dom);
     });
 
-    //console.log("nuovo ordine");
-    //console.log(newOrder);
-
     squad.players = newOrder;
   }
 
@@ -627,34 +353,51 @@ export class Match {
     this.cardMode = type;
   }
 
-  disableCardMode(type) {
+  disableCardMode() {
     this.cardMode = null;
   }
 
+  /**
+   * Metodo per iniziare il match
+   * @param {*} servingSquad istanza squad, squadra che inizia
+   */
   startMatch(servingSquad) {
     this.servingSquad = servingSquad;
     this.assignServe();
     this.addToSnapshotPoint(servingSquad);
   }
 
+  /**
+   * Metodo per assegnare la battuta
+   *
+   * Viene impostato il player in servingSquad e evidenziato nel cmapo
+   */
   assignServe() {
     this.clearServe();
     this.servingSquad.setPlayer();
     //console.log(this.servingSquad.servingPlayer);
     if (this.servingSquad.servingPlayer) {
-      this.highlightPlayer(this.servingSquad.servingPlayer.dom);
+      this.highlightPlayer(this.servingSquad.servingPlayer);
       //console.log("ora batte il");
       //console.log(this.servingSquad.servingPlayer);
     }
   }
 
+  /**
+   * Rimuove a tutti i player la classe serve
+   */
   clearServe() {
     document
       .querySelectorAll(".player")
       .forEach((p) => p.classList.remove("serve"));
   }
 
-  //value: serve per determinare se il punto va alla squadra del giocatore oppure no
+  /**
+   *
+   * @param {*} player prende l'ultimo player evidenziato
+   * @param {*} value serve per determinare se il punto va alla squadra del giocatore oppure no
+   * @param {*} type
+   */
   scorePoint(player, value, type) {
     //console.log(player);
     const squad = player.team === "A" ? this.squadA : this.squadB;
@@ -698,7 +441,7 @@ export class Match {
 
     this.updateScore();
 
-    let isAce = type === "ace" ? true : false;
+    let isAce = type === STAT.ACE ? true : false;
 
     this.logEvent(player, value, type, isAce);
 
@@ -707,11 +450,25 @@ export class Match {
     this.checkSetEnd();
   }
 
+  /**
+   * Metodo per controllare se il match è finito
+   * @returns true se il setsWon di una delle due squadre è uguale a tthis.setsToWin
+   */
+  checkEndMatch() {
+    return (
+      this.squadA.setsWon === this.setsToWin ||
+      this.squadB.setsWon === this.setsToWin
+    );
+  }
+
+  /**
+   * Metodo per aggiornare lo scoreboard SOLO lato UI
+   */
   updateScore() {
     //squadA
     let score = document.querySelectorAll(".scorebar." + this.squadA.side)[0];
 
-    console.log(score);
+    console.log(this.squadA);
     score.querySelectorAll(".field-score")[0].innerHTML = this.squadA.score;
     score.querySelectorAll(".set-score")[0].innerHTML = this.squadA.setsWon;
 
@@ -724,6 +481,9 @@ export class Match {
     console.log(score);
   }
 
+  /**
+   * Metodo che controlla se il set è finito
+   */
   checkSetEnd() {
     const target =
       this.currentSetNumber === this.maxSet
@@ -757,6 +517,10 @@ export class Match {
     }
   }
 
+  /**
+   *
+   * @param {*} winner squadra che ha vinto il set
+   */
   winSet(winner) {
     winner.setsWon++;
     alert("vince la squadra: " + winner.name);
@@ -782,6 +546,34 @@ export class Match {
     this.currentSetNumber++;
     this.currentSet = this.startNewSet();
     console.log(this.currentSet);
+  }
+
+  /**
+   *
+   * @param {*} p //Vuole il player, non dom
+   */
+  highlightPlayer(p) {
+    //console.log(p);
+    // rimuovi la palla da tutti
+    document
+      .querySelectorAll(".player .badges")
+      .forEach((b) => (b.innerHTML = ""));
+
+    document
+      .querySelectorAll(".player")
+      .forEach((b) => b.classList.remove("selected"));
+
+    console.log(p);
+
+    const badge = document.createElement("div");
+    badge.classList.add("ball");
+    badge.textContent = "🏐";
+
+    p.dom.querySelector(".badges").appendChild(badge);
+
+    p.dom.classList.add("selected");
+    this.selectedPlayer = this.players_map.get(p.dom);
+    this.currentSelectedPlayers.push(this.selectedPlayer);
   }
 
   /*
@@ -875,9 +667,5 @@ export class Match {
       },
       timestamp: Date.now(),
     });
-  }
-
-  isMatchOver() {
-    return this.squadA.setsWon === 3 || this.squadB.setsWon === 3;
   }
 }

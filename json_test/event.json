@@ -1,0 +1,83 @@
+Attack
+
+{
+    "typeEvent" : string, //point,
+    "squadToSet" : number, //Squadra A --> 1 e Squadra B --> 2
+    "playerToSet" : number, //player who makes the serve
+    "touchOfPlayers" : [
+        6,3,5,11,7 //sequence of the players that touched the ball 
+    ],
+    "squadWhoWinPoint" : number, //Squadra A --> 1 e Squadra B --> 2
+    "pointMode" : string, //point or out
+    "isAce" : boolean //true or false
+},
+
+Defence
+
+{
+    "typeEvent" : string, //point,
+    "squadToSet" : number, //Squadra A --> 1 e Squadra B --> 2
+    "playerToSet" : number, //player who makes the serve
+    "touchOfPlayers" : [
+        6,3,5,11,7 //sequence of the players that touched the ball 
+    ],
+    "squadWhoWinPoint" : number, //Squadra A --> 1 e Squadra B --> 2
+    "pointMode" : string, //lost ball
+},
+
+Foul with ball
+
+{
+    "typeEvent" : string, //foul,
+    "squadToSet" : number, //Squadra A --> 1 e Squadra B --> 2
+    "playerToSet" : number, //player who makes the serve
+    "touchOfPlayers" : [
+        6,3,5,11,7 //sequence of the players that touched the ball 
+    ],
+    "squadWhoWinPoint" : number, //Squadra A --> 1 e Squadra B --> 2
+    "typeFoul" : string, //double, 4 touches, raised
+},
+
+Foul without ball
+
+{
+    "typeEvent" : string, //point,
+    "squadToSet" : number, //Squadra A --> 1 e Squadra B --> 2
+    "playerToSet" : number, //player who makes the serve
+    "touchOfPlayers" : [
+        6,3,5,11,7 //sequence of the players that touched the ball 
+    ],
+    "squadWhoWinPoint" : number, //Squadra A --> 1 e Squadra B --> 2
+    "pointMode" : string, //position, invasion
+},
+
+Card
+
+{
+    "typeEvent" : string, //card
+    "squadPlayer" : number, //Squadra A --> 1 e Squadra B --> 2
+    "player" : number, 
+    "typeOfCard" : "Y" //Yellow --> Y e Red --> R 
+}
+
+Technical
+
+{
+    "typeEvent" : string, //timeout
+    "calledBy" : number, //Squadra A --> 1 e Squadra B --> 2
+},
+
+{
+    "typeEvent" : number, //change
+    "calledBy" : number,  //Squadra A --> 1 e Squadra B --> 2
+    "playersChanged" : {
+        "sub1" : {
+            "in" : number,
+            "out" : number
+        },
+        "sub2" : {
+            "in" : number,
+            "out" : number
+        }
+    }
+},

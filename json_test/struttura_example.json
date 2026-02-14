@@ -1,0 +1,165 @@
+{
+    "squad1" : "Terraglio", 
+    "squad2" : "Mirano", 
+    "date" : "20-01-26:20:30",
+    "place" : "Palestra Terraglio",
+    "numberDay" : 23,
+    "firstPlayerSquad1" : {
+        "player1": {
+            "name" : "Mario",
+            "surname": "Rossi",
+            "number": 10
+        }, 
+        "player2": {
+            "name" : "Francesco",
+            "surname": "Bruno",
+            "number": 5
+        },
+        "player3": {
+            "name" : "Michele",
+            "surname": "Micheletto",
+            "number": 8
+        },
+        "player4": {
+            "name" : "Micheal",
+            "surname": "Jordan",
+            "number": 4
+        },
+        "player5": {
+            "name" : "Alberto",
+            "surname": "Tomba",
+            "number": 7
+        },
+        "player6": {
+            "name" : "Sofia",
+            "surname": "Goggia",
+            "number": 20
+        }
+    },
+    "benchPlayerSquad1" : {
+         "player1": {
+            "name" : "Mario",
+            "surname": "Rossi",
+            "number": 10
+        }, 
+        "player2": {
+            "name" : "Francesco",
+            "surname": "Bruno",
+            "number": 5
+        },
+        "player3": {
+            "name" : "Michele",
+            "surname": "Micheletto",
+            "number": 8
+        }
+    },
+    "firstPlayerSquad2" : {
+        "player1": {
+            "name" : "Mario",
+            "surname": "Rossi",
+            "number": "10"
+        }, 
+        "player2": {
+            "name" : "Francesco",
+            "surname": "Bruno",
+            "number": 5
+        },
+        "player3": {
+            "name" : "Michele",
+            "surname": "Micheletto",
+            "number": 8
+        },
+        "player4": {
+            "name" : "Micheal",
+            "surname": "Jordan",
+            "number": 4
+        },
+        "player5": {
+            "name" : "Alberto",
+            "surname": "Tomba",
+            "number": 7
+        },
+        "player6": {
+            "name" : "Sofia",
+            "surname": "Goggia",
+            "number": "20"
+        }
+    },
+    "benchPlayerSquad2" : {
+         "player1": {
+            "name" : "Mario",
+            "surname": "Rossi",
+            "number": "10"
+        }, 
+        "player2": {
+            "name" : "Francesco",
+            "surname": "Bruno",
+            "number": 5
+        },
+        "player3": {
+            "name" : "Michele",
+            "surname": "Micheletto",
+            "number": 8
+        }
+    },
+    "setWonSquad1" : "3",
+    "setWonSquad2" : "1", 
+    "match" : {
+        "set1" : { 
+            "pointWonSquad1": 25,
+            "pointWonSquad2": 20,
+            "events" : {
+                "event1": {
+                    "typeEvent" : "point", 
+                    "squadToSet" : 1,
+                    "playerToSet" : 7,
+                    "touchOfPlayers" : [
+                        6,3,5,11,7
+                    ],
+                    "squadWhoWinPoint" : 1,
+                    "pointMode" : "point",
+                    "isAce" : false
+                },
+                "event2": {
+                    "typeEvent" : "timeout",
+                    "calledBy" : 1
+                },
+                "event3" : {
+                    "typeEvent" : "point",
+                    "squadToSet" : 1,
+                    "playerToSet" : 7,
+                    "touchOfPlayers" : [
+                        8
+                    ],
+                    "squadWhoWinPoint" : 1,
+                    "pointMode" : "point",
+                    "isAce" : true 
+                },
+                "event4" : {
+                    "typeEvent" : "change",
+                    "calledBy" : 2,
+                    "playersChanged" : {
+                        "sub1" : {
+                            "in" : 4,
+                            "out" : 8
+                        },
+                        "sub2" : {
+                            "in" : 7,
+                            "out" : 10
+                        }
+                    }
+                },
+                "event5" : {
+                    "typeEvent" : "card",
+                    "squadPlayer" : 2,
+                    "player" : 2,
+                    "typeOfCard" : "Y" 
+                }
+            }
+        },
+        "set2" : {},
+        "set3" : {},
+        "set4" : {},
+        "set5" : {}
+    } 
+}

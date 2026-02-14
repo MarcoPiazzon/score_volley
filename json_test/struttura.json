@@ -1,0 +1,165 @@
+{
+    "squad1" : string, //Squadra A
+    "squad2" : string, //Squadra B
+    "date" : date, //20-01-26,20:30
+    "place" : string, // Palestra Terraglio
+    "numberDay" : number, //Giornata 23, 24, 25...
+    "firstPlayerSquad1" : {
+        "player1": {
+            "name" : string,
+            "surname": string,
+            "number": number
+        }, 
+        "player2": {
+            "name" : string,
+            "surname": string,
+            "number": number
+        },
+        "player3": {
+            "name" : string,
+            "surname": string,
+            "number": number
+        },
+        "player4": {
+            "name" : string,
+            "surname": string,
+            "number": number
+        },
+        "player5": {
+            "name" : string,
+            "surname": string,
+            "number": number
+        },
+        "player6": {
+            "name" : string,
+            "surname": string,
+            "number": number
+        }
+    },
+    "benchPlayerSquad1" : {
+        "player1": {
+            "name" : string,
+            "surname": string,
+            "number": number
+        }, 
+        "player2": {
+            "name" : string,
+            "surname": string,
+            "number": number
+        },
+        "player3": {
+            "name" : string,
+            "surname": string,
+            "number": number
+        }
+    },
+    "firstPlayerSquad2" : {
+        "player1": {
+            "name" : string,
+            "surname": string,
+            "number": number
+        }, 
+        "player2": {
+            "name" : string,
+            "surname": string,
+            "number": number
+        },
+        "player3": {
+            "name" : string,
+            "surname": string,
+            "number": number
+        },
+        "player4": {
+            "name" : string,
+            "surname": string,
+            "number": number
+        },
+        "player5": {
+            "name" : string,
+            "surname": string,
+            "number": number
+        },
+        "player6": {
+            "name" : string,
+            "surname": string,
+            "number": number
+        }
+    },
+    "benchPlayerSquad2" : {
+        "player1": {
+            "name" : string,
+            "surname": string,
+            "number": number
+        }, 
+        "player2": {
+            "name" : string,
+            "surname": string,
+            "number": number
+        },
+        "player3": {
+            "name" : string,
+            "surname": string,
+            "number": number
+        }
+    },
+    "setWonSquad1" : number,
+    "setWonSquad2" : number, 
+    "match" : {
+        "set1" : { 
+            "pointWonSquad1": number,
+            "pointWonSquad2": number,
+            "events" : {
+                "event1": {
+                    "typeEvent" : string, //point,timeout.....
+                    "squadToSet" : number, Squadra A --> 1, Squadra B --> 2
+                    "playerToSet" : player,
+                    "touchOfPlayers" : [
+                        6,3,5,11,7
+                    ],
+                    "squadWhoWinPoint" : number, Squadra A --> 1, Squadra B --> 2
+                    "pointMode" : string, //point,out
+                    "isAce" : boolean
+                },
+                "event2": {
+                    "typeEvent" : string,
+                    "calledBy" : number // Squadra A --> 1, Squadra B --> 2
+                },
+                "event3" : {
+                    "typeEvent" : string,
+                    "squadToSet" : number, Squadra A --> 1, Squadra B --> 2
+                    "playerToSet" : player,
+                    "touchOfPlayers" : [
+                        8
+                    ],
+                    "squadWhoWinPoint" : number, Squadra A --> 1, Squadra B --> 2
+                    "pointMode" : string, //point,out
+                    "isAce" : boolean, 
+                },
+                "event4" : {
+                    "typeEvent" : string,
+                    "calledBy" : number, Squadra A --> 1, Squadra B --> 2
+                    "playersChanged" : {
+                        "sub1" : {
+                            "in" : number,
+                            "out" : number,
+                        },
+                        "sub2" : {
+                            "in" : number,
+                            "out" : number,
+                        }
+                    }
+                },
+                "event5" : {
+                    "typeEvent" : string,
+                    "squadPlayer" : number,
+                    "player" : number,
+                    "typeOfCard" : char, //Yellow --> Y, Red --> R 
+                }
+            }
+        },
+        "set2" : {},
+        "set3" : {},
+        "set4" : {},
+        "set5" : {},
+    }, 
+}

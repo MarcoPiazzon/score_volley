@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Dashboard Statistiche Squadre</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-top: 0;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        th,
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #e5e7eb;
+            text-align: center;
+        }
+
+        th {
+            background: #f1f5f9;
+        }
+
+        td.label {
+            text-align: left;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) {
+            background: #f9fafb;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>📊 Statistiche Squadre</h1>
+
+    <input type="file" id="fileInput" accept="application/json" />
+
+    <div class="controls">
+        <label>
+            <input type="radio" name="mode" value="match" checked /> Match
+        </label>
+        <label>
+            <input type="radio" name="mode" value="set" /> Set
+        </label>
+        <select id="setSelector" disabled></select>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Statistica</th>
+                <th id="teamAHeader">Squadra A</th>
+                <th id="teamBHeader">Squadra B</th>
+            </tr>
+        </thead>
+        <tbody id="statsBody"></tbody>
+    </table>
+
+    <script type="module">
+        import { STAT } from './enums.js';
+
+        let matchData = null;
+        let setsData = [];
+        let currentMode = 'match';
+        let currentSetIndex = 0;
+
+        const fileInput = document.getElementById('fileInput');
+        const statsBody = document.getElementById('statsBody');
+        const setSelector = document.getElementById('setSelector');
+        const teamAHeader = document.getElementById('teamAHeader');
+        const teamBHeader = document.getElementById('teamBHeader');
+
+        fileInput.addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                const json = JSON.parse(reader.result);
+                console.log(json);
+                matchData = json.match;
+                setsData = json.sets || [];
+                console.log(setsData);
+                populateSetSelector();
+                render();
+            };
+            reader.readAsText(file);
+        });
+
+        document.querySelectorAll('input[name="mode"]').forEach(radio => {
+            radio.addEventListener('change', e => {
+                currentMode = e.target.value;
+                setSelector.disabled = currentMode !== 'set';
+                render();
+            });
+        });
+
+        setSelector.addEventListener('change', e => {
+            currentSetIndex = parseInt(e.target.value, 10);
+            render();
+        });
+
+        function populateSetSelector() {
+            setSelector.innerHTML = '';
+            setsData.forEach((_, i) => {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = `Set ${i + 1}`;
+                setSelector.appendChild(opt);
+            });
+        }
+
+
+
+        function getSquadsStats() {
+            if (currentMode === 'match') {
+                return {
+                    A: matchData.squadA.stats,
+                    B: matchData.squadB.stats
+                };
+            }
+
+            const set = setsData[currentSetIndex];
+            if (!set) return null;
+
+            console.log(set);
+            return {
+                A: set.stats.squads.A,
+                B: set.stats.squads.B
+            };
+        }
+
+        function render() {
+            if (!matchData) return;
+
+            console.log(matchData);
+
+            const stats = getSquadsStats();
+            if (!stats) return;
+
+            statsBody.innerHTML = '';
+
+            Object.values(STAT).forEach(stat => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+        <td class="label">${stat}</td>
+        <td>${stats.A[stat] || 0}</td>
+        <td>${stats.B[stat] || 0}</td>
+      `;
+                statsBody.appendChild(tr);
+            });
+        }
+    </script>
+
+</body>
+
+</html>

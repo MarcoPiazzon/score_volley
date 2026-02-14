@@ -154,12 +154,13 @@ header {
     height: 100%;
 }
 
-
-
-
 .player.selected {
     outline: 3px solid #22c55e;
     outline-offset: 2px;
+}
+
+.disabled {
+    background: grey;
 }
 
 .player {

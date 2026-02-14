@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Dashboard Statistiche Match</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-top: 0;
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        button {
+            padding: 6px 12px;
+            cursor: pointer;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            background: white;
+        }
+
+        button.active {
+            background: #2563eb;
+            color: white;
+            border-color: #2563eb;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        th,
+        td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        th {
+            background: #f1f5f9;
+        }
+
+        tr:first-child td {
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>📊 Classifica Giocatori</h1>
+
+    <input type="file" id="fileInput" accept="application/json" />
+    <div class="controls">
+        <label>
+            <input type="radio" name="mode" value="match" checked>
+            Match
+        </label>
+
+        <label>
+            <input type="radio" name="mode" value="set">
+            Set
+        </label>
+
+        <select id="setSelector" disabled></select>
+    </div>
+
+    <div class="controls" id="filters"></div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Giocatore</th>
+                <th>Squadra</th>
+                <th id="statHeader">Stat</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+
+    <script type="module">
+        import { STAT } from './enums.js';
+
+        let players = [];
+        let setsData = [];
+        let currentMode = "match"; // match | set
+        let currentSetIndex = 0;
+
+        let currentStat = STAT.ATTACK_WIN;
+
+        const fileInput = document.getElementById('fileInput');
+        const filtersDiv = document.getElementById('filters');
+        const tableBody = document.getElementById('tableBody');
+        const statHeader = document.getElementById('statHeader');
+
+        // --- Caricamento JSON ---
+        fileInput.addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                const json = JSON.parse(reader.result);
+                const extracted = extractPlayers(json);
+                players = extracted.players;
+                setsData = extracted.sets;
+                populateSetSelector();
+                renderTable();
+
+            };
+            reader.readAsText(file);
+        });
+
+        document.querySelectorAll('input[name="mode"]').forEach(radio => {
+            radio.addEventListener("change", e => {
+                currentMode = e.target.value;
+                document.getElementById("setSelector").disabled = currentMode !== "set";
+                renderTable();
+            });
+        });
+
+        document.getElementById("setSelector").addEventListener("change", e => {
+            currentSetIndex = parseInt(e.target.value, 10);
+            renderTable();
+        });
+
+
+        function populateSetSelector() {
+            const sel = document.getElementById("setSelector");
+            sel.innerHTML = "";
+
+            setsData.forEach((_, i) => {
+                const opt = document.createElement("option");
+                opt.value = i;
+                opt.textContent = `Set ${i + 1}`;
+                sel.appendChild(opt);
+            });
+        }
+
+
+        // --- Estrazione giocatori dal JSON ---
+        function extractPlayers(json) {
+            const squads = [json.match?.squadA, json.match?.squadB].filter(Boolean);
+            const result = [];
+            const sets = json.sets || [];
+
+            squads.forEach(squad => {
+                [...squad.players, ...squad.bench].forEach(p => {
+                    result.push({
+                        id: p.id,
+                        team: squad.name,
+                        stats: p.stats
+                    });
+                });
+            });
+            console.log(result);
+            console.log(sets);
+            return { players: result, sets };
+        }
+
+
+        // --- Filtri ---
+        Object.values(STAT).forEach(stat => {
+            const btn = document.createElement('button');
+            btn.textContent = stat;
+            btn.onclick = () => {
+                document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentStat = stat;
+                renderTable();
+            };
+            if (stat === currentStat) btn.classList.add('active');
+            filtersDiv.appendChild(btn);
+        });
+
+        // --- Render tabella ---
+        function renderTable() {
+            if (!players.length) return;
+
+            statHeader.textContent = currentStat;
+
+            const source =
+                currentMode === "match"
+                    ? players
+                    : Object.values(setsData[currentSetIndex]?.players || {});
+
+            const sorted = [...source].sort(
+                (a, b) => (b.stats[currentStat] || 0) - (a.stats[currentStat] || 0)
+            );
+
+            tableBody.innerHTML = "";
+
+            sorted.forEach((p, index) => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+      <td>${index + 1}</td>
+      <td>${p.id}</td>
+      <td>${p.team}</td>
+      <td>${p.stats[currentStat] || 0}</td>
+    `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+    </script>
+
+</body>
+
+</html>
