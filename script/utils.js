@@ -18,9 +18,11 @@ const onCourtHandlers = new WeakMap();
  */
 
 export function attachOnCourtHandler(playerDom, match) {
+  console.log(match);
   const handler = (e) => onCourtClickHandler(e, match);
   onCourtHandlers.set(playerDom, handler);
   playerDom.addEventListener("click", handler);
+  console.log(match);
 }
 
 export function resetButtons(match) {
@@ -166,9 +168,10 @@ export function clickEventSub(p, match) {
       match.selectedOutPlayer,
       match.players_map.get(p),
       match.players_map,
+      match,
     );
 
-    updateCourtDom(squad);
+    updateCourtDOM(squad);
     updateBenchDOM(squad);
 
     match.logEventSubstitute(match.selectedOutPlayer, match.players_map.get(p));
@@ -178,7 +181,7 @@ export function clickEventSub(p, match) {
     match.changeMode = false;
     match.resetSelectedOutPlayer();
     //resetButtons();
-    match.highlightPlayer(match.servingSquad.servingPlayer.dom);
+    match.highlightPlayer(match.servingSquad.servingPlayer);
   }
 
   //console.log("cardMode: " + match.cardMode);

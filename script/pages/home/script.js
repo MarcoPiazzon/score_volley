@@ -625,6 +625,56 @@ const statsConfig = [
     type: "relative",
     base: STAT.TOTAL_CARD,
   },
+  //Set Point
+  {
+    key: STAT.TOTAL_SET_POINTS,
+    label: "Set Point Totali",
+    type: "absolute",
+  },
+  {
+    key: STAT.SET_POINTS_WIN,
+    label: "Set point vinti",
+    type: "relative",
+    base: STAT.TOTAL_SET_POINTS,
+  },
+  {
+    key: STAT.SET_POINTS_ERR,
+    label: "Set point sbagliati",
+    type: "relative",
+    base: STAT.TOTAL_SET_POINTS,
+  },
+
+  {
+    key: STAT.SET_POINTS_CANCELLED,
+    label: "Set point annullati",
+    type: "relative",
+    base: STAT.TOTAL_SET_POINTS,
+  },
+  //Set Match
+  {
+    key: STAT.TOTAL_MATCH_POINTS,
+    label: "Match Point Totali",
+    type: "absolute",
+  },
+  {
+    key: STAT.MATCH_POINTS_WIN,
+    label: "Match point vinti",
+    type: "relative",
+    base: STAT.TOTAL_MATCH_POINTS,
+  },
+  {
+    key: STAT.MATCH_POINTS_ERR,
+    label: "Match point sbagliati",
+    type: "relative",
+    base: STAT.TOTAL_MATCH_POINTS,
+  },
+
+  {
+    key: STAT.MATCH_POINTS_CANCELLED,
+    label: "Match point annullati",
+    type: "relative",
+    base: STAT.TOTAL_MATCH_POINTS,
+  },
 ];
 
 const container = document.getElementById("statsBody");
@@ -638,16 +688,11 @@ const setSelector = document.getElementById("setSelector");
 const teamAHeader = document.getElementById("teamAHeader");
 const teamBHeader = document.getElementById("teamBHeader");
 
-console.log(match.sets);
-console.log(match.currentSet);
-
 setsData = match.sets || match.currentSet;
 
 document.querySelectorAll('input[name="mode"]').forEach((radio) => {
   radio.addEventListener("change", (e) => {
-    console.log("press");
     currentMode = e.target.value;
-    console.log(currentMode);
     setSelector.disabled = currentMode !== "set";
     render();
   });
@@ -671,7 +716,6 @@ function populateSetSelector() {
 
 function getSquadsStats() {
   if (currentMode === "match") {
-    console.log("match");
     return {
       A: match.squadA.stats,
       B: match.squadB.stats,
@@ -681,7 +725,6 @@ function getSquadsStats() {
   const set = setsData[currentSetIndex];
   if (!set) return null;
 
-  console.log(set);
   return {
     A: set.stats.squads.A,
     B: set.stats.squads.B,
@@ -693,18 +736,8 @@ function render() {
 
   if (!stats) return;
 
-  console.log(stats);
   statsBody.innerHTML = "";
 
-  /*Object.values(STAT).forEach(stat => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-            <td class="label">${stat}</td>
-            <td>${stats.A[stat] || 0}</td>
-            <td>${stats.B[stat] || 0}</td>
-          `;
-                    statsBody.appendChild(tr);
-                });*/
   statsConfig.forEach((stat) => {
     const aVal = stats.A[stat.key] || 0;
     const bVal = stats.B[stat.key] || 0;

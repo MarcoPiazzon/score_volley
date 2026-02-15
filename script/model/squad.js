@@ -5,6 +5,10 @@ import {
   onSubClickHandler,
   clickEventListener,
   clickEventSub,
+  attachOnCourtHandler,
+  detachOnSubHandler,
+  detachOnCourtHandler,
+  attachOnSubHandler,
 } from "../utils.js";
 
 export default class Squad {
@@ -139,7 +143,7 @@ export default class Squad {
    * @param {*} inPlayer player che entra
    * @param {*} players_map
    */
-  substitute(outPlayer, inPlayer, players_map) {
+  substitute(outPlayer, inPlayer, players_map, match) {
     //console.log(outPlayer);
     //console.log(inPlayer);
     if (!outPlayer.onCourt) {
@@ -171,8 +175,8 @@ export default class Squad {
     inPlayer.dom.appendChild(newBadgesInPlayer);
 
     //perchè senno non funziona il player in campo
-    inPlayer.dom.removeEventListener("click", onSubClickHandler);
-    inPlayer.dom.addEventListener("click", onCourtClickHandler);
+    detachOnSubHandler(inPlayer.dom);
+    attachOnCourtHandler(inPlayer.dom, match);
 
     players_map.set(inPlayer.dom, inPlayer);
 
@@ -201,8 +205,8 @@ export default class Squad {
     console.log(newBenchPlayer);
 
     //perché senno non funziona la sostituzione del playerOut
-    outPlayer.dom.removeEventListener("click", onCourtClickHandler);
-    outPlayer.dom.addEventListener("click", onSubClickHandler);
+    detachOnCourtHandler(outPlayer.dom);
+    attachOnSubHandler(outPlayer.dom, match);
 
     players_map.set(outPlayer.dom, outPlayer);
 
