@@ -8,6 +8,7 @@ import {
   onSubClickHandler,
   updateCourtDOM,
   updateBenchDOM,
+  assignStats,
 } from "../utils.js";
 
 export default class Match {
@@ -89,6 +90,97 @@ export default class Match {
     match.cardMode = match.cardMode; //per modalità cartellino
 
     return match;
+  }
+
+  checkIfIsMatchPoint() {
+    const target = this.setPoints - 1;
+
+    if (
+      this.squadA.score >= target &&
+      this.squadA.score - this.squadB.score >= 1
+    )
+      this.assignMatchPointStat(this.squadA, player, value);
+
+    if (
+      this.squadB.score >= target &&
+      this.squadB.score - this.squadA.score >= 1
+    ) {
+      this.assignMatchPointStat(this.squadA, player, value);
+    }
+  }
+
+  checkIfIsSetOrMatchPoint(player, value) {
+    const target = this.setPoints - 1;
+
+    if (
+      this.squadA.score >= target &&
+      this.squadA.score - this.squadB.score >= 1 &&
+      this.squadA.setsWon === this.setsToWin - 1
+    )
+      this.assignMatchPointStat(this.squadA, player, value);
+    else this.assignSetPointStat(this.squadA, player, value);
+
+    if (
+      this.squadB.score >= target &&
+      this.squadB.score - this.squadA.score >= 1 &&
+      this.squadB.setsWon === this.setsToWin - 1
+    )
+      this.assignMatchPointStat(this.squadB, player, value);
+    else this.assignSetPointStat(this.squadB, player, value);
+  }
+
+  /**
+   *
+   * @param {*} squad la squadra che è a 24
+   */
+  assignSetPointStat(squad, player, value) {
+    const opponent = squad === this.squadA ? this.squadB : this.squadA;
+
+    //Se il player che ha fatto punto è lo stesso della squadra al set point
+    if (squad.players.includes(player)) {
+      if (value) {
+        assignStats(this, player, squad, STAT.SET_POINTS_WIN);
+        assignStats(this, player, squad, STAT.TOTAL_SET_POINTS);
+      } else //ha sbagliato il punto
+      {
+        assignStats(this, player, squad, STAT.SET_POINTS_ERR);
+        assignStats(this, player, squad, STAT.TOTAL_SET_POINTS);
+      }
+    } else //il giocatore appartiene alla squadra avversaria
+    {
+      if (value) {
+        assignStats(this, player, squad, STAT.SET_POINTS_CANCELLED);
+        assignStats(this, player, opponent, STAT.TOTAL_SET_POINTS);
+      } else {
+        assignStats(this, player, opponent, STAT.SET_POINTS_WIN);
+        assignStats(this, player, opponent, STAT.TOTAL_SET_POINTS);
+      }
+    }
+  }
+
+  assignMatchPointStat(squad, player, value) {
+    const opponent = squad === this.squadA ? this.squadB : this.squadA;
+
+    //Se il player che ha fatto punto è lo stesso della squadra al set point
+    if (squad.players.includes(player)) {
+      if (value) {
+        assignStats(this, player, squad, STAT.MATCH_POINTS_WIN);
+        assignStats(this, player, squad, STAT.TOTAL_MATCH_POINTS);
+      } else //ha sbagliato il punto
+      {
+        assignStats(this, player, squad, STAT.MATCH_POINTS_ERR);
+        assignStats(this, player, squad, STAT.TOTAL_MATCH_POINTS);
+      }
+    } else //il giocatore appartiene alla squadra avversaria
+    {
+      if (value) {
+        assignStats(this, player, squad, STAT.MATCH_POINTS_CANCELLED);
+        assignStats(this, player, opponent, STAT.TOTAL_MATCH_POINTS);
+      } else {
+        assignStats(this, player, opponent, STAT.MATCH_POINTS_WIN);
+        assignStats(this, player, opponent, STAT.TOTAL_MATCH_POINTS);
+      }
+    }
   }
 
   /**
@@ -488,6 +580,12 @@ export default class Match {
     const squad = player.team === "A" ? this.squadA : this.squadB;
     const opponent = squad === this.squadA ? this.squadB : this.squadA;
 
+    //Controllo se è stato giocato il punto del set point
+
+    if (this.currentSetNumber === this.maxSet) {
+      this.checkIfIsMatchPoint();
+    } else this.checkIfIsSetOrMatchPoint(player, value);
+
     if (this.squadA.players.includes(player)) {
       if (value) this.squadA.scorePoint();
       else this.squadB.scorePoint();
@@ -506,6 +604,15 @@ export default class Match {
     //console.log(squad); //squadra che ha fatto punto
     //console.log(this.servingSquad); //squadra che ha battuto il set
     //console.log(value);
+
+    //tutte i giocatori hanno giocato il punto
+    this.squadA.players.forEach((p) =>
+      this.addStatPlayer(p, STAT.POINTS_PLAYED),
+    );
+
+    this.squadB.players.forEach((p) =>
+      this.addStatPlayer(p, STAT.POINTS_PLAYED),
+    );
 
     //prima di modificare tutto, salvo lo stato attuale
     this.addToSnapshotPoint(player.team);
@@ -691,8 +798,8 @@ export default class Match {
 
     this.currentSet.events.push({
       typeEvent: typeEvent,
-      squadToSet: this.servingSquad,
-      playerToSet: this.servingSquad.servingPlayer,
+      squadToSet: this.servingSquad.toJSON(),
+      playerToSet: this.servingSquad.servingPlayer.toJSON(),
       touchOfPlayers: this.currentSelectedPlayers,
       playerId: player.id,
       squadWhoWinPoint: player.team,
@@ -767,5 +874,28 @@ export default class Match {
       },
       timestamp: Date.now(),
     });
+  }
+
+  /**
+   * squadA
+   * squadB
+   * sets
+   * maxSet
+   * setsToWin
+   * setPoints
+   * tieBreakPoints
+   * servingSquad
+   */
+  toJSON() {
+    return {
+      squadA: this.squadA.toJSON(),
+      squadB: this.squadB.toJSON(),
+      sets: this.sets.map((set) => set.toJSON()),
+      maxSet: this.maxSet,
+      setsToWin: this.setsToWin,
+      setPoints: this.setPoints,
+      tieBreakPoints: this.tieBreakPoints,
+      servingSquad: this.servingSquad,
+    };
   }
 }

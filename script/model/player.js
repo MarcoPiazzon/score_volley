@@ -52,6 +52,21 @@ export default class Player {
       [STAT.CARD_RED]: 0, //cartelini rossi
 
       [STAT.TOTAL_CARD]: 0,
+
+      //Set Point
+      [STAT.TOTAL_SET_POINTS]: 0,
+      [STAT.SET_POINTS_WIN]: 0,
+      [STAT.SET_POINTS_ERR]: 0,
+      [STAT.SET_POINTS_CANCELLED]: 0,
+
+      //Match Point
+      [STAT.TOTAL_MATCH_POINTS]: 0,
+      [STAT.MATCH_POINTS_WIN]: 0,
+      [STAT.MATCH_POINTS_ERR]: 0,
+      [STAT.MATCH_POINTS_CANCELLED]: 0,
+
+      //Punti giocati
+      [STAT.POINTS_PLAYED]: 0,
     };
   }
 

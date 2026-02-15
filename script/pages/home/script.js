@@ -210,7 +210,7 @@ function renderTeam(selector, players) {
 async function sendMatchInformation() {
   let teamAId = match.squadA.id;
   let teamBId = match.squadB.id;
-
+  let mjson = match.toJSON();
   /*console.log(
     JSON.stringify({
       teamAId,
@@ -241,7 +241,7 @@ async function sendMatchInformation() {
   const json = JSON.stringify({
     teamAId,
     teamBId,
-    match,
+    mjson,
   });
 
   const blob = new Blob([json], { type: "application/json" });
@@ -638,11 +638,16 @@ const setSelector = document.getElementById("setSelector");
 const teamAHeader = document.getElementById("teamAHeader");
 const teamBHeader = document.getElementById("teamBHeader");
 
+console.log(match.sets);
+console.log(match.currentSet);
+
 setsData = match.sets || match.currentSet;
 
 document.querySelectorAll('input[name="mode"]').forEach((radio) => {
   radio.addEventListener("change", (e) => {
+    console.log("press");
     currentMode = e.target.value;
+    console.log(currentMode);
     setSelector.disabled = currentMode !== "set";
     render();
   });
@@ -650,6 +655,7 @@ document.querySelectorAll('input[name="mode"]').forEach((radio) => {
 
 setSelector.addEventListener("change", (e) => {
   currentSetIndex = parseInt(e.target.value, 10);
+  setsData = match.sets;
   render();
 });
 
@@ -665,6 +671,7 @@ function populateSetSelector() {
 
 function getSquadsStats() {
   if (currentMode === "match") {
+    console.log("match");
     return {
       A: match.squadA.stats,
       B: match.squadB.stats,
@@ -683,8 +690,10 @@ function getSquadsStats() {
 
 function render() {
   const stats = getSquadsStats();
+
   if (!stats) return;
 
+  console.log(stats);
   statsBody.innerHTML = "";
 
   /*Object.values(STAT).forEach(stat => {
@@ -697,8 +706,8 @@ function render() {
                     statsBody.appendChild(tr);
                 });*/
   statsConfig.forEach((stat) => {
-    const aVal = match.squadA.stats[stat.key] || 0;
-    const bVal = match.squadB.stats[stat.key] || 0;
+    const aVal = stats.A[stat.key] || 0;
+    const bVal = stats.B[stat.key] || 0;
 
     let aPerc = 0;
     let bPerc = 0;
@@ -710,8 +719,8 @@ function render() {
     }
 
     if (stat.type === "relative") {
-      const aBase = match.squadA.stats[stat.base] || 1;
-      const bBase = match.squadB.stats[stat.base] || 1;
+      const aBase = stats.A[stat.base] || 1;
+      const bBase = stats.B[stat.base] || 1;
       aPerc = aVal / aBase;
       bPerc = bVal / bBase;
     }

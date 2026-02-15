@@ -102,6 +102,18 @@ export default class Sset {
       [STAT.CARD_RED]: 0, //cartelini rossi
 
       [STAT.TOTAL_CARD]: 0,
+
+      //Set Point
+      [STAT.TOTAL_SET_POINTS]: 0,
+      [STAT.SET_POINTS_WIN]: 0,
+      [STAT.SET_POINTS_ERR]: 0,
+      [STAT.SET_POINTS_CANCELLED]: 0,
+
+      //Match Point
+      [STAT.TOTAL_MATCH_POINTS]: 0,
+      [STAT.MATCH_POINTS_WIN]: 0,
+      [STAT.MATCH_POINTS_ERR]: 0,
+      [STAT.MATCH_POINTS_CANCELLED]: 0,
     };
   }
 
@@ -128,17 +140,8 @@ export default class Sset {
 
       startingLineUp: this.startingLineup,
 
-      squadA: {
-        players: this.stats.squads.A,
-        bench: this.stats.squads.A,
-      },
-      squadB: {
-        players: this.stats.squads.B,
-        bench: this.stats.squads.B,
-      },
-
       stats: {
-        players: this.stats.map, // playerId -> stats snapshot del set
+        players: this.stats.players, // playerId -> stats snapshot del set
         squads: {
           A: this.stats.squads.A,
           B: this.stats.squads.B,

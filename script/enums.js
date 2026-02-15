@@ -36,6 +36,21 @@ export const STAT = Object.freeze({
   CARD_YELLOW: "card_yellow",
   CARD_RED: "card_red",
   TOTAL_CARD: "totalCard",
+
+  //SET POINT
+  TOTAL_SET_POINTS: "total_set_points",
+  SET_POINTS_WIN: "set_points_win",
+  SET_POINTS_ERR: "set_points_err",
+  SET_POINTS_CANCELLED: "set_points_cancelled",
+
+  //MATCH POINT
+  TOTAL_MATCH_POINTS: "total_match_points",
+  MATCH_POINTS_WIN: "match_points_win",
+  MATCH_POINTS_ERR: "match_points_err",
+  MATCH_POINTS_CANCELLED: "match_points_cancelled",
+
+  //PUNTI GIOCATI
+  POINTS_PLAYED: "points_played",
 });
 
 export const CARD_TYPE = Object.freeze({
