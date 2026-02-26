@@ -111,6 +111,10 @@ export default class Squad {
 
   swapInnerSide() {
     this.side = this.side === "left" ? "right" : "left";
+
+    console.log(this.players);
+    this.players = this.players.slice().reverse();
+    console.log(this.players);
   }
 
   takeTimeout() {

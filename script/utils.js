@@ -18,11 +18,11 @@ const onCourtHandlers = new WeakMap();
  */
 
 export function attachOnCourtHandler(playerDom, match) {
-  console.log(match);
+  //console.log(match);
   const handler = (e) => onCourtClickHandler(e, match);
   onCourtHandlers.set(playerDom, handler);
   playerDom.addEventListener("click", handler);
-  console.log(match);
+  //console.log(match);
 }
 
 export function resetButtons(match) {

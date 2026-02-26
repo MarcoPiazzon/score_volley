@@ -307,6 +307,9 @@ document.addEventListener("DOMContentLoaded", () => {
     //p.addEventListener("click", onSubClickHandler);
   });
 
+  console.log(squadA.players);
+  console.log(squadB.players);
+
   match.startNewSet();
 
   match.startMatch(squadA);
@@ -406,6 +409,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
           match.scorePoint(player, false, "point"); //per ora tengo null
           break;
+        case "blocked":
+          //player che ha fatto l'attacco
+          // match.currentSelectedPlayers[currentSelectedPlayers.length-2];
+
+          //player che ha aftto il muro
+          match.currentSelectedPlayers[currentSelectedPlayers.length - 1];
+
+          break;
         case "double":
           assignStats(match, player, squad, STAT.FOUL_DOUBLE);
           assignStats(match, player, squad, STAT.TOTAL_FOUL);
@@ -457,7 +468,7 @@ document.addEventListener("DOMContentLoaded", () => {
         sendMatchInformation();
       }
 
-      if (!match.changeMode) {
+      if (!match.changeMode && label !== "blocked") {
         resetButtons(match);
       }
     });

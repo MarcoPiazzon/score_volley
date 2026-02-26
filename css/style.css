@@ -159,9 +159,6 @@ header {
     outline-offset: 2px;
 }
 
-.disabled {
-    background: grey;
-}
 
 .player {
     position: relative;
@@ -424,6 +421,11 @@ header {
 .events button:hover {
     background: #2563eb;
 }
+
+.events button:disabled {
+    background: grey;
+}
+
 
 
 /* Cartellini old 
