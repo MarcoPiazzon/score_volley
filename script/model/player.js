@@ -15,7 +15,8 @@ export default class Player {
 
       //Attack
       [STAT.ATTACK_WIN]: 0, //attacchi vinti
-      [STAT.ATTACK_ERR]: 0, //attacchi sbagliati (solo fuori)
+      [STAT.ATTACK_OUT]: 0, //attacchi sbagliati (solo fuori)
+      [STAT.ATTACK_NOT_SUCCESSFUL]: 0,
       [STAT.TOTAL_ATTACK]: 0, // attacchi totali fatti nella partita
 
       //Serve
@@ -34,8 +35,9 @@ export default class Player {
       [STAT.BALL_LOST]: 0, //palle perse o passaggi sbagliati
 
       //Block
-      [STAT.BLOCK_WIN]: 0, //da capire come fare mai gestita
-
+      [STAT.BLOCK_SUCCESSFUL]: 0,
+      [STAT.BLOCK_NOT_SUCCESSFUL]: 0,
+      [STAT.TOTAL_BLOCK]: 0,
       //Foul WB
       [STAT.FOUL_DOUBLE]: 0, //doppe
       [STAT.FOUL_FOUR_TOUCHES]: 0, //4 tocchi

@@ -3,7 +3,7 @@ import Match from "../../model/match.js"; // ❌ se il file è Squad.js
 import Squad from "../../model/squad.js"; // ❌ se il file è Squad.js
 import Player from "../../model/player.js"; // ❌ se il file è Squad.js
 
-import { CARD_TYPE, STAT } from "../../enums.js";
+import { CARD_TYPE, STAT, STAT_EVENT } from "../../enums.js";
 import {
   attachOnCourtHandler,
   detachOnCourtHandler,
@@ -21,7 +21,7 @@ const squadB = new Squad("B", "right");
 //per mappare div con player
 export const match = new Match(squadA, squadB); //forzo l'inizio batuta della squadra A
 
-console.log(match);
+//console.log(match);
 
 export let buttonsAttack = document.querySelectorAll(".attack");
 export let buttonsServe = document.querySelectorAll(".serve");
@@ -307,8 +307,8 @@ document.addEventListener("DOMContentLoaded", () => {
     //p.addEventListener("click", onSubClickHandler);
   });
 
-  console.log(squadA.players);
-  console.log(squadB.players);
+  //console.log(squadA.players);
+  //console.log(squadB.players);
 
   match.startNewSet();
 
@@ -320,8 +320,9 @@ document.addEventListener("DOMContentLoaded", () => {
     match.servingSquad,
     "touches",
   );
+  console.log(match.currentSelectedPlayers);
 
-  match.highlightPlayer(match.servingSquad.servingPlayer); //match.servingSquad.servingPlayer
+  //match.highlightPlayer(match.servingSquad.servingPlayer); //match.servingSquad.servingPlayer
 
   document.querySelectorAll(".events button").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -387,14 +388,18 @@ document.addEventListener("DOMContentLoaded", () => {
           match.scorePoint(player, false, "point"); //per ora tengo null
           break;
         case "ace":
+          console.log("player ace");
+          console.log(player);
+          console.log(squad);
           assignStats(match, player, squad, STAT.ACE);
           assignStats(match, player, squad, STAT.TOTAL_SERVES);
-
+          console.log(match.currentSelectedPlayers);
           match.scorePoint(
-            match.players_map.get(match.currentSelectedPlayers[0].dom),
+            match.players_map.get(match.currentSelectedPlayers[0].player.dom),
             true,
             "point",
           ); //per ora tengo null
+          console.log(match.currentSelectedPlayers);
           break;
         case "serve error":
           console.log(player);
@@ -405,17 +410,36 @@ document.addEventListener("DOMContentLoaded", () => {
           match.scorePoint(player, false, "point"); //per ora tengo null
           break;
         case "lost ball":
+          if (match.isOnBlock) {
+            let player = null;
+            for (let i = match.currentSelectedPlayers.length - 1; i > 0; i--) {
+              if (match.currentSelectedPlayers[i].type === STAT_EVENT.ATTACK) {
+                player = match.currentSelectedPlayers[i];
+                break;
+              }
+            }
+
+            let squadPlayer = player.team === "A" ? match.squadA : match.squadB;
+
+            assignStats(match, player, squadPlayer, STAT.ATTACK_WIN);
+            assignStats(match, player, squadPlayer, STAT.TOTAL_ATTACK);
+          }
           assignStats(match, player, squad, STAT.BALL_LOST);
 
           match.scorePoint(player, false, "point"); //per ora tengo null
           break;
         case "blocked":
+          match.isOnBlock = true;
           //player che ha fatto l'attacco
           // match.currentSelectedPlayers[currentSelectedPlayers.length-2];
+          match.setBlockCurrentSelectedPlayers();
+
+          //assegno stats blocco al player
+          assignStats(match, player, squad, STAT.TOTAL_BLOCK);
+
+          //assegno attacco al player che ha attaccato
 
           //player che ha aftto il muro
-          match.currentSelectedPlayers[currentSelectedPlayers.length - 1];
-
           break;
         case "double":
           assignStats(match, player, squad, STAT.FOUL_DOUBLE);
@@ -461,14 +485,15 @@ document.addEventListener("DOMContentLoaded", () => {
           break;
       }
 
-      console.log(match.currentSet);
       //Controllo se il match è terminato
-      if (match.checkEndMatch()) {
-        console.log("Match finito");
-        sendMatchInformation();
-      }
 
       if (!match.changeMode && label !== "blocked") {
+        console.log(match.currentSet);
+        if (match.checkEndMatch()) {
+          console.log("Match finito");
+          sendMatchInformation();
+        }
+
         resetButtons(match);
       }
     });
@@ -491,7 +516,7 @@ document.addEventListener("DOMContentLoaded", () => {
     //match.exportJson();
     sendMatchInformation();
   });
-
+  console.log(match.currentSelectedPlayers);
   //disabilito i pulsanti che non servono
   buttonsAttack.forEach((p1) => (p1.disabled = true));
   buttonsDefence.forEach((p1) => (p1.disabled = true));

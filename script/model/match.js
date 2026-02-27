@@ -1,7 +1,7 @@
 import Squad from "./squad.js";
 
 import Sset from "./set.js"; // ❌ se il file è Squad.js
-import { STAT } from "../enums.js";
+import { STAT, STAT_EVENT } from "../enums.js";
 
 import {
   onCourtClickHandler,
@@ -20,7 +20,7 @@ export default class Match {
 */
     this.squadA = squadA;
     this.squadB = squadB;
-
+    this.inizialBallSide = "left";
     this.currentSetNumber = 1;
 
     if (isFromJSON) {
@@ -35,6 +35,10 @@ export default class Match {
     this.selectedPlayer = null;
     this.selectedOutPlayer = null;
     this.changeMode = false;
+
+    //for stats
+    this.lastPlayer = null;
+    this.isOnBlock = false;
 
     //rules
     this.maxSet = 5;
@@ -221,7 +225,7 @@ export default class Match {
     set.startingLineup.A = this.squadA.players.map((p) => p);
     set.startingLineup.B = this.squadB.players.map((p) => p);
 
-    console.log(set.startingLineup.A);
+    //console.log(set.startingLineup.A);
 
     this.currentSet = set;
     this.sets.push(set);
@@ -396,7 +400,7 @@ export default class Match {
     );
     this.undoHistory.push(snapshot);
     console.log("snapshot");
-    console.log(this.undoHistory);
+    //console.log(this.undoHistory);
   }
 
   toSnapshotPoint(scoringTeam, pointNumber) {
@@ -540,8 +544,11 @@ export default class Match {
    */
   startMatch(servingSquad) {
     this.servingSquad = servingSquad;
+    this.inizialBallSide = servingSquad.side;
     this.assignServe();
+    console.log(this.currentSelectedPlayers);
     this.addToSnapshotPoint(servingSquad);
+    console.log(this.currentSelectedPlayers);
   }
 
   /**
@@ -554,10 +561,54 @@ export default class Match {
     this.servingSquad.setPlayer();
     //console.log(this.servingSquad.servingPlayer);
     if (this.servingSquad.servingPlayer) {
-      this.highlightPlayer(this.servingSquad.servingPlayer);
+      this.highlightPlayer(this.servingSquad.servingPlayer, STAT_EVENT.SERVE);
       //console.log("ora batte il");
       //console.log(this.servingSquad.servingPlayer);
+      /* this.pushcurrentSelectedPlayers(
+        this.servingSquad.servingPlayer.id,
+        STAT_EVENT.SERVE,
+      );*/
     }
+  }
+
+  /*pushcurrentSelectedPlayers(playerId, type) {
+    this.currentSelectedPlayers.push({ id: playerId, type: type });
+  }*/
+
+  setBlockCurrentSelectedPlayers() {
+    const playerWhoBlocked = this.currentSelectedPlayers.at(
+      this.currentSelectedPlayers.length - 1,
+    );
+    playerWhoBlocked.type = STAT_EVENT.BLOCK;
+
+    console.log(
+      "player: " +
+        this.currentSelectedPlayers.at(this.currentSelectedPlayers.length - 1)
+          .player.id +
+        " ha fatto muro su attacco del " +
+        this.currentSelectedPlayers.at(this.currentSelectedPlayers.length - 2)
+          .player.id,
+    );
+
+    const playerWhoAttacked = this.currentSelectedPlayers.at(
+      this.currentSelectedPlayers.length - 2,
+    );
+
+    const squad =
+      playerWhoAttacked.player.team === "A" ? this.squadA : this.squadB;
+
+    playerWhoAttacked.type = STAT_EVENT.ATTACK;
+
+    console.log(playerWhoAttacked);
+
+    assignStats(this, playerWhoAttacked.player, squad, STAT.TOTAL_ATTACK);
+    assignStats(
+      this,
+      playerWhoAttacked.player,
+      squad,
+      STAT.ATTACK_NOT_SUCCESSFUL,
+    );
+    console.log(this.currentSelectedPlayers);
   }
 
   /**
@@ -576,20 +627,23 @@ export default class Match {
    * @param {*} type
    */
   scorePoint(player, value, type) {
+    console.log(this.currentSelectedPlayers);
     //console.log(player);
     const squad = player.team === "A" ? this.squadA : this.squadB;
     const opponent = squad === this.squadA ? this.squadB : this.squadA;
 
     //Controllo se è stato giocato il punto del set point
-
+    console.log(player);
     if (this.currentSetNumber === this.maxSet) {
       this.checkIfIsMatchPoint();
     } else this.checkIfIsSetOrMatchPoint(player, value);
 
     if (this.squadA.players.includes(player)) {
+      console.log("appartienena A");
       if (value) this.squadA.scorePoint();
       else this.squadB.scorePoint();
     } else {
+      console.log("appartienena B");
       if (value) this.squadB.scorePoint();
       else this.squadA.scorePoint();
     }
@@ -617,8 +671,14 @@ export default class Match {
     //prima di modificare tutto, salvo lo stato attuale
     this.addToSnapshotPoint(player.team);
 
-    //cambio servizio
+    let isAce = type === STAT.ACE ? true : false;
 
+    this.logEvent(player, value, type, isAce);
+
+    this.updateScore();
+
+    //cambio servizio
+    console.log(this.currentSelectedPlayers);
     if (this.servingSquad !== squad && value) {
       //console.log("1 cambio battutas, ora tocca a: " + squad.name);
       this.servingSquad = squad;
@@ -629,18 +689,15 @@ export default class Match {
       this.servingSquad = opponent;
       this.rotate(opponent);
     }
-
-    this.assignServe();
-
-    this.updateScore();
-
-    let isAce = type === STAT.ACE ? true : false;
-
-    this.logEvent(player, value, type, isAce);
-
-    this.currentSelectedPlayers = new Array();
-    this.currentSelectedPlayers.push(this.servingSquad.servingPlayer);
     this.checkSetEnd();
+    this.currentSelectedPlayers = new Array();
+    this.assignServe();
+    console.log(this.currentSelectedPlayers);
+
+    /*this.currentSelectedPlayers.push({
+      player: this.servingSquad.servingPlayer,
+      type: STAT_EVENT.SERVE,
+    });*/
   }
 
   /**
@@ -726,12 +783,13 @@ export default class Match {
     this.squadA.resetTimeouts();
     this.squadB.resetTimeouts();
 
+    console.log(this.servingSquad);
     // fare cambio campo
     if (this.currentSetNumber !== this.maxSet) {
       //cambio campo
       this.swapSides();
     }
-
+    console.log(this.servingSquad);
     console.log(this.currentSet);
     console.log(this.sets);
 
@@ -739,13 +797,24 @@ export default class Match {
     this.currentSetNumber++;
     this.currentSet = this.startNewSet();
     console.log(this.currentSet);
+
+    console.log(this.inizialBallSide);
+    console.log(this.servingSquad);
+
+    this.servingSquad =
+      this.inizialBallSide === this.squadA.side ? this.squadA : this.squadB;
+
+    this.assignServe();
+    console.log(this.servingSquad);
+    this.renderAll();
   }
 
   /**
    *
    * @param {*} p //Vuole il player, non dom
    */
-  highlightPlayer(p) {
+  highlightPlayer(p, type) {
+    console.log("HIGHI");
     //console.log(p);
     // rimuovi la palla da tutti
     document
@@ -756,7 +825,14 @@ export default class Match {
       .querySelectorAll(".player")
       .forEach((b) => b.classList.remove("selected"));
 
-    console.log(p);
+    //console.log(p);
+
+    if (this.lastPlayer === null) this.lastPlayer = p;
+    else if (this.lastPlayer.team !== p.team) {
+      this.lastPlayer = p;
+      this.isOnBlock = false;
+    }
+    //console.log(this.lastPlayer);
 
     const badge = document.createElement("div");
     badge.classList.add("ball");
@@ -766,7 +842,15 @@ export default class Match {
 
     p.dom.classList.add("selected");
     this.selectedPlayer = this.players_map.get(p.dom);
-    this.currentSelectedPlayers.push(this.selectedPlayer);
+
+    if (type === undefined) {
+      type = STAT_EVENT.TOUCH;
+    }
+    this.currentSelectedPlayers.push({
+      player: this.selectedPlayer,
+      type: type,
+    });
+    console.log(this.currentSelectedPlayers);
   }
 
   /*

@@ -2,7 +2,8 @@ export const STAT = Object.freeze({
   TOUCHES: "touches",
   //ATTACCO
   ATTACK_WIN: "attackWin",
-  ATTACK_ERR: "attackErr",
+  ATTACK_OUT: "attackOut",
+  ATTACK_NOT_SUCCESSFUL: "attackNotSuccessful",
   TOTAL_ATTACK: "totalAttack",
   //BATTUTA
   ACE: "ace",
@@ -30,7 +31,9 @@ export const STAT = Object.freeze({
   DEF_NEG: "defenseNeg",
 
   //MURO
-  BLOCK_WIN: "blockWin",
+  BLOCK_SUCCESSFUL: "blockSuccessful",
+  BLOCK_NOT_SUCCESSFUL: "blockNotSuccessful",
+  TOTAL_BLOCK: "totalBlock",
 
   //CARTELLINI
   CARD_YELLOW: "card_yellow",
@@ -65,6 +68,13 @@ export const STAT_CATEGORY = Object.freeze({
   RECEIVE: "receive",
   BLOCK: "block",
   CARD: "card",
+});
+
+export const STAT_EVENT = Object.freeze({
+  ATTACK: "attack",
+  SERVE: "serve",
+  BLOCK: "block",
+  TOUCH: "touch",
 });
 
 export const EVENT_STAT_MAP = Object.freeze({
