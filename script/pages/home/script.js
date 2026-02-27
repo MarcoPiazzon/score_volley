@@ -482,6 +482,8 @@ document.addEventListener("DOMContentLoaded", () => {
           console.log("modalità cambio attiva");
           break;
         case "timeout":
+          match.addStatSquad(squad, STAT.TOTAL_TIMEOUT);
+          match.addStatSet(squad, STAT.TOTAL_TIMEOUT);
           break;
       }
 

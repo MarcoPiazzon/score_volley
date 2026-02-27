@@ -52,6 +52,12 @@ export const STAT = Object.freeze({
   MATCH_POINTS_ERR: "match_points_err",
   MATCH_POINTS_CANCELLED: "match_points_cancelled",
 
+  //CHANGE
+  TOTAL_CHANGE: "total_change",
+
+  //TIMEOUT
+  TOTAL_TIMEOUT: "total_timeout",
+
   //PUNTI GIOCATI
   POINTS_PLAYED: "points_played",
 });
@@ -75,6 +81,14 @@ export const STAT_EVENT = Object.freeze({
   SERVE: "serve",
   BLOCK: "block",
   TOUCH: "touch",
+});
+
+export const ROLE = Object.freeze({
+  PALLEGGIATORE: "palleggiatore",
+  CENTRALE: "centrale",
+  BANDA: "banda",
+  OPPOSTO: "opposto",
+  LIBERO: "libero",
 });
 
 export const EVENT_STAT_MAP = Object.freeze({

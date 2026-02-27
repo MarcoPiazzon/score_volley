@@ -171,6 +171,9 @@ export function clickEventSub(p, match) {
       match,
     );
 
+    match.addStatSquad(squad, STAT.TOTAL_CHANGE);
+    match.addStatSet(squad, STAT.TOTAL_CHANGE);
+
     updateCourtDOM(squad);
     updateBenchDOM(squad);
 

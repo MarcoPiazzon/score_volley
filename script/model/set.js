@@ -117,6 +117,12 @@ export default class Sset {
       [STAT.MATCH_POINTS_WIN]: 0,
       [STAT.MATCH_POINTS_ERR]: 0,
       [STAT.MATCH_POINTS_CANCELLED]: 0,
+
+      //Timeout
+      [STAT.TOTAL_TIMEOUT]: 0,
+
+      //Change
+      [STAT.TOTAL_CHANGE]: 0,
     };
   }
 
