@@ -1,4 +1,4 @@
-import { STAT, CARD_TYPE } from "./enums.js";
+import { STAT, CARD_TYPE, ROLE } from "./enums.js";
 
 let buttonsAttack = document.querySelectorAll(".attack");
 let buttonsServe = document.querySelectorAll(".serve");
@@ -171,9 +171,13 @@ export function clickEventSub(p, match) {
       match,
     );
 
-    match.addStatSquad(squad, STAT.TOTAL_CHANGE);
-    match.addStatSet(squad, STAT.TOTAL_CHANGE);
-
+    if (
+      match.selectedOutPlayer.role !== ROLE.LIBERO &&
+      match.players_map.get(p).role !== ROLE.LIBERO
+    ) {
+      match.addStatSquad(squad, STAT.TOTAL_CHANGE);
+      match.addStatSet(squad, STAT.TOTAL_CHANGE);
+    }
     updateCourtDOM(squad);
     updateBenchDOM(squad);
 
