@@ -12,6 +12,7 @@ router.get("/", auth, async (req, res) => {
   try {
     const coachId = req.user.id;
 
+    console.log(coachId);
     // Prendi match + squadre
     const result = await pool.query(
       `
@@ -19,11 +20,12 @@ router.get("/", auth, async (req, res) => {
         m.id,
         m.match_json,
         m.team_a_id,
-        m.team_b_id
+        m.team_b_id,
+        m.isMatchFinished
       FROM matches m
       WHERE m.team_a_id = $1 OR m.team_b_id = $1
     `,
-      [1],
+      [coachId],
     );
 
     if (result.rows.length === 0) {

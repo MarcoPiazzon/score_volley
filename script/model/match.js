@@ -46,6 +46,8 @@ export default class Match {
     this.setPoints = 25;
     this.tieBreakPoints = 15;
     this.changeFieldMaxSet = true; //se true ancora da fare, se false già fatto
+    this.total_timeout_set = 2;
+    this.total_change_set = 6;
 
     this.servingSquad = null;
     this.currentSelectedPlayers = new Array(); //array di Player
@@ -549,6 +551,7 @@ export default class Match {
     console.log(this.currentSelectedPlayers);
     this.addToSnapshotPoint(servingSquad);
     console.log(this.currentSelectedPlayers);
+    this.renderAll();
   }
 
   /**
@@ -717,18 +720,23 @@ export default class Match {
   updateScore() {
     //squadA
     let score = document.querySelectorAll(".scorebar." + this.squadA.side)[0];
-
+    //alert(this.currentSet.stats.squads.A.total_timeout);
     console.log(this.squadA);
     score.querySelectorAll(".field-score")[0].innerHTML = this.squadA.score;
     score.querySelectorAll(".set-score")[0].innerHTML = this.squadA.setsWon;
-
+    score.querySelectorAll(".timeout-score")[0].innerHTML =
+      this.total_timeout_set - this.currentSet.stats.squads.A.total_timeout;
+    score.querySelectorAll(".change-score")[0].innerHTML =
+      this.total_change_set - this.currentSet.stats.squads.A.total_change;
     //squadB
     score = document.querySelectorAll(".scorebar." + this.squadB.side)[0];
 
     score.querySelectorAll(".field-score")[0].innerHTML = this.squadB.score;
     score.querySelectorAll(".set-score")[0].innerHTML = this.squadB.setsWon;
-
-    console.log(score);
+    score.querySelectorAll(".timeout-score")[0].innerHTML =
+      this.total_timeout_set - this.currentSet.stats.squads.B.total_timeout;
+    score.querySelectorAll(".change-score")[0].innerHTML =
+      this.total_change_set - this.currentSet.stats.squads.B.total_change;
   }
 
   /**

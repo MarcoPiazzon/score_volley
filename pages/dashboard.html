@@ -98,154 +98,121 @@
 
     </div>
 
-    <script type="module">
-        import { STAT } from '../script/enums.js';
+    <script type="module" src="../script/pages/dashboard/dashboard.js">
 
-        let players = [];
-        let currentStat = STAT.ATTACK_WIN;
-
-        const fileInput = document.getElementById('fileInput');
-        const filtersDiv = document.getElementById('filters');
-        const tableBody = document.getElementById('tableBody');
-        const statHeader = document.getElementById('statHeader');
-
-
-        const res = await fetch(API + "/teams", {
-            headers: {
-                Authorization: "Bearer " + TOKEN,
-            },
-        });
-
-        let team = await res.json();
-
-        team = team[0];
-        console.log(team);
-
-        loadPlayers(team.id);
-
-
-        async function loadPlayers(teamId) {
-            const [resA, resB] = await Promise.all([
-                fetch(API + `/teams/${teamId}/players`, {
-                    headers: { Authorization: "Bearer " + TOKEN },
-                }),
-            ]);
-
-            players = await resA.json();
-
-            console.log(players);
-            renderTable();
-            //renderTeam(".half.left", playersA);
-            //renderTeam(".half.right", playersB);
-        }
-
-        const res1 = await fetch(API + "/matches", {
-
-            headers: {
-                Authorization: "Bearer " + TOKEN,
-            },
-        });
-        const matches = await res1.json();
-
-        console.log(matches);
-
-        const container = document.getElementById("matches");
-
-        matches.forEach(m => {
-            console.log(m);
-            const div = document.createElement("div");
-            div.textContent = `Giornata ${m.numberday} — ${new Date(m.date).toLocaleDateString()}`;
-            div.onclick = () => openMatch(m.id);
-            container.appendChild(div);
-        });
-
-        async function openMatch(matchId) {
-            alert(matchId);
-            const res = await fetch(`http://localhost:3000/api/matches/${matchId}`, {
-                headers: {
-                    Authorization: "Bearer " + localStorage.getItem("token")
-                }
-            });
-
-            const match = await res.json();
-
-            localStorage.setItem("openMatch", JSON.stringify(match));
-
-            window.location.href = "timeline.html";
-        }
-
-        // --- Caricamento JSON ---
-        fileInput.addEventListener('change', e => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = () => {
-                const json = JSON.parse(reader.result);
-                players = extractPlayers(json);
-                renderTable();
-            };
-            reader.readAsText(file);
-        });
-
-        // --- Estrazione giocatori dal JSON ---
-        function extractPlayers(json) {
-            const squads = [json.match?.squadA, json.match?.squadB].filter(Boolean);
-            const result = [];
-
-            squads.forEach(squad => {
-                [...squad.players, ...squad.bench].forEach(p => {
-                    result.push({
-                        id: p.id,
-                        team: squad.name,
-                        stats: p.stats
-                    });
-                });
-            });
-
-            return result;
-        }
-
-        // --- Filtri ---
-        Object.values(STAT).forEach(stat => {
-            const btn = document.createElement('button');
-            btn.textContent = stat;
-            btn.onclick = () => {
-                document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentStat = stat;
-                renderTable();
-            };
-            if (stat === currentStat) btn.classList.add('active');
-            filtersDiv.appendChild(btn);
-        });
-
-        // --- Render tabella ---
-        function renderTable() {
-            if (!players.length) return;
-
-            statHeader.textContent = currentStat;
-
-            const sorted = [...players].sort((a, b) =>
-                (b.stats[currentStat] || 0) - (a.stats[currentStat] || 0)
-            );
-
-            tableBody.innerHTML = '';
-
-            sorted.forEach((p, index) => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-        <td>${index + 1}</td>
-        <td>${p.id}</td>
-        <td>${p.first_name}</td>
-        <td>${p.last_name}</td>
-        <td>${p.stats[currentStat] || 0}</td>
-      `;
-                tableBody.appendChild(tr);
-            });
-        }
     </script>
 
 </body>
+
+<div id="lineup-toast" class="toast hidden">
+    <div class="toast-content">
+
+        <!-- SINISTRA: LISTA GIOCATORI -->
+        <div class="players-list" id="available-players"></div>
+
+        <!-- DESTRA: META CAMPO -->
+        <div class="mini-court">
+
+            <div class="court-grid">
+                <div class="slot" data-pos="4"></div>
+                <div class="slot" data-pos="3"></div>
+                <div class="slot" data-pos="2"></div>
+
+                <div class="slot" data-pos="5"></div>
+                <div class="slot" data-pos="6"></div>
+                <div class="slot" data-pos="1"></div>
+            </div>
+
+            <div class="toast-actions">
+                <button id="cancel-lineup">Annulla</button>
+                <button id="confirm-lineup">Conferma</button>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+<style>
+    .toast {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+
+    .toast.hidden {
+        display: none;
+    }
+
+    .toast-content {
+        width: 900px;
+        height: 500px;
+        background: #111;
+        display: flex;
+        padding: 20px;
+        border-radius: 12px;
+        gap: 20px;
+    }
+
+    /* SINISTRA */
+    .players-list {
+        width: 40%;
+        background: #1c1c1c;
+        overflow-y: auto;
+        padding: 10px;
+        border-radius: 10px;
+    }
+
+    .player-item {
+        background: #333;
+        padding: 10px;
+        margin-bottom: 8px;
+        border-radius: 8px;
+        cursor: grab;
+    }
+
+    /* DESTRA */
+    .mini-court {
+        width: 60%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .court-grid {
+        flex: 1;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .slot {
+        background: #222;
+        border: 2px dashed #555;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .slot.filled {
+        border-style: solid;
+    }
+
+    .toast-actions {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 20px;
+    }
+</style>
+
+<script>
+
+</script>
 
 </html>

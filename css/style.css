@@ -145,6 +145,32 @@ header {
     margin: 0 8px;
 }
 
+.timeout-score {
+    width: 80px;
+    height: 80px;
+    background: #0f766e;
+    color: white;
+    font-size: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 8px;
+}
+
+.change-score {
+    width: 80px;
+    height: 80px;
+    background: #0f766e;
+    color: white;
+    font-size: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 8px;
+}
+
 .half {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
