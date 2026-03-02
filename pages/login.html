@@ -1,78 +1,536 @@
 <!DOCTYPE html>
-<html>
+<html lang="it">
 
 <head>
-    <title>Login Coach</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accedi — Volleyball Stats</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap"
+        rel="stylesheet">
     <style>
+        :root {
+            --bg: #0b0e17;
+            --surf-1: #121622;
+            --surf-2: #1a1f30;
+            --surf-3: #222840;
+            --border: rgba(255, 255, 255, .07);
+            --border-m: rgba(255, 255, 255, .13);
+            --border-h: rgba(255, 255, 255, .28);
+            --a: #3b8bff;
+            --a-dim: rgba(59, 139, 255, .14);
+            --green: #22d47a;
+            --green-dim: rgba(34, 212, 122, .12);
+            --red: #f04e4e;
+            --red-dim: rgba(240, 78, 78, .12);
+            --text: #e8eaf2;
+            --muted: #7a829a;
+            --subtle: #3c4260;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
         body {
-            font-family: Arial;
-            background: #0f172a;
+            height: 100%;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Barlow', sans-serif;
+            font-size: 14px;
+        }
+
+        /* ── Background decorativo ──────────────────────── */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 70% 50% at 60% 30%, rgba(59, 139, 255, .07) 0%, transparent 70%),
+                radial-gradient(ellipse 40% 40% at 20% 80%, rgba(167, 139, 250, .05) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        /* Grid decorativa */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, .018) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, .018) 1px, transparent 1px);
+            background-size: 32px 32px;
+            pointer-events: none;
+        }
+
+        /* ── Layout centrato ────────────────────────────── */
+        .page {
+            min-height: 100vh;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
-            height: 100vh;
-            color: white;
+            justify-content: center;
+            padding: 24px;
+            position: relative;
+            z-index: 1;
         }
 
-        .box {
-            background: #1e293b;
-            padding: 30px;
-            border-radius: 10px;
-            width: 300px;
-        }
-
-        input,
-        button {
+        /* ── Card login ─────────────────────────────────── */
+        .login-card {
             width: 100%;
-            padding: 10px;
-            margin-top: 10px;
+            max-width: 400px;
+            background: var(--surf-1);
+            border: 1px solid var(--border-m);
+            border-radius: 16px;
+            padding: 36px 32px 32px;
+            box-shadow:
+                0 0 0 1px rgba(255, 255, 255, .03),
+                0 24px 60px rgba(0, 0, 0, .5);
         }
 
-        button {
-            background: #22c55e;
+        /* ── Brand ──────────────────────────────────────── */
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+
+        .brand-mark {
+            width: 42px;
+            height: 42px;
+            background: var(--a);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 20px;
+            font-weight: 900;
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(59, 139, 255, .35);
+            flex-shrink: 0;
+        }
+
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+
+        .brand-name {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 20px;
+            font-weight: 900;
+            letter-spacing: .5px;
+            color: var(--text);
+            line-height: 1;
+        }
+
+        .brand-sub {
+            font-size: 11px;
+            color: var(--muted);
+            letter-spacing: .3px;
+        }
+
+        /* ── Titolo form ────────────────────────────────── */
+        .card-title {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: .5px;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+
+        .card-sub {
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 26px;
+            line-height: 1.5;
+        }
+
+        /* ── Form ───────────────────────────────────────── */
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
+        .field:last-of-type {
+            margin-bottom: 24px;
+        }
+
+        .field-label {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .field-input-wrap {
+            position: relative;
+        }
+
+        .field-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 14px;
+            pointer-events: none;
+            opacity: .5;
+        }
+
+        .field-input {
+            width: 100%;
+            padding: 10px 12px 10px 36px;
+            background: var(--surf-2);
+            border: 1px solid var(--border-m);
+            border-radius: 8px;
+            color: var(--text);
+            font-family: 'Barlow', sans-serif;
+            font-size: 14px;
+            outline: none;
+            transition: border-color .15s, box-shadow .15s;
+            -webkit-appearance: none;
+        }
+
+        .field-input::placeholder {
+            color: var(--subtle);
+        }
+
+        .field-input:focus {
+            border-color: var(--a);
+            box-shadow: 0 0 0 3px rgba(59, 139, 255, .12);
+        }
+
+        .field-input.error {
+            border-color: var(--red);
+            box-shadow: 0 0 0 3px rgba(240, 78, 78, .1);
+        }
+
+        /* Toggle password visibility */
+        .pwd-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
             border: none;
-            font-weight: bold;
+            color: var(--subtle);
             cursor: pointer;
+            font-size: 14px;
+            padding: 4px;
+            transition: color .14s;
+        }
+
+        .pwd-toggle:hover {
+            color: var(--muted);
+        }
+
+        /* ── Error message ──────────────────────────────── */
+        #error-msg {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            background: var(--red-dim);
+            border: 1px solid rgba(240, 78, 78, .25);
+            border-radius: 8px;
+            font-size: 13px;
+            color: var(--red);
+            margin-bottom: 16px;
+            animation: fadeIn .2s ease;
+        }
+
+        #error-msg.visible {
+            display: flex;
+        }
+
+        /* ── Submit button ──────────────────────────────── */
+        .btn-login {
+            width: 100%;
+            padding: 12px;
+            background: var(--a);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background .14s, transform .1s, box-shadow .14s;
+            box-shadow: 0 4px 16px rgba(59, 139, 255, .3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-login:hover:not(:disabled) {
+            background: #4d98ff;
+            box-shadow: 0 6px 22px rgba(59, 139, 255, .4);
+        }
+
+        .btn-login:active:not(:disabled) {
+            transform: scale(.98);
+        }
+
+        .btn-login:disabled {
+            opacity: .6;
+            cursor: not-allowed;
+        }
+
+        /* Spinner dentro il button */
+        .btn-spinner {
+            display: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, .3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin .6s linear infinite;
+            margin: 0 auto;
+        }
+
+        .btn-login.loading .btn-text {
+            display: none;
+        }
+
+        .btn-login.loading .btn-spinner {
+            display: block;
+        }
+
+        /* ── Footer card ────────────────────────────────── */
+        .card-footer {
+            margin-top: 20px;
+            padding-top: 18px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            font-size: 11px;
+            color: var(--subtle);
+            line-height: 1.6;
+        }
+
+        .card-footer a {
+            color: var(--a);
+            text-decoration: none;
+        }
+
+        .card-footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* ── Animazioni ─────────────────────────────────── */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-4px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .login-card {
+            animation: fadeIn .3s ease;
         }
     </style>
 </head>
 
 <body>
+    <div class="page">
+        <div class="login-card">
 
-    <div class="box">
-        <h2>🏐 Coach Login</h2>
-        <input id="email" placeholder="Email">
-        <input id="password" type="password" placeholder="Password">
-        <button id="loginBtn">Login</button>
-        <div id="error"></div>
+            <!-- Brand -->
+            <div class="brand">
+                <div class="brand-mark">V</div>
+                <div class="brand-text">
+                    <div class="brand-name">Volleyball Stats</div>
+                    <div class="brand-sub">Gestione squadra &amp; analisi partite</div>
+                </div>
+            </div>
+
+            <!-- Titolo -->
+            <div class="card-title">Accedi al tuo account</div>
+            <div class="card-sub">Inserisci le credenziali fornite dall'amministratore.</div>
+
+            <!-- Errore -->
+            <div id="error-msg">
+                <span>⚠</span>
+                <span id="error-text">Credenziali non valide</span>
+            </div>
+
+            <!-- Form -->
+            <div class="field">
+                <label class="field-label" for="username">Username</label>
+                <div class="field-input-wrap">
+                    <span class="field-icon">👤</span>
+                    <input class="field-input" type="text" id="username" name="username" autocomplete="username"
+                        placeholder="Il tuo username" autofocus>
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="field-label" for="password">Password</label>
+                <div class="field-input-wrap">
+                    <span class="field-icon">🔒</span>
+                    <input class="field-input" type="password" id="password" name="password"
+                        autocomplete="current-password" placeholder="••••••••">
+                    <button class="pwd-toggle" type="button" id="pwd-toggle" aria-label="Mostra/nascondi password">
+                        👁
+                    </button>
+                </div>
+            </div>
+
+            <!-- Submit -->
+            <button class="btn-login" id="btn-login" type="button">
+                <span class="btn-text">Accedi</span>
+                <div class="btn-spinner"></div>
+            </button>
+
+            <!-- Footer -->
+            <div class="card-footer">
+                Problemi di accesso? Contatta il tuo amministratore.<br>
+                <a href="mailto:admin@volleyball.local">admin@volleyball.local</a>
+            </div>
+
+        </div>
     </div>
 
-    <script>
-        document.getElementById("loginBtn").onclick = async () => {
-            const email = document.getElementById("email").value;
-            const password = document.getElementById("password").value;
+    <script type="module">
+        import api from './api.js';
 
-            console.log(email);
-            console.log(password);
-            const res = await fetch("http://localhost:3000/api/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, password })
-            });
+        const API_BASE = 'http://localhost:3000/api';
 
-            const data = await res.json();
+        // Se già loggato, redirect diretto
+        if (localStorage.getItem('token')) {
+            verifyAndRedirect();
+        }
 
-            if (data.token) {
-                localStorage.setItem("token", data.token);
-                localStorage.setItem("user", JSON.stringify(data.user));
-                window.location.href = "home.html";
-            } else {
-                alert(data.error);
-                error.textContent = "Login fallito";
+        async function verifyAndRedirect() {
+            try {
+                await api.auth.me();
+                window.location.replace('dashboard.html');
+            } catch {
+                // Token scaduto o non valido: rimaniamo sul login
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
             }
-        };
-    </script>
+        }
 
+        // ── Elementi DOM ────────────────────────────────────────────────
+        const usernameEl = document.getElementById('username');
+        const passwordEl = document.getElementById('password');
+        const btnLogin = document.getElementById('btn-login');
+        const errorMsg = document.getElementById('error-msg');
+        const errorText = document.getElementById('error-text');
+        const pwdToggle = document.getElementById('pwd-toggle');
+
+        // ── Toggle visibilità password ──────────────────────────────────
+        pwdToggle.addEventListener('click', () => {
+            const isHidden = passwordEl.type === 'password';
+            passwordEl.type = isHidden ? 'text' : 'password';
+            pwdToggle.textContent = isHidden ? '🙈' : '👁';
+        });
+
+        // ── Invio con Enter ─────────────────────────────────────────────
+        [usernameEl, passwordEl].forEach(el => {
+            el.addEventListener('keydown', e => {
+                if (e.key === 'Enter') handleLogin();
+                // Nasconde errore mentre si digita
+                hideError();
+                el.classList.remove('error');
+            });
+        });
+
+        // ── Click login ─────────────────────────────────────────────────
+        btnLogin.addEventListener('click', handleLogin);
+
+        // ── Handler principale ──────────────────────────────────────────
+        async function handleLogin() {
+            const username = usernameEl.value.trim();
+            const password = passwordEl.value;
+
+            // Validazione client
+            if (!username) {
+                showError('Inserisci il tuo username.');
+                usernameEl.classList.add('error');
+                usernameEl.focus();
+                return;
+            }
+            if (!password) {
+                showError('Inserisci la tua password.');
+                passwordEl.classList.add('error');
+                passwordEl.focus();
+                return;
+            }
+
+            setLoading(true);
+
+            try {
+                const { token, user } = await api.auth.login(username, password);
+
+                // Salva token e dati utente in localStorage
+                localStorage.setItem('token', token);
+                localStorage.setItem('user', JSON.stringify(user));
+
+                // Redirect alla dashboard (o alla pagina richiesta in origine)
+                const returnTo = new URLSearchParams(window.location.search).get('returnTo');
+                window.location.replace(returnTo || 'dashboard.html');
+
+            } catch (err) {
+                setLoading(false);
+
+                // Messaggi di errore specifici per status HTTP
+                if (err.status === 401) {
+                    showError('Username o password non corretti.');
+                    passwordEl.value = '';
+                    passwordEl.classList.add('error');
+                    usernameEl.classList.add('error');
+                    usernameEl.focus();
+                } else if (err.status === 403) {
+                    showError('Account disattivato. Contatta l\'amministratore.');
+                } else {
+                    showError('Impossibile connettersi al server. Riprova tra qualche momento.');
+                }
+            }
+        }
+
+        // ── Utility ─────────────────────────────────────────────────────
+        function setLoading(loading) {
+            btnLogin.classList.toggle('loading', loading);
+            btnLogin.disabled = loading;
+            usernameEl.disabled = loading;
+            passwordEl.disabled = loading;
+        }
+
+        function showError(msg) {
+            errorText.textContent = msg;
+            errorMsg.classList.add('visible');
+        }
+
+        function hideError() {
+            errorMsg.classList.remove('visible');
+        }
+    </script>
 </body>
 
 </html>
