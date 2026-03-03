@@ -9,16 +9,38 @@
 require("dotenv").config();
 
 const express = require("express");
-const cors = require("cors");
+const path = require("path");
 const app = express();
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5500",
-    credentials: true,
-  }),
-);
+
+const ROOT = path.join(__dirname, "..");
+const PUBLIC = path.join(ROOT, "public");
+const FRONTEND = path.join(ROOT, "frontend");
+
+app.use(express.static(PUBLIC));
+
+app.use("/frontend", express.static(FRONTEND));
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(PUBLIC, "login.html"));
+});
+
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ extended: false }));
+
+// ── Request logger (solo sviluppo) ───────────────────────────────
+if (process.env.NODE_ENV !== "production") {
+  app.use((req, _res, next) => {
+    console.log(
+      "[" +
+        new Date().toISOString() +
+        "] " +
+        req.method +
+        " " +
+        req.originalUrl,
+    );
+    next();
+  });
+}
 
 // ── Routes ─────────────────────────────────────────────────────
 app.use("/api/auth", require("./routes/auth")); // invariato

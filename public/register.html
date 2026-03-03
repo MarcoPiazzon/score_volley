@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrazione — Volleyball Stats</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0b0e17;
+            --surf-1: #121622;
+            --surf-2: #1a1f30;
+            --surf-3: #222840;
+            --border: rgba(255, 255, 255, .07);
+            --border-m: rgba(255, 255, 255, .13);
+            --border-h: rgba(255, 255, 255, .28);
+            --a: #3b8bff;
+            --a-dim: rgba(59, 139, 255, .14);
+            --green: #22d47a;
+            --green-dim: rgba(34, 212, 122, .12);
+            --amber: #f5c542;
+            --amber-dim: rgba(245, 197, 66, .12);
+            --red: #f04e4e;
+            --red-dim: rgba(240, 78, 78, .12);
+            --purple: #a78bfa;
+            --purple-dim: rgba(167, 139, 250, .12);
+            --text: #e8eaf2;
+            --muted: #7a829a;
+            --subtle: #3c4260;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            min-height: 100%;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Barlow', sans-serif;
+            font-size: 14px;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 70% 50% at 60% 30%, rgba(59, 139, 255, .07) 0%, transparent 70%),
+                radial-gradient(ellipse 40% 40% at 20% 80%, rgba(167, 139, 250, .05) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, .018) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, .018) 1px, transparent 1px);
+            background-size: 32px 32px;
+            pointer-events: none;
+        }
+
+        /* ── Layout ─────────────────────────────────────── */
+        .page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 32px 16px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ── Card ───────────────────────────────────────── */
+        .card {
+            width: 100%;
+            max-width: 500px;
+            background: var(--surf-1);
+            border: 1px solid var(--border-m);
+            border-radius: 16px;
+            padding: 36px 32px 32px;
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, .03), 0 24px 60px rgba(0, 0, 0, .5);
+            animation: fadeUp .3s ease;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ── Brand ──────────────────────────────────────── */
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 26px;
+        }
+
+        .brand-mark {
+            width: 42px;
+            height: 42px;
+            background: var(--a);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 20px;
+            font-weight: 900;
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(59, 139, 255, .35);
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+
+        .brand-name {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 20px;
+            font-weight: 900;
+            color: var(--text);
+            line-height: 1;
+        }
+
+        .brand-sub {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        /* ── Titolo ─────────────────────────────────────── */
+        .card-title {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: .5px;
+            margin-bottom: 4px;
+        }
+
+        .card-sub {
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        /* ── Selector ruolo ─────────────────────────────── */
+        .role-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 22px;
+        }
+
+        .role-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 14px 10px;
+            background: var(--surf-2);
+            border: 2px solid var(--border-m);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all .15s;
+            position: relative;
+        }
+
+        .role-btn:hover {
+            border-color: var(--border-h);
+            background: var(--surf-3);
+        }
+
+        .role-btn.active.coach {
+            border-color: var(--a);
+            background: var(--a-dim);
+        }
+
+        .role-btn.active.collab {
+            border-color: var(--purple);
+            background: var(--purple-dim);
+        }
+
+        .role-btn-icon {
+            font-size: 22px;
+            line-height: 1;
+        }
+
+        .role-btn-label {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: .5px;
+            text-transform: uppercase;
+        }
+
+        .role-btn.active.coach .role-btn-label {
+            color: var(--a);
+        }
+
+        .role-btn.active.collab .role-btn-label {
+            color: var(--purple);
+        }
+
+        .role-btn-desc {
+            font-size: 11px;
+            color: var(--muted);
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        .role-check {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: 700;
+            opacity: 0;
+            transition: opacity .15s;
+        }
+
+        .role-btn.active.coach .role-check {
+            background: var(--a);
+            color: #fff;
+            opacity: 1;
+        }
+
+        .role-btn.active.collab .role-check {
+            background: var(--purple);
+            color: #fff;
+            opacity: 1;
+        }
+
+        /* ── Separatore sezione ─────────────────────────── */
+        .section-sep {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 18px 0 14px;
+        }
+
+        .section-sep-line {
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .section-sep-label {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--subtle);
+            flex-shrink: 0;
+        }
+
+        /* ── Form ───────────────────────────────────────── */
+        .fields-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .fields-grid .field-full {
+            grid-column: 1 / -1;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .field-label {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .field-label .required {
+            color: var(--red);
+            margin-left: 2px;
+        }
+
+        .input-wrap {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 11px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 13px;
+            opacity: .45;
+            pointer-events: none;
+        }
+
+        .field-input {
+            width: 100%;
+            padding: 9px 12px 9px 34px;
+            background: var(--surf-2);
+            border: 1px solid var(--border-m);
+            border-radius: 8px;
+            color: var(--text);
+            font-family: 'Barlow', sans-serif;
+            font-size: 13px;
+            outline: none;
+            transition: border-color .15s, box-shadow .15s;
+            -webkit-appearance: none;
+        }
+
+        .field-input::placeholder {
+            color: var(--subtle);
+        }
+
+        .field-input:focus {
+            border-color: var(--a);
+            box-shadow: 0 0 0 3px rgba(59, 139, 255, .12);
+        }
+
+        .field-input.error {
+            border-color: var(--red);
+            box-shadow: 0 0 0 3px rgba(240, 78, 78, .1);
+        }
+
+        .field-input.ok {
+            border-color: var(--green);
+        }
+
+        /* Select senza icona sinistra */
+        .field-input.no-icon {
+            padding-left: 12px;
+        }
+
+        .pwd-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--subtle);
+            cursor: pointer;
+            font-size: 13px;
+            padding: 4px;
+            transition: color .14s;
+        }
+
+        .pwd-toggle:hover {
+            color: var(--muted);
+        }
+
+        /* Indicatore forza password */
+        .pwd-strength {
+            display: flex;
+            gap: 3px;
+            margin-top: 5px;
+        }
+
+        .pwd-bar {
+            flex: 1;
+            height: 3px;
+            border-radius: 2px;
+            background: var(--surf-3);
+            transition: background .2s;
+        }
+
+        .pwd-bar.weak {
+            background: var(--red);
+        }
+
+        .pwd-bar.medium {
+            background: var(--amber);
+        }
+
+        .pwd-bar.strong {
+            background: var(--green);
+        }
+
+        .pwd-strength-label {
+            font-size: 10px;
+            color: var(--muted);
+            margin-top: 3px;
+        }
+
+        /* Hint campo ────────────── */
+        .field-hint {
+            font-size: 11px;
+            color: var(--subtle);
+            margin-top: 3px;
+            line-height: 1.4;
+        }
+
+        /* ── Campo team (solo collaboratori) ────────────── */
+        #team-field {
+            display: none;
+        }
+
+        #team-field.visible {
+            display: flex;
+        }
+
+        /* ── Codice invito ──────────────────────────────── */
+        #invite-row {
+            display: none;
+        }
+
+        #invite-row.visible {
+            display: grid;
+        }
+
+        /* ── Messaggio errore globale ───────────────────── */
+        #error-msg {
+            display: none;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 10px 12px;
+            margin-bottom: 16px;
+            background: var(--red-dim);
+            border: 1px solid rgba(240, 78, 78, .25);
+            border-radius: 8px;
+            font-size: 13px;
+            color: var(--red);
+            animation: fadeUp .2s ease;
+        }
+
+        #error-msg.visible {
+            display: flex;
+        }
+
+        /* ── Submit ─────────────────────────────────────── */
+        .btn-submit {
+            width: 100%;
+            margin-top: 22px;
+            padding: 12px;
+            background: var(--a);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background .14s, box-shadow .14s, transform .1s;
+            box-shadow: 0 4px 16px rgba(59, 139, 255, .3);
+            position: relative;
+        }
+
+        .btn-submit:hover:not(:disabled) {
+            background: #4d98ff;
+            box-shadow: 0 6px 22px rgba(59, 139, 255, .4);
+        }
+
+        .btn-submit:active:not(:disabled) {
+            transform: scale(.98);
+        }
+
+        .btn-submit:disabled {
+            opacity: .6;
+            cursor: not-allowed;
+        }
+
+        .btn-submit.loading .btn-text {
+            display: none;
+        }
+
+        .btn-submit.loading .btn-spinner {
+            display: block;
+        }
+
+        .btn-spinner {
+            display: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, .3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin .6s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ── Footer ─────────────────────────────────────── */
+        .card-footer {
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            font-size: 12px;
+            color: var(--subtle);
+        }
+
+        .card-footer a {
+            color: var(--a);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .card-footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* ── Schermata successo ─────────────────────────── */
+        #success-screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+            padding: 10px 0 4px;
+        }
+
+        #success-screen.visible {
+            display: flex;
+        }
+
+        .success-icon {
+            font-size: 48px;
+            animation: popIn .4s ease;
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+
+            80% {
+                transform: scale(1.1);
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .success-title {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--green);
+        }
+
+        .success-sub {
+            font-size: 13px;
+            color: var(--muted);
+            text-align: center;
+            line-height: 1.6;
+            max-width: 320px;
+        }
+
+        .btn-go {
+            margin-top: 8px;
+            padding: 11px 28px;
+            background: var(--green-dim);
+            border: 1px solid var(--green);
+            border-radius: 8px;
+            color: var(--green);
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: .5px;
+            cursor: pointer;
+            transition: background .14s;
+        }
+
+        .btn-go:hover {
+            background: rgba(34, 212, 122, .2);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+        <div class="card" id="card">
+
+            <!-- Brand -->
+            <div class="brand">
+                <div class="brand-mark" onclick="window.location.href='login.html'">V</div>
+                <div>
+                    <div class="brand-name">Volleyball Stats</div>
+                    <div class="brand-sub">Crea il tuo account</div>
+                </div>
+            </div>
+
+            <!-- Form principale -->
+            <div id="form-area">
+                <div class="card-title">Registrazione</div>
+                <div class="card-sub">Compila i dati per creare il tuo account.</div>
+
+                <!-- Errore globale -->
+                <div id="error-msg"><span>⚠</span><span id="error-text"></span></div>
+
+                <!-- ── Selezione ruolo ──────────────────────── -->
+                <div class="section-sep">
+                    <div class="section-sep-line"></div>
+                    <span class="section-sep-label">Tipo di account</span>
+                    <div class="section-sep-line"></div>
+                </div>
+
+                <div class="role-selector">
+                    <div class="role-btn coach active" id="btn-coach" onclick="setRole('coach')">
+                        <div class="role-check">✓</div>
+                        <div class="role-btn-icon">🏋️</div>
+                        <div class="role-btn-label">Coach</div>
+                        <div class="role-btn-desc">Allenatore principale<br>Accesso completo</div>
+                    </div>
+                    <div class="role-btn collab" id="btn-collab" onclick="setRole('collaborator')">
+                        <div class="role-check">✓</div>
+                        <div class="role-btn-icon">📊</div>
+                        <div class="role-btn-label">Collaboratore</div>
+                        <div class="role-btn-desc">Assistente, analista<br>Accesso a una squadra</div>
+                    </div>
+                </div>
+
+                <!-- ── Dati personali ───────────────────────── -->
+                <div class="section-sep">
+                    <div class="section-sep-line"></div>
+                    <span class="section-sep-label">Dati personali</span>
+                    <div class="section-sep-line"></div>
+                </div>
+
+                <div class="fields-grid">
+                    <!-- Nome -->
+                    <div class="field">
+                        <label class="field-label" for="name">Nome <span class="required">*</span></label>
+                        <div class="input-wrap">
+                            <span class="input-icon">🏷</span>
+                            <input class="field-input" type="text" id="name" placeholder="Marco"
+                                autocomplete="given-name">
+                        </div>
+                    </div>
+
+                    <!-- Cognome -->
+                    <div class="field">
+                        <label class="field-label" for="surname">Cognome <span class="required">*</span></label>
+                        <div class="input-wrap">
+                            <span class="input-icon">🏷</span>
+                            <input class="field-input" type="text" id="surname" placeholder="Rossi"
+                                autocomplete="family-name">
+                        </div>
+                    </div>
+
+                    <!-- Telefono -->
+                    <div class="field field-full">
+                        <label class="field-label" for="phone">Telefono <span
+                                style="color:var(--subtle);font-weight:400;text-transform:none">(opzionale)</span></label>
+                        <div class="input-wrap">
+                            <span class="input-icon">📞</span>
+                            <input class="field-input" type="tel" id="phone" placeholder="+39 333 0000000"
+                                autocomplete="tel">
+                        </div>
+                    </div>
+
+                    <!-- Squadra (solo collaboratori) -->
+                    <div class="field field-full" id="team-field">
+                        <label class="field-label" for="team-select">Squadra <span class="required">*</span></label>
+                        <div class="input-wrap">
+                            <select class="field-input no-icon" id="team-select">
+                                <option value="">— Caricamento squadre… —</option>
+                            </select>
+                        </div>
+                        <span class="field-hint">Puoi accedere solo ai dati di questa squadra.</span>
+                    </div>
+
+                    <!-- Ruolo collaboratore -->
+                    <div class="field field-full" id="role-label-field" style="display:none">
+                        <label class="field-label" for="role-label">Ruolo nel team <span
+                                style="color:var(--subtle);font-weight:400;text-transform:none">(opzionale)</span></label>
+                        <div class="input-wrap">
+                            <span class="input-icon">🎯</span>
+                            <input class="field-input" type="text" id="role-label"
+                                placeholder="es. Video analyst, Assistente allenatore">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Credenziali ───────────────────────────── -->
+                <div class="section-sep">
+                    <div class="section-sep-line"></div>
+                    <span class="section-sep-label">Credenziali di accesso</span>
+                    <div class="section-sep-line"></div>
+                </div>
+
+                <div class="fields-grid">
+                    <!-- Username -->
+                    <div class="field field-full">
+                        <label class="field-label" for="username">Username <span class="required">*</span></label>
+                        <div class="input-wrap">
+                            <span class="input-icon">👤</span>
+                            <input class="field-input" type="text" id="username" placeholder="marco.rossi"
+                                autocomplete="username" spellcheck="false">
+                        </div>
+                        <span class="field-hint">Lettere, numeri, _ . - (min. 3 caratteri)</span>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="field field-full">
+                        <label class="field-label" for="email">Email <span class="required">*</span></label>
+                        <div class="input-wrap">
+                            <span class="input-icon">✉️</span>
+                            <input class="field-input" type="email" id="email" placeholder="marco@esempio.it"
+                                autocomplete="email">
+                        </div>
+                    </div>
+
+                    <!-- Password -->
+                    <div class="field field-full">
+                        <label class="field-label" for="password">Password <span class="required">*</span></label>
+                        <div class="input-wrap">
+                            <span class="input-icon">🔒</span>
+                            <input class="field-input" type="password" id="password" autocomplete="new-password"
+                                placeholder="••••••••">
+                            <button class="pwd-toggle" type="button" id="pwd-toggle-1">👁</button>
+                        </div>
+                        <!-- Barre forza password -->
+                        <div class="pwd-strength" id="pwd-strength">
+                            <div class="pwd-bar" id="bar-1"></div>
+                            <div class="pwd-bar" id="bar-2"></div>
+                            <div class="pwd-bar" id="bar-3"></div>
+                            <div class="pwd-bar" id="bar-4"></div>
+                        </div>
+                        <span class="pwd-strength-label" id="pwd-strength-label">Min. 8 caratteri, maiuscola, numero,
+                            simbolo</span>
+                    </div>
+
+                    <!-- Conferma password -->
+                    <div class="field field-full">
+                        <label class="field-label" for="confirm-password">Conferma Password <span
+                                class="required">*</span></label>
+                        <div class="input-wrap">
+                            <span class="input-icon">🔒</span>
+                            <input class="field-input" type="password" id="confirm-password" autocomplete="new-password"
+                                placeholder="••••••••">
+                            <button class="pwd-toggle" type="button" id="pwd-toggle-2">👁</button>
+                        </div>
+                    </div>
+
+                    <!-- Codice invito -->
+                    <div class="field field-full fields-grid" id="invite-row" style="display:none">
+                        <div class="section-sep" style="grid-column:1/-1;margin:4px 0 10px">
+                            <div class="section-sep-line"></div>
+                            <span class="section-sep-label">Accesso</span>
+                            <div class="section-sep-line"></div>
+                        </div>
+                        <div class="field field-full">
+                            <label class="field-label" for="invite-code">Codice di invito <span
+                                    class="required">*</span></label>
+                            <div class="input-wrap">
+                                <span class="input-icon">🎟</span>
+                                <input class="field-input" type="text" id="invite-code" placeholder="VOLLEY2025"
+                                    autocomplete="off" spellcheck="false"
+                                    style="text-transform:uppercase;letter-spacing:2px">
+                            </div>
+                            <span class="field-hint">Ricevuto dall'amministratore del sistema.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit -->
+                <button class="btn-submit" id="btn-submit" type="button">
+                    <span class="btn-text">Crea account</span>
+                    <div class="btn-spinner"></div>
+                </button>
+
+                <!-- Footer -->
+                <div class="card-footer">
+                    Hai già un account? <a href="login.html">Accedi qui</a>
+                </div>
+            </div>
+
+            <!-- ── Schermata successo ──────────────────────── -->
+            <div id="success-screen">
+                <div class="success-icon">🎉</div>
+                <div class="success-title">Account creato!</div>
+                <div class="success-sub" id="success-text">
+                    Benvenuto! Il tuo account è pronto.<br>
+                    Verrai reindirizzato alla dashboard tra un momento…
+                </div>
+                <button class="btn-go" onclick="window.location.href='dashboard.html'">
+                    Vai alla dashboard →
+                </button>
+            </div>
+
+        </div><!-- /card -->
+    </div><!-- /page -->
+
+    <script type="module">
+        import api from '../frontend/api.js';
+
+        // ── Stato ───────────────────────────────────────────────────────
+        let selectedRole = 'coach';
+        let publicRegister = true;   // aggiornato al caricamento
+
+        // ── Elementi ────────────────────────────────────────────────────
+        const nameEl = document.getElementById('name');
+        const surnameEl = document.getElementById('surname');
+        const phoneEl = document.getElementById('phone');
+        const teamSelectEl = document.getElementById('team-select');
+        const teamFieldEl = document.getElementById('team-field');
+        const roleLabelFieldEl = document.getElementById('role-label-field');
+        const roleLabelEl = document.getElementById('role-label');
+        const usernameEl = document.getElementById('username');
+        const emailEl = document.getElementById('email');
+        const passwordEl = document.getElementById('password');
+        const confirmEl = document.getElementById('confirm-password');
+        const inviteRowEl = document.getElementById('invite-row');
+        const inviteCodeEl = document.getElementById('invite-code');
+        const btnSubmit = document.getElementById('btn-submit');
+        const errorMsg = document.getElementById('error-msg');
+        const errorText = document.getElementById('error-text');
+
+        // ── Inizializzazione ────────────────────────────────────────────
+        (async () => {
+            // Controlla se l'utente è già loggato
+            const token = localStorage.getItem('token');
+            if (token) {
+                try { await api.auth.me(); window.location.replace('dashboard.html'); return; }
+                catch { localStorage.removeItem('token'); }
+            }
+
+            // Carica le squadre disponibili
+            await loadTeams();
+
+            // Controlla se la registrazione pubblica è abilitata
+            await checkRegistrationMode();
+        })();
+
+        async function loadTeams() {
+            try {
+                const teams = await api.teams.getAll?.() ?? [];
+                teamSelectEl.innerHTML = teams.length
+                    ? `<option value="">— Seleziona la tua squadra —</option>` +
+                    teams.map(t => `<option value="${t.id}">${t.name}${t.city ? ` (${t.city})` : ''}</option>`).join('')
+                    : `<option value="">Nessuna squadra disponibile</option>`;
+            } catch {
+                teamSelectEl.innerHTML = `<option value="">Impossibile caricare le squadre</option>`;
+            }
+        }
+
+        async function checkRegistrationMode() {
+            try {
+                const res = await fetch('/api/auth/register-info');
+                if (res.ok) {
+                    const data = await res.json();
+                    publicRegister = data.public;
+                    if (!publicRegister) {
+                        inviteRowEl.style.display = 'grid';
+                    }
+                }
+            } catch {
+                // Se la route non esiste, assumiamo registrazione con codice
+                inviteRowEl.style.display = 'grid';
+            }
+        }
+
+        // ── Selettore ruolo ─────────────────────────────────────────────
+        window.setRole = function (role) {
+            selectedRole = role;
+
+            document.getElementById('btn-coach').classList.toggle('active', role === 'coach');
+            document.getElementById('btn-collab').classList.toggle('active', role === 'collaborator');
+
+            // Mostra/nascondi campi specifici
+            const isCollab = role === 'collaborator';
+            teamFieldEl.style.display = isCollab ? 'flex' : 'none';
+            roleLabelFieldEl.style.display = isCollab ? 'flex' : 'none';
+            teamFieldEl.classList.toggle('visible', isCollab);
+
+            // Cambia colore del bottone submit
+            btnSubmit.style.background = isCollab ? '#a78bfa' : '';
+            btnSubmit.style.boxShadow = isCollab ? '0 4px 16px rgba(167,139,250,.3)' : '';
+        };
+
+        // ── Toggle password ─────────────────────────────────────────────
+        document.getElementById('pwd-toggle-1').addEventListener('click', () => {
+            const h = passwordEl.type === 'password';
+            passwordEl.type = h ? 'text' : 'password';
+            document.getElementById('pwd-toggle-1').textContent = h ? '🙈' : '👁';
+        });
+        document.getElementById('pwd-toggle-2').addEventListener('click', () => {
+            const h = confirmEl.type === 'password';
+            confirmEl.type = h ? 'text' : 'password';
+            document.getElementById('pwd-toggle-2').textContent = h ? '🙈' : '👁';
+        });
+
+        // ── Forza password ──────────────────────────────────────────────
+        passwordEl.addEventListener('input', updatePasswordStrength);
+
+        function updatePasswordStrength() {
+            const pwd = passwordEl.value;
+            let score = 0;
+            if (pwd.length >= 8) score++;
+            if (/[A-Z]/.test(pwd)) score++;
+            if (/[0-9]/.test(pwd)) score++;
+            if (/[^A-Za-z0-9]/.test(pwd)) score++;
+
+            const bars = [1, 2, 3, 4].map(i => document.getElementById(`bar-${i}`));
+            const labels = ['', 'Debole', 'Discreta', 'Buona', 'Ottima'];
+            const colors = ['', 'weak', 'weak', 'medium', 'strong'];
+
+            bars.forEach((b, i) => {
+                b.className = 'pwd-bar' + (i < score ? ` ${colors[score]}` : '');
+            });
+
+            const lbl = document.getElementById('pwd-strength-label');
+            lbl.textContent = score > 0 ? `Forza: ${labels[score]}` : 'Min. 8 caratteri, maiuscola, numero, simbolo';
+            lbl.style.color = score >= 3 ? 'var(--green)' : score === 2 ? 'var(--amber)' : score === 1 ? 'var(--red)' : 'var(--subtle)';
+        }
+
+        // ── Reset errori all'input ──────────────────────────────────────
+        [nameEl, surnameEl, usernameEl, emailEl, passwordEl, confirmEl, inviteCodeEl]
+            .forEach(el => el?.addEventListener('input', () => {
+                el.classList.remove('error');
+                hideError();
+            }));
+
+        // ── Uppercase automatico codice invito ──────────────────────────
+        inviteCodeEl.addEventListener('input', () => {
+            inviteCodeEl.value = inviteCodeEl.value.toUpperCase();
+        });
+
+        // ── Submit ──────────────────────────────────────────────────────
+        btnSubmit.addEventListener('click', handleRegister);
+
+        // Invio con Enter
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && document.getElementById('form-area').style.display !== 'none') {
+                handleRegister();
+            }
+        });
+
+        async function handleRegister() {
+            hideError();
+
+            // Raccolta valori
+            const data = {
+                name: nameEl.value.trim(),
+                surname: surnameEl.value.trim(),
+                phone: phoneEl.value.trim(),
+                username: usernameEl.value.trim(),
+                email: emailEl.value.trim(),
+                password: passwordEl.value,
+                confirm_password: confirmEl.value,
+                role: selectedRole,
+                invite_code: inviteCodeEl.value.trim(),
+                team_id: selectedRole === 'collaborator' ? teamSelectEl.value : undefined,
+                role_label: selectedRole === 'collaborator' ? roleLabelEl.value.trim() : undefined,
+            };
+
+            // Validazione client-side
+            if (!data.name) { markError(nameEl, 'Inserisci il nome'); return; }
+            if (!data.surname) { markError(surnameEl, 'Inserisci il cognome'); return; }
+            if (!data.username) { markError(usernameEl, 'Inserisci un username'); return; }
+            if (!data.email) { markError(emailEl, 'Inserisci l\'email'); return; }
+            if (!data.password) { markError(passwordEl, 'Inserisci la password'); return; }
+            if (data.password !== data.confirm_password) {
+                markError(confirmEl, 'Le due password non coincidono');
+                return;
+            }
+            if (selectedRole === 'collaborator' && !data.team_id) {
+                markError(teamSelectEl, 'Seleziona la tua squadra');
+                return;
+            }
+
+            setLoading(true);
+
+            try {
+                const { token, user } = await api.auth.register(data);
+
+                // Salva token
+                localStorage.setItem('token', token);
+                localStorage.setItem('user', JSON.stringify(user));
+
+                // Mostra successo
+                showSuccess(user);
+
+                // Redirect automatico dopo 2.5s
+                setTimeout(() => window.location.replace('dashboard.html'), 2500);
+
+            } catch (err) {
+                setLoading(false);
+
+                const field = err.field;
+                const msg = err.message || 'Errore durante la registrazione. Riprova.';
+
+                if (field === 'username' || field === 'email') markError(usernameEl, msg);
+                else if (field === 'password') markError(passwordEl, msg);
+                else if (field === 'confirm_password') markError(confirmEl, msg);
+                else if (field === 'team_id') markError(teamSelectEl, msg);
+                else if (field === 'invite_code') markError(inviteCodeEl, msg);
+                else showError(msg);
+            }
+        }
+
+        // ── Utility ─────────────────────────────────────────────────────
+        function setLoading(loading) {
+            btnSubmit.classList.toggle('loading', loading);
+            btnSubmit.disabled = loading;
+        }
+
+        function markError(el, msg) {
+            el?.classList.add('error');
+            el?.focus();
+            showError(msg);
+        }
+
+        function showError(msg) {
+            errorText.textContent = msg;
+            errorMsg.classList.add('visible');
+            errorMsg.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function hideError() {
+            errorMsg.classList.remove('visible');
+        }
+
+        function showSuccess(user) {
+            document.getElementById('form-area').style.display = 'none';
+            const screen = document.getElementById('success-screen');
+            screen.classList.add('visible');
+            const displayName = user.name && user.surname ? `${user.name} ${user.surname}` : user.username;
+            document.getElementById('success-text').innerHTML =
+                `Benvenuto, <strong>${displayName}</strong>!<br>
+         Il tuo account è pronto.<br>
+         Verrai reindirizzato alla dashboard tra un momento…`;
+        }
+    </script>
+</body>
+
+</html>

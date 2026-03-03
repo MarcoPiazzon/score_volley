@@ -1,32 +1,25 @@
-const mysql = require("mysql2/promise");
+const { Pool } = require("pg");
 
-const pool = mysql.createPool({
+const pool = new Pool({
   host: process.env.DB_HOST || "localhost",
-  port: parseInt(process.env.DB_PORT) || 3306,
-  user: process.env.DB_USER || "root",
+  port: parseInt(process.env.DB_PORT) || 5432,
+  user: process.env.DB_USER || "volley_app",
   password: process.env.DB_PASSWORD || "",
   database: process.env.DB_NAME || "volleyball",
-
-  // Pool settings
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-
-  // Restituisce sempre rows come array plain object
-  namedPlaceholders: true,
-  dateStrings: true,
-  timezone: "+00:00",
+  max: 10,
+  idleTimeoutMillis: 30000,
 });
 
-// Quick health-check all'avvio (non blocca se fallisce)
+pool.on("error", (err) => {
+  console.error("[db] Client error:", err.message);
+});
+
 pool
-  .getConnection()
-  .then((conn) => {
-    console.log("[db] Connessione al database OK");
-    conn.release();
+  .connect()
+  .then((client) => {
+    console.log("[db] Connessione a PostgreSQL OK");
+    client.release();
   })
-  .catch((err) => {
-    console.error("[db] Impossibile connettersi al database:", err.message);
-  });
+  .catch((err) => console.error("[db] Connessione fallita:", err.message));
 
 module.exports = pool;

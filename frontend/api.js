@@ -15,7 +15,7 @@
 // ================================================================
 
 // ── Configurazione base ─────────────────────────────────────────
-const BASE_URL = "http://localhost:3000/api";
+const BASE_URL = "/api"; // stesso origin → nessun CORS
 
 // ── Core fetch wrapper ──────────────────────────────────────────
 /**
@@ -41,9 +41,14 @@ async function request(path, options = {}) {
   });
 
   // Token scaduto → redirect al login
+  // (non redirige se siamo già su login o register — non hanno token)
   if (res.status === 401) {
     localStorage.removeItem("token");
-    window.location.href = "login.html";
+    const page = window.location.pathname.split("/").pop();
+    const publicPages = ["login.html", "register.html", ""];
+    if (!publicPages.includes(page)) {
+      window.location.href = "/login.html";
+    }
     throw new Error("Sessione scaduta");
   }
 
@@ -87,10 +92,30 @@ const auth = {
   },
 
   /**
+   * Registrazione nuovo utente.
+   * @param {{ username, password, confirm_password, email, role,
+   *           name, surname, phone?, team_id?, role_label?, invite_code? }} body
+   * @returns {{ token, user }}
+   */
+  register(body) {
+    return request("/auth/register", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  /**
    * Profilo utente corrente.
    */
   me() {
     return request("/auth/me");
+  },
+
+  /**
+   * Logout (fire-and-forget lato server).
+   */
+  logout() {
+    return request("/auth/logout", { method: "POST" });
   },
 };
 
@@ -140,6 +165,13 @@ const competitions = {
 //  TEAMS
 // ================================================================
 const teams = {
+  /**
+   * Lista di tutte le squadre (usata nella registrazione collaboratori).
+   */
+  getAll() {
+    return request("/teams");
+  },
+
   /**
    * Squadra/squadre dell'utente loggato.
    * • collaborator → oggetto { id, name, ... }

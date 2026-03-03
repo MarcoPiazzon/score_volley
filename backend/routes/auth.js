@@ -1,55 +1,3 @@
-/*import express from "express";
-import jwt from "jsonwebtoken";
-import { pool } from "../db.js";
-import bcrypt from "bcrypt";
-const router = express.Router();
-
-
-router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
-
-  //console.log(email);
-  //console.log(password);
-
-  const result = await pool.query(
-    "SELECT id, name,password FROM users WHERE email=$1",
-    [email],
-  );
-
-  const user = result.rows[0];
-  if (!user) return res.status(401).json({ error: "Invalid credentials" });
-
-  //console.log(user);
-
-  const ok = await bcrypt.compare(password, user.password);
-  if (!ok) return res.status(401).json({ error: "Invalid credentials" });
-
-  const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-    expiresIn: "12h",
-  });
-
-  res.json({ token, user });
-});*/
-
-// ================================================================
-//  routes/auth.js  —  Autenticazione completa
-//
-//  Rotte:
-//    POST /api/auth/login     → login con username + password
-//    POST /api/auth/logout    → logout (invalida lato client)
-//    GET  /api/auth/me        → profilo utente corrente (richiede token)
-//    POST /api/auth/refresh   → rinnova il token (opzionale)
-//
-//  Flusso login:
-//    1. Cerca l'utente in `users` per username
-//    2. Verifica la password con bcrypt
-//    3. Aggiorna last_login
-//    4. Recupera il profilo esteso (coaches o collaborators)
-//       → se collaborator, include team_id nel token
-//    5. Genera JWT con payload: { id, username, role, team_id? }
-//    6. Restituisce { token, user }
-// ================================================================
-
 const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcrypt");
@@ -57,66 +5,290 @@ const jwt = require("jsonwebtoken");
 const pool = require("../db");
 const { authenticate } = require("../middleware/auth");
 
-// ================================================================
-//  Durata del token  (modificabile via .env)
-// ================================================================
 const TOKEN_EXPIRY = process.env.JWT_EXPIRY || "8h";
 
 // ================================================================
-//  HELPER: costruisce il payload JWT completo
-//
-//  Per i COLLABORATORI include team_id (vincola l'accesso alla
-//  sola squadra di appartenenza nel middleware requireTeamAccess).
-//  Per i COACH team_id è null (accesso libero a tutte le squadre).
+//  HELPER: query su pool senza transazione
+//  Restituisce direttamente rows[] per comodità.
+// ================================================================
+async function q(text, params = []) {
+  const { rows } = await pool.query(text, params);
+  return rows;
+}
+
+// ================================================================
+//  HELPER: costruisce il payload JWT
 // ================================================================
 async function buildTokenPayload(user) {
   const payload = {
     id: user.id,
     username: user.username,
-    role: user.role, // 'coach' | 'collaborator'
-    team_id: null, // default: nessuna restrizione
+    role: user.role,
+    team_id: null,
   };
 
   if (user.role === "collaborator") {
-    // Recupera il team_id dal profilo collaboratore
-    const [[collaborator]] = await pool.query(
-      "SELECT team_id FROM collaborators WHERE user_id = ?",
+    const rows = await q(
+      "SELECT team_id FROM collaborators WHERE user_id = $1",
       [user.id],
     );
-    payload.team_id = collaborator?.team_id ?? null;
+    payload.team_id = rows[0]?.team_id ?? null;
   }
 
-  // Per i coach potremmo aggiungere coach_id utile per altre route
   if (user.role === "coach") {
-    const [[coach]] = await pool.query(
-      "SELECT id FROM coaches WHERE user_id = ?",
-      [user.id],
-    );
-    payload.coach_id = coach?.id ?? null;
+    const rows = await q("SELECT id FROM coaches WHERE user_id = $1", [
+      user.id,
+    ]);
+    payload.coach_id = rows[0]?.id ?? null;
   }
 
   return payload;
 }
 
 // ================================================================
+//  HELPER: recupera il profilo esteso (coach o collaborator)
+// ================================================================
+async function getProfile(userId, role) {
+  if (role === "coach") {
+    const rows = await q(
+      "SELECT id, name, surname, photo_url FROM coaches WHERE user_id = $1",
+      [userId],
+    );
+    return rows[0] ?? null;
+  }
+  if (role === "collaborator") {
+    const rows = await q(
+      "SELECT id, name, surname FROM collaborators WHERE user_id = $1",
+      [userId],
+    );
+    return rows[0] ?? null;
+  }
+  return null;
+}
+
+// ================================================================
+//  HELPER: validazioni
+// ================================================================
+function validatePassword(password) {
+  const errors = [];
+  if (!password || password.length < 8) errors.push("almeno 8 caratteri");
+  if (!/[A-Z]/.test(password)) errors.push("almeno una lettera maiuscola");
+  if (!/[a-z]/.test(password)) errors.push("almeno una lettera minuscola");
+  if (!/[0-9]/.test(password)) errors.push("almeno un numero");
+  if (!/[^A-Za-z0-9]/.test(password))
+    errors.push("almeno un carattere speciale");
+  return errors;
+}
+
+function validateUsername(username) {
+  if (!username || username.length < 3)
+    return "Username troppo corto (min. 3 caratteri)";
+  if (username.length > 50) return "Username troppo lungo (max. 50 caratteri)";
+  if (!/^[a-zA-Z0-9_.\-]+$/.test(username))
+    return "Username può contenere solo lettere, numeri, _ . -";
+  return null;
+}
+
+// ================================================================
+//  GET /api/auth/register-info
+// ================================================================
+router.get("/register-info", (_req, res) => {
+  res.json({ public: process.env.ALLOW_PUBLIC_REGISTER === "true" });
+});
+
+// ================================================================
+//  POST /api/auth/register
+// ================================================================
+router.post("/register", async (req, res) => {
+  const {
+    username,
+    password,
+    confirm_password,
+    email,
+    role,
+    name,
+    surname,
+    team_id,
+    role_label,
+    phone,
+    invite_code,
+  } = req.body;
+
+  /*
+  // ── 1. Codice invito ────────────────────────────────────────
+  if (process.env.ALLOW_PUBLIC_REGISTER !== "true") {
+    if (
+      !invite_code ||
+      invite_code.trim() !== process.env.REGISTER_INVITE_CODE
+    ) {
+      return res.status(403).json({
+        error:
+          "Registrazione riservata. Inserisci il codice di invito corretto.",
+        field: "invite_code",
+      });
+    }
+  }*/
+
+  // ── 2. Campi obbligatori ────────────────────────────────────
+  const missing = [
+    "username",
+    "password",
+    "email",
+    "role",
+    "name",
+    "surname",
+  ].filter((f) => !req.body[f]);
+  if (missing.length) {
+    return res
+      .status(400)
+      .json({ error: `Campi obbligatori mancanti: ${missing.join(", ")}` });
+  }
+
+  // ── 3. Ruolo valido ─────────────────────────────────────────
+  if (!["coach", "collaborator"].includes(role)) {
+    return res.status(400).json({ error: "Ruolo non valido", field: "role" });
+  }
+
+  // ── 4. Collaboratore deve avere team_id ─────────────────────
+  if (role === "collaborator" && !team_id) {
+    return res.status(400).json({
+      error: "Seleziona la squadra di appartenenza",
+      field: "team_id",
+    });
+  }
+
+  // ── 5. Validazione username ─────────────────────────────────
+  const usernameError = validateUsername(username.trim());
+  if (usernameError)
+    return res.status(400).json({ error: usernameError, field: "username" });
+
+  // ── 6. Validazione email ────────────────────────────────────
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    return res.status(400).json({ error: "Email non valida", field: "email" });
+  }
+
+  // ── 7. Validazione password ─────────────────────────────────
+  const pwdErrors = validatePassword(password);
+  if (pwdErrors.length) {
+    return res.status(400).json({
+      error: `La password deve avere: ${pwdErrors.join(", ")}`,
+      field: "password",
+    });
+  }
+  if (password !== confirm_password) {
+    return res.status(400).json({
+      error: "Le due password non coincidono",
+      field: "confirm_password",
+    });
+  }
+
+  // ── Transazione PostgreSQL ──────────────────────────────────
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // ── 8. Username/email già in uso? ───────────────────────
+    const existing = await client.query(
+      "SELECT id FROM users WHERE username = $1 OR email = $2",
+      [username.trim().toLowerCase(), email.trim().toLowerCase()],
+    );
+    if (existing.rows.length > 0) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({
+        error: "Username o email già in uso.",
+        field: "username",
+      });
+    }
+
+    // ── 9. Squadra esiste? (solo collaboratori) ─────────────
+    if (role === "collaborator") {
+      const teamCheck = await client.query(
+        "SELECT id FROM teams WHERE id = $1",
+        [parseInt(team_id)],
+      );
+      if (teamCheck.rows.length === 0) {
+        await client.query("ROLLBACK");
+        return res
+          .status(400)
+          .json({ error: "Squadra non trovata", field: "team_id" });
+      }
+    }
+
+    // ── 10. Hash password ───────────────────────────────────
+    const hash = await bcrypt.hash(password, 12);
+
+    // ── 11. Inserisce in users — RETURNING id ───────────────
+    const userRes = await client.query(
+      `INSERT INTO users (username, password_hash, email, role)
+             VALUES ($1, $2, $3, $4)
+             RETURNING id`,
+      [username.trim().toLowerCase(), hash, email.trim().toLowerCase(), role],
+    );
+    const userId = userRes.rows[0].id;
+
+    // ── 12. Inserisce profilo esteso ────────────────────────
+    if (role === "coach") {
+      await client.query(
+        `INSERT INTO coaches (user_id, name, surname, phone)
+                 VALUES ($1, $2, $3, $4)`,
+        [userId, name.trim(), surname.trim(), phone?.trim() || null],
+      );
+    } else {
+      await client.query(
+        `INSERT INTO collaborators (user_id, team_id, name, surname, role_label, phone)
+                 VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          userId,
+          parseInt(team_id),
+          name.trim(),
+          surname.trim(),
+          role_label?.trim() || null,
+          phone?.trim() || null,
+        ],
+      );
+    }
+
+    await client.query("COMMIT");
+
+    // ── 13. Login automatico ────────────────────────────────
+    const newUser = {
+      id: userId,
+      username: username.trim().toLowerCase(),
+      role,
+    };
+    const payload = await buildTokenPayload(newUser);
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: TOKEN_EXPIRY,
+    });
+    const profile = await getProfile(userId, role);
+
+    return res.status(201).json({
+      token,
+      user: {
+        ...payload,
+        name: profile?.name ?? name.trim(),
+        surname: profile?.surname ?? surname.trim(),
+        photo_url: null,
+        email: email.trim().toLowerCase(),
+      },
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("[auth] POST /register:", err);
+    return res
+      .status(500)
+      .json({ error: "Errore interno del server durante la registrazione" });
+  } finally {
+    client.release();
+  }
+});
+
+// ================================================================
 //  POST /api/auth/login
-//  Body: { username: string, password: string }
-//
-//  Response 200:
-//  {
-//    token: string,
-//    user: {
-//      id, username, role,
-//      team_id?,    ← solo per collaboratori
-//      coach_id?,   ← solo per coach
-//      name, surname, photo_url?
-//    }
-//  }
 // ================================================================
 router.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
-  // Validazione input
   if (!username || !password) {
     return res
       .status(400)
@@ -124,51 +296,34 @@ router.post("/login", async (req, res) => {
   }
 
   try {
-    // 1. Cerca utente attivo
-    const [[user]] = await pool.query(
+    const rows = await q(
       `SELECT id, username, password_hash, email, role, is_active
-             FROM users
-             WHERE username = ?
-             LIMIT 1`,
+             FROM users WHERE username = $1 LIMIT 1`,
       [username.trim()],
     );
+    const user = rows[0];
 
-    if (!user) {
-      // Risposta volutamente generica per non rivelare se l'utente esiste
-      return res.status(401).json({ error: "Credenziali non valide" });
-    }
-
-    if (!user.is_active) {
+    if (!user) return res.status(401).json({ error: "Credenziali non valide" });
+    if (!user.is_active)
       return res
         .status(403)
         .json({ error: "Account disattivato. Contatta l'amministratore." });
-    }
 
-    // 2. Verifica password
     const passwordOk = await bcrypt.compare(password, user.password_hash);
-    if (!passwordOk) {
+    if (!passwordOk)
       return res.status(401).json({ error: "Credenziali non valide" });
-    }
 
-    // 3. Aggiorna last_login (fire-and-forget, non blocca la risposta)
+    // Aggiorna last_login (fire-and-forget)
     pool
-      .query("UPDATE users SET last_login = NOW() WHERE id = ?", [user.id])
-      .catch((err) =>
-        console.error("[auth] Errore aggiornamento last_login:", err),
-      );
+      .query("UPDATE users SET last_login = NOW() WHERE id = $1", [user.id])
+      .catch((err) => console.error("[auth] last_login update:", err));
 
-    // 4. Costruisce payload JWT (include team_id per collaboratori)
     const payload = await buildTokenPayload(user);
-
-    // 5. Genera token
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
       expiresIn: TOKEN_EXPIRY,
     });
-
-    // 6. Recupera i dati del profilo da mostrare nel frontend
     const profile = await getProfile(user.id, user.role);
 
-    // 7. Risposta
     return res.json({
       token,
       user: {
@@ -187,18 +342,14 @@ router.post("/login", async (req, res) => {
 
 // ================================================================
 //  GET /api/auth/me
-//  Richiede token valido. Restituisce il profilo aggiornato.
-//
-//  Utile per:
-//    - Verificare che il token sia ancora valido al caricamento pagina
-//    - Rileggere team_id / coach_id se qualcosa è cambiato
 // ================================================================
 router.get("/me", authenticate, async (req, res) => {
   try {
-    const [[user]] = await pool.query(
-      "SELECT id, username, email, role, is_active, last_login FROM users WHERE id = ?",
+    const rows = await q(
+      "SELECT id, username, email, role, is_active, last_login FROM users WHERE id = $1",
       [req.user.id],
     );
+    const user = rows[0];
 
     if (!user || !user.is_active) {
       return res
@@ -225,28 +376,21 @@ router.get("/me", authenticate, async (req, res) => {
 
 // ================================================================
 //  POST /api/auth/logout
-//  Il JWT è stateless: il vero logout avviene lato client
-//  eliminando il token da localStorage. Questa rotta esiste
-//  per compatibilità e per future implementazioni di blacklist.
 // ================================================================
-router.post("/logout", authenticate, (req, res) => {
-  // In futuro: aggiungere il token a una blacklist su Redis/DB
+router.post("/logout", authenticate, (_req, res) => {
   return res.json({ ok: true, message: "Logout effettuato" });
 });
 
 // ================================================================
 //  POST /api/auth/refresh
-//  Rinnova il token se quello attuale è ancora valido
-//  (e mancano meno di 2h alla scadenza).
 // ================================================================
 router.post("/refresh", authenticate, async (req, res) => {
   try {
-    // Ricostruisce il payload aggiornato dal DB
-    // (utile se team_id o role sono cambiati dall'ultimo login)
-    const [[user]] = await pool.query(
-      "SELECT id, username, role, is_active FROM users WHERE id = ?",
+    const rows = await q(
+      "SELECT id, username, role, is_active FROM users WHERE id = $1",
       [req.user.id],
     );
+    const user = rows[0];
 
     if (!user || !user.is_active) {
       return res
@@ -266,70 +410,4 @@ router.post("/refresh", authenticate, async (req, res) => {
   }
 });
 
-// ================================================================
-//  HELPER PRIVATO: recupera il profilo esteso (coach o collaborator)
-// ================================================================
-async function getProfile(userId, role) {
-  if (role === "coach") {
-    const [[coach]] = await pool.query(
-      "SELECT id, name, surname, photo_url FROM coaches WHERE user_id = ?",
-      [userId],
-    );
-    return coach ?? null;
-  }
-
-  if (role === "collaborator") {
-    const [[collab]] = await pool.query(
-      "SELECT id, name, surname FROM collaborators WHERE user_id = ?",
-      [userId],
-    );
-    return collab ?? null;
-  }
-
-  return null;
-}
-
 module.exports = router;
-/*
-/* REGISTER da aggiornare 
-router.post("/register", async (req, res) => {
-  try {
-    const { name, surname, email, password } = req.body;
-
-    if (!email || !password || !name || !surname) {
-      return res.status(400).json({ error: "Missing fields" });
-    }
-
-    // Email già esistente?
-    const existing = await pool.query("SELECT id FROM users WHERE email=$1", [
-      email,
-    ]);
-
-    if (existing.rows.length > 0) {
-      return res.status(400).json({ error: "Email already exists" });
-    }
-
-    // Hash password
-    const hash = await bcrypt.hash(password, 10);
-
-    const result = await pool.query(
-      `INSERT INTO users (name, surname, email, password)
-       VALUES ($1,$2,$3,$4)
-       RETURNING id`,
-      [name, surname, email, hash],
-    );
-
-    const userId = result.rows[0].id;
-
-    // Autologin
-    const token = jwt.sign({ id: userId }, process.env.JWT_SECRET);
-
-    res.json({ token });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-export default router;
-*/
