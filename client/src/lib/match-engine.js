@@ -1,0 +1,421 @@
+// ================================================================
+//  match-engine.js  —  Classi Match/Squad/Player/Sset
+//  Versione React: nessun coupling con il DOM.
+//  Produce/consuma JSON puro; la UI è responsabilità di React.
+// ================================================================
+
+import { STAT } from './enums.js';
+
+// ──────────────────────────────────────────────────────────────────
+//  Player
+// ──────────────────────────────────────────────────────────────────
+export class Player {
+  constructor({ id, shirtNumber, name, surname, role, team, libero = false }) {
+    this.id          = id;
+    this.shirtNumber = shirtNumber;
+    this.name        = name;
+    this.surname     = surname;
+    this.fullName    = `${name} ${surname}`;
+    this.displayName = surname;
+    this.role        = role;
+    this.team        = team;   // 'a' | 'b'
+    this.libero      = libero;
+    this.onCourt     = false;
+
+    this.stats = Object.fromEntries(Object.values(STAT).map(k => [k, 0]));
+  }
+
+  addStat(type) { if (type in this.stats) this.stats[type]++; }
+
+  toJSON() {
+    return {
+      id: this.id, shirtNumber: this.shirtNumber,
+      name: this.name, surname: this.surname,
+      role: this.role, team: this.team, libero: this.libero,
+      onCourt: this.onCourt, stats: { ...this.stats },
+    };
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────
+//  Squad
+// ──────────────────────────────────────────────────────────────────
+export class Squad {
+  constructor({ teamId, name, shortName, side }) {
+    this.teamId    = teamId;
+    this.name      = name;
+    this.shortName = shortName;
+    this.side      = side;   // 'a' | 'b'
+    this.players   = [];     // 6 titolari in ordine di rotazione
+    this.bench     = [];     // panchina
+    this.score     = 0;
+    this.setsWon   = 0;
+    this.timeout   = 0;
+    this.servingPlayer = null;
+  }
+
+  /** Imposta il battitore: sempre players[0] */
+  setServingPlayer() {
+    this.servingPlayer = this.players[0] ?? null;
+  }
+
+  /** Rotazione: tutti avanzano di una posizione verso destra */
+  rotate() {
+    if (this.players.length === 6) {
+      const last = this.players.pop();
+      this.players.unshift(last);
+    }
+    this.setServingPlayer();
+  }
+
+  /** Cambio giocatore */
+  substitute(outPlayer, inPlayer) {
+    const idx = this.players.findIndex(p => p.id === outPlayer.id);
+    if (idx === -1) throw new Error(`Giocatore ${outPlayer.shirtNumber} non in campo`);
+    this.players[idx].onCourt = false;
+    inPlayer.onCourt          = true;
+    this.players[idx]         = inPlayer;
+    const benchIdx = this.bench.indexOf(inPlayer);
+    if (benchIdx !== -1) this.bench.splice(benchIdx, 1, outPlayer);
+  }
+
+  addStat(type) { /* squad-level stats opzionali, reserved */ }
+
+  takeTimeout() {
+    if (this.timeout >= 2) return false;
+    this.timeout++;
+    return true;
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────
+//  Sset
+// ──────────────────────────────────────────────────────────────────
+export class Sset {
+  constructor(number) {
+    this.number = number;
+    this.scoreA = 0;
+    this.scoreB = 0;
+    this.winner = null;   // 'a' | 'b' | null
+    this.startingLineup = { a: [], b: [] };
+    this.stats = {
+      players: {},   // playerId → stats snapshot
+      squads:  { a: {}, b: {} },
+    };
+    this.events = [];
+  }
+
+  recordPlayerStat(player, key) {
+    if (!this.stats.players[player.id]) {
+      this.stats.players[player.id] = Object.fromEntries(Object.values(STAT).map(k => [k, 0]));
+    }
+    this.stats.players[player.id][key] = (this.stats.players[player.id][key] ?? 0) + 1;
+  }
+
+  toJSON() {
+    return {
+      number: this.number,
+      scoreA: this.scoreA,
+      scoreB: this.scoreB,
+      winner: this.winner,
+      startingLineup: this.startingLineup,
+      stats: this.stats,
+      events: this.events,
+    };
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────
+//  Match
+// ──────────────────────────────────────────────────────────────────
+export class Match {
+  constructor(squadA, squadB) {
+    this.squadA = squadA;
+    this.squadB = squadB;
+
+    this.sets             = [];
+    this.currentSet       = null;
+    this.currentSetNumber = 1;
+    this.servingSquad     = null;
+
+    this.maxSet          = 5;
+    this.setsToWin       = 3;
+    this.setPoints       = 25;
+    this.tieBreakPoints  = 15;
+    this.changeFieldDone = false;
+
+    this.history     = [];
+    this._snapshots  = [];   // per undo
+
+    // Callbacks (set da React)
+    this._onSetEnd    = null;
+    this._onMatchEnd  = null;
+    this._onFieldChange = null;
+  }
+
+  // ── Init ────────────────────────────────────────────────────────
+  startMatch(servingSquad) {
+    this.servingSquad = servingSquad;
+    this._startNewSet();
+    this.assignServe();
+    this._snapshot();
+  }
+
+  _startNewSet() {
+    const set         = new Sset(this.currentSetNumber);
+    set.startingLineup.a = this.squadA.players.map(p => p.id);
+    set.startingLineup.b = this.squadB.players.map(p => p.id);
+    this.currentSet   = set;
+    this.sets.push(set);
+    this.squadA.score = 0;
+    this.squadB.score = 0;
+    this.squadA.timeout = 0;
+    this.squadB.timeout = 0;
+  }
+
+  assignServe() {
+    this.squadA.setServingPlayer();
+    this.squadB.setServingPlayer();
+  }
+
+  // ── Score a point ───────────────────────────────────────────────
+  scorePoint(player, isWin, statType) {
+    this._snapshot();
+
+    const scoringSquad = player.team === 'a' ? this.squadA : this.squadB;
+    const otherSquad   = player.team === 'a' ? this.squadB : this.squadA;
+
+    // Aggiorna stat sul giocatore
+    player.addStat(statType);
+    player.addStat(STAT.POINTS_PLAYED);
+    this.currentSet.recordPlayerStat(player, statType);
+
+    if (isWin) {
+      scoringSquad.score++;
+      this.currentSet[scoringSquad === this.squadA ? 'scoreA' : 'scoreB']++;
+
+      // Cambio battuta se chi ha vinto il punto non stava battendo
+      if (this.servingSquad !== scoringSquad) {
+        this.servingSquad = scoringSquad;
+        scoringSquad.rotate();
+        this.assignServe();
+      }
+    } else {
+      // Errore → punto avversario
+      otherSquad.score++;
+      this.currentSet[otherSquad === this.squadA ? 'scoreA' : 'scoreB']++;
+
+      if (this.servingSquad !== otherSquad) {
+        this.servingSquad = otherSquad;
+        otherSquad.rotate();
+        this.assignServe();
+      }
+    }
+
+    this._logEvent({ type: 'point', playerId: player.id, team: player.team, isWin, statType });
+    this._checkSetEnd();
+  }
+
+  // ── Card ────────────────────────────────────────────────────────
+  assignCard(player, type) {
+    this._snapshot();
+    const cardStat  = type === 'red' ? STAT.CARD_RED : STAT.CARD_YELLOW;
+    player.addStat(cardStat);
+    player.addStat(STAT.TOTAL_CARD);
+    this.currentSet.recordPlayerStat(player, cardStat);
+
+    if (type === 'red') {
+      // Cartellino rosso → punto avversario + rotazione
+      const opponent = player.team === 'a' ? this.squadB : this.squadA;
+      opponent.score++;
+      this.currentSet[opponent === this.squadA ? 'scoreA' : 'scoreB']++;
+      if (this.servingSquad !== opponent) {
+        this.servingSquad = opponent;
+        opponent.rotate();
+        this.assignServe();
+      }
+      this._checkSetEnd();
+    }
+    this._logEvent({ type: 'card', playerId: player.id, cardType: type });
+  }
+
+  // ── Timeout ─────────────────────────────────────────────────────
+  callTimeout(squad) {
+    return squad.takeTimeout();
+  }
+
+  // ── Substitute ──────────────────────────────────────────────────
+  makeSubstitute(squad, outPlayer, inPlayer) {
+    this._snapshot();
+    squad.substitute(outPlayer, inPlayer);
+    outPlayer.addStat(STAT.TOTAL_CHANGE);
+    inPlayer.addStat(STAT.TOTAL_CHANGE);
+    this._logEvent({ type: 'sub', team: squad.side,
+                     outId: outPlayer.id, inId: inPlayer.id });
+  }
+
+  // ── Undo ────────────────────────────────────────────────────────
+  undoLastPoint() {
+    if (this._snapshots.length < 2) return false;
+    this._snapshots.pop();
+    this._restoreSnapshot(this._snapshots[this._snapshots.length - 1]);
+    this.history.pop();
+    return true;
+  }
+
+  // ── Check set end ────────────────────────────────────────────────
+  _checkSetEnd() {
+    const isTieBreak = this.currentSetNumber === this.maxSet;
+    const target     = isTieBreak ? this.tieBreakPoints : this.setPoints;
+
+    const sA = this.squadA.score, sB = this.squadB.score;
+    if (sA >= target && sA - sB >= 2) return this._winSet(this.squadA, sA, sB);
+    if (sB >= target && sB - sA >= 2) return this._winSet(this.squadB, sB, sA);
+
+    // 5° set: cambio campo a 8
+    if (isTieBreak && !this.changeFieldDone) {
+      if (Math.max(sA, sB) >= Math.ceil(this.tieBreakPoints / 2)) {
+        this.changeFieldDone = true;
+        if (this._onFieldChange) this._onFieldChange();
+      }
+    }
+  }
+
+  _winSet(winner, scoreWinner, scoreLooser) {
+    const scoreA = winner === this.squadA ? scoreWinner : scoreLooser;
+    const scoreB = winner === this.squadA ? scoreLooser : scoreWinner;
+
+    this.currentSet.winner = winner.side;
+    this.currentSet.scoreA = scoreA;
+    this.currentSet.scoreB = scoreB;
+
+    winner.setsWon++;
+    this.currentSetNumber++;
+    this.changeFieldDone = false;
+
+    // Check fine match
+    if (winner.setsWon === this.setsToWin) {
+      if (this._onMatchEnd) this._onMatchEnd(winner);
+      return;
+    }
+
+    // La squadra che ha perso il set batte per prima nel nuovo set
+    this.servingSquad = winner === this.squadA ? this.squadB : this.squadA;
+
+    if (this._onSetEnd) this._onSetEnd(winner, scoreA, scoreB);
+
+    this._startNewSet();
+    this.assignServe();
+    this._snapshot();
+  }
+
+  // ── Snapshot ─────────────────────────────────────────────────────
+  _snapshot() {
+    const snap = {
+      scoreA: this.squadA.score,
+      scoreB: this.squadB.score,
+      setsWonA: this.squadA.setsWon,
+      setsWonB: this.squadB.setsWon,
+      timeoutA: this.squadA.timeout,
+      timeoutB: this.squadB.timeout,
+      setNumber: this.currentSetNumber,
+      servingSide: this.servingSquad?.side ?? 'a',
+      playersA: this.squadA.players.map(p => p.id),
+      playersB: this.squadB.players.map(p => p.id),
+      statsA: this.squadA.players.map(p => ({ ...p.stats })),
+      statsB: this.squadB.players.map(p => ({ ...p.stats })),
+      statsBA: this.squadA.bench.map(p => ({ ...p.stats })),
+      statsBB: this.squadB.bench.map(p => ({ ...p.stats })),
+      setScoreA: this.currentSet?.scoreA ?? 0,
+      setScoreB: this.currentSet?.scoreB ?? 0,
+    };
+    this._snapshots.push(snap);
+    // Mantieni massimo 50 snapshot per non consumare troppa memoria
+    if (this._snapshots.length > 50) this._snapshots.shift();
+  }
+
+  _restoreSnapshot(snap) {
+    this.squadA.score    = snap.scoreA;
+    this.squadB.score    = snap.scoreB;
+    this.squadA.setsWon  = snap.setsWonA;
+    this.squadB.setsWon  = snap.setsWonB;
+    this.squadA.timeout  = snap.timeoutA;
+    this.squadB.timeout  = snap.timeoutB;
+    this.currentSetNumber = snap.setNumber;
+    this.servingSquad    = snap.servingSide === 'a' ? this.squadA : this.squadB;
+
+    // Ripristina ordine rotazione
+    const reorderPlayers = (squad, ids, snapStats, benchStats) => {
+      const allPlayers = [...squad.players, ...squad.bench];
+      const map = Object.fromEntries(allPlayers.map(p => [p.id, p]));
+      squad.players = ids.map((id, i) => {
+        const p = map[id];
+        if (p && snapStats[i]) p.stats = { ...snapStats[i] };
+        return p;
+      }).filter(Boolean);
+      // Ripristina stats panchina
+      squad.bench.forEach((p, i) => {
+        if (benchStats[i]) p.stats = { ...benchStats[i] };
+      });
+    };
+
+    reorderPlayers(this.squadA, snap.playersA, snap.statsA, snap.statsBA);
+    reorderPlayers(this.squadB, snap.playersB, snap.statsB, snap.statsBB);
+
+    this.squadA.setServingPlayer();
+    this.squadB.setServingPlayer();
+
+    if (this.currentSet) {
+      this.currentSet.scoreA = snap.setScoreA;
+      this.currentSet.scoreB = snap.setScoreB;
+    }
+  }
+
+  _logEvent(event) {
+    this.history.push({ ...event, timestamp: Date.now() });
+  }
+
+  // ── Stat helpers ─────────────────────────────────────────────────
+  addStatPlayer(player, type) { player.addStat(type); }
+  addStatSet(player, type)    { this.currentSet?.recordPlayerStat(player, type); }
+
+  // ── Export per il DB ─────────────────────────────────────────────
+  toSavePayload(matchMeta) {
+    const homeTeamId = matchMeta?.home_team_id ?? this.squadA.teamId;
+    const awayTeamId = matchMeta?.away_team_id ?? this.squadB.teamId;
+
+    const completedSets = this.sets
+      .filter(s => s.winner !== null)
+      .map(s => ({
+        number:       s.number,
+        scoreA:       s.scoreA,
+        scoreB:       s.scoreB,
+        winnerTeamId: s.winner === 'a' ? homeTeamId : awayTeamId,
+      }));
+
+    // Includi il set corrente se ha punti (salvataggio parziale)
+    const cur = this.currentSet;
+    if (cur && cur.winner === null && (this.squadA.score > 0 || this.squadB.score > 0)) {
+      completedSets.push({
+        number:       cur.number,
+        scoreA:       this.squadA.score,
+        scoreB:       this.squadB.score,
+        winnerTeamId: null,
+      });
+    }
+
+    const homeTotalPts = completedSets.reduce((s, x) => s + (x.scoreA ?? 0), 0);
+    const awayTotalPts = completedSets.reduce((s, x) => s + (x.scoreB ?? 0), 0);
+
+    const players = [
+      ...this.squadA.players.map(p => ({ playerId: p.id, teamId: homeTeamId, isHome: true,  stats: p.stats })),
+      ...this.squadA.bench  .map(p => ({ playerId: p.id, teamId: homeTeamId, isHome: true,  stats: p.stats })),
+      ...this.squadB.players.map(p => ({ playerId: p.id, teamId: awayTeamId, isHome: false, stats: p.stats })),
+      ...this.squadB.bench  .map(p => ({ playerId: p.id, teamId: awayTeamId, isHome: false, stats: p.stats })),
+    ].filter(p => p.playerId != null);
+
+    return { homeTeamId, awayTeamId, setsWonHome: this.squadA.setsWon,
+             setsWonAway: this.squadB.setsWon, homeTotalPts, awayTotalPts,
+             sets: completedSets, players };
+  }
+}

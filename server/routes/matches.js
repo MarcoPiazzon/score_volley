@@ -1,0 +1,562 @@
+const express = require('express');
+const router  = express.Router();
+const pool    = require('../db');
+const { authenticate } = require('../middleware/auth');
+
+router.use(authenticate);
+
+// ================================================================
+//  HELPER: query semplice
+// ================================================================
+async function q(text, params = []) {
+    const { rows } = await pool.query(text, params);
+    return rows;
+}
+
+// ================================================================
+//  HELPER: filtro competizione
+//  offset = numero di $N già usati prima di questo filtro
+// ================================================================
+function buildCompetitionFilter(competitionType, competitionId, offset = 0) {
+    if (!competitionId || !competitionType) {
+        return { clause: '', params: [] };
+    }
+    const col = competitionType === 'season' ? 'md.season_id' : 'md.tournament_id';
+    return {
+        clause: ` AND ${col} = $${offset + 1}`,
+        params: [parseInt(competitionId)],
+    };
+}
+
+
+// ================================================================
+//  GET /api/matches
+//  Query params: ?status=  ?competition_type=  ?competition_id=
+//               ?limit=50  ?page=1
+// ================================================================
+router.get('/', async (req, res) => {
+    const { status, competition_type, competition_id, limit = 50, page = 1 } = req.query;
+
+    const conditions  = [];
+    const condParams  = [];
+
+    if (status) {
+        condParams.push(status);
+        conditions.push(`m.status = $${condParams.length}`);
+    }
+
+    // offset per il filtro competizione = parametri già aggiunti sopra
+    const { clause, params: fp } = buildCompetitionFilter(
+        competition_type, competition_id, condParams.length
+    );
+
+    const offsetVal = (parseInt(page) - 1) * parseInt(limit);
+    // LIMIT e OFFSET vengono dopo i condParams + fp
+    const limitIdx  = condParams.length + fp.length + 1;
+    const offsetIdx = limitIdx + 1;
+
+    const whereSQL = conditions.length ? `WHERE ${conditions.join(' AND ')}` : 'WHERE 1=1';
+
+    try {
+        const rows = await q(`
+            SELECT
+                m.id, m.status, m.scheduled_at, m.played_at,
+                m.home_sets_won, m.away_sets_won,
+                m.home_points,  m.away_points,
+                ht.id           AS home_team_id,
+                ht.name         AS home_team,
+                ht.short_name   AS home_short,
+                at.id           AS away_team_id,
+                at.name         AS away_team,
+                at.short_name   AS away_short,
+                v.name          AS venue,
+                v.city          AS venue_city,
+                md.round_number AS matchday,
+                md.season_id,
+                md.tournament_id
+            FROM  matches m
+            JOIN  matchdays md ON md.id = m.matchday_id
+            JOIN  teams     ht ON ht.id = m.home_team_id
+            JOIN  teams     at ON at.id = m.away_team_id
+            LEFT JOIN venues v ON v.id  = m.venue_id
+            ${whereSQL}
+            ${clause}
+            ORDER BY COALESCE(m.played_at, m.scheduled_at) DESC
+            LIMIT $${limitIdx} OFFSET $${offsetIdx}
+        `, [...condParams, ...fp, parseInt(limit), offsetVal]);
+
+        res.json(rows);
+    } catch (err) {
+        console.error('[matches] GET /', err);
+        res.status(500).json({ error: 'Errore interno del server' });
+    }
+});
+
+
+// ================================================================
+//  GET /api/matches/team/:teamId
+//  Partite di una squadra, filtrabili per competizione.
+//  Query params: ?competition_type=  ?competition_id=  ?status=
+// ================================================================
+router.get('/team/:teamId', async (req, res) => {
+    const teamId = parseInt(req.params.teamId);
+    const { competition_type, competition_id, status } = req.query;
+
+    // Parametri base: $1 e $2 = teamId (home OR away), $3 = teamId (is_home)
+    const condParams = [teamId, teamId];
+    const conditions = [`(m.home_team_id = $1 OR m.away_team_id = $2)`];
+
+    if (status) {
+        condParams.push(status);
+        conditions.push(`m.status = $${condParams.length}`);
+    }
+
+    // is_home usa teamId → aggiungiamo come prossimo param
+    condParams.push(teamId);
+    const isHomeIdx = condParams.length; // $3 o $4
+
+    // filtro competizione parte dopo tutti i condParams
+    const { clause, params: fp } = buildCompetitionFilter(
+        competition_type, competition_id, condParams.length
+    );
+
+    try {
+        const rows = await q(`
+            SELECT
+                m.id, m.status, m.scheduled_at, m.played_at,
+                m.home_sets_won, m.away_sets_won,
+                m.home_points,  m.away_points,
+                ht.id           AS home_team_id,
+                ht.name         AS home_team,
+                ht.short_name   AS home_short,
+                at.id           AS away_team_id,
+                at.name         AS away_team,
+                at.short_name   AS away_short,
+                v.name          AS venue,
+                v.city          AS venue_city,
+                md.round_number AS matchday,
+                md.season_id,
+                md.tournament_id,
+                (m.home_team_id = $${isHomeIdx}) AS is_home
+            FROM  matches m
+            JOIN  matchdays md ON md.id = m.matchday_id
+            JOIN  teams     ht ON ht.id = m.home_team_id
+            JOIN  teams     at ON at.id = m.away_team_id
+            LEFT JOIN venues v ON v.id  = m.venue_id
+            WHERE ${conditions.join(' AND ')}
+            ${clause}
+            ORDER BY COALESCE(m.played_at, m.scheduled_at) DESC
+        `, [...condParams, ...fp]);
+
+        res.json(rows);
+    } catch (err) {
+        console.error('[matches] GET /team/:teamId', err);
+        res.status(500).json({ error: 'Errore interno del server' });
+    }
+});
+
+
+// ================================================================
+//  GET /api/matches/:id
+// ================================================================
+router.get('/:id', async (req, res) => {
+    const matchId = req.params.id;
+    try {
+        const matchRows = await q(`
+            SELECT
+                m.*,
+                ht.name AS home_team,   ht.short_name AS home_short,
+                at.name AS away_team,   at.short_name AS away_short,
+                v.name  AS venue,       v.city        AS venue_city,
+                md.round_number AS matchday,
+                md.season_id,   md.tournament_id,
+                s.name  AS season_name,
+                trn.name AS tournament_name
+            FROM  matches m
+            JOIN  matchdays md      ON md.id  = m.matchday_id
+            JOIN  teams     ht      ON ht.id  = m.home_team_id
+            JOIN  teams     at      ON at.id  = m.away_team_id
+            LEFT JOIN venues      v   ON v.id   = m.venue_id
+            LEFT JOIN seasons     s   ON s.id   = md.season_id
+            LEFT JOIN tournaments trn ON trn.id = md.tournament_id
+            WHERE m.id = $1
+        `, [matchId]);
+
+        if (!matchRows[0]) return res.status(404).json({ error: 'Partita non trovata' });
+
+        const sets = await q(`
+            SELECT set_number, home_score, away_score, winner_team_id,
+                   started_at, ended_at
+            FROM   match_sets
+            WHERE  match_id = $1
+            ORDER  BY set_number
+        `, [matchId]);
+
+        res.json({ ...matchRows[0], sets });
+    } catch (err) {
+        console.error('[matches] GET /:id', err);
+        res.status(500).json({ error: 'Errore interno del server' });
+    }
+});
+
+
+// ================================================================
+//  GET /api/matches/:id/lineup
+// ================================================================
+router.get('/:id/lineup', async (req, res) => {
+    const matchId = req.params.id;
+    try {
+        const matchRows = await q(
+            'SELECT id, home_team_id, away_team_id FROM matches WHERE id = $1',
+            [matchId]
+        );
+        if (!matchRows[0]) return res.status(404).json({ error: 'Partita non trovata' });
+        const match = matchRows[0];
+
+        const lineupRows = await q(`
+            SELECT
+                ml.team_id, ml.player_id, ml.position_number,
+                ml.is_starter, ml.is_libero,
+                p.name, p.surname, p.shirt_number, p.role
+            FROM  match_lineups ml
+            JOIN  players p ON p.id = ml.player_id
+            WHERE ml.match_id = $1
+            ORDER BY ml.team_id, ml.is_starter DESC, ml.position_number
+        `, [matchId]);
+
+        const homeLineup = lineupRows.filter(r => r.team_id === match.home_team_id);
+        const awayLineup = lineupRows.filter(r => r.team_id === match.away_team_id);
+
+        const homeTeam = await q('SELECT name FROM teams WHERE id = $1', [match.home_team_id]);
+        const awayTeam = await q('SELECT name FROM teams WHERE id = $1', [match.away_team_id]);
+
+        res.json({
+            home: {
+                team_id:   match.home_team_id,
+                team_name: homeTeam[0]?.name,
+                starters:  homeLineup.filter(p => p.is_starter),
+                bench:     homeLineup.filter(p => !p.is_starter),
+            },
+            away: {
+                team_id:   match.away_team_id,
+                team_name: awayTeam[0]?.name,
+                starters:  awayLineup.filter(p => p.is_starter),
+                bench:     awayLineup.filter(p => !p.is_starter),
+            },
+        });
+    } catch (err) {
+        console.error('[matches] GET /:id/lineup', err);
+        res.status(500).json({ error: 'Errore interno del server' });
+    }
+});
+
+
+// ================================================================
+//  POST /api/matches/:id/lineup
+//  Body: { team_id, players: [{ player_id, position_number,
+//                               is_starter, is_libero }] }
+// ================================================================
+router.post('/:id/lineup', async (req, res) => {
+    const matchId = parseInt(req.params.id);
+    const { team_id, players } = req.body;
+
+    if (!team_id || !Array.isArray(players) || players.length === 0) {
+        return res.status(400).json({ error: 'team_id e players[] sono obbligatori' });
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // Elimina lineup esistente per questa squadra in questa partita
+        await client.query(
+            'DELETE FROM match_lineups WHERE match_id = $1 AND team_id = $2',
+            [matchId, team_id]
+        );
+
+        // Inserisce la nuova lineup
+        for (const p of players) {
+            await client.query(`
+                INSERT INTO match_lineups
+                    (match_id, team_id, player_id, position_number, is_starter, is_libero)
+                VALUES ($1, $2, $3, $4, $5, $6)
+            `, [
+                matchId,
+                team_id,
+                p.player_id,
+                p.position_number || null,
+                p.is_starter ? 1 : 0,
+                p.is_libero  ? 1 : 0,
+            ]);
+        }
+
+        await client.query('COMMIT');
+        res.json({ ok: true, inserted: players.length });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('[matches] POST /:id/lineup', err);
+        res.status(500).json({ error: 'Errore salvataggio formazione' });
+    } finally {
+        client.release();
+    }
+});
+
+
+// ================================================================
+//  GET /api/matches/:id/stats
+// ================================================================
+router.get('/:id/stats', async (req, res) => {
+    const matchId = req.params.id;
+    try {
+        const teamStats = await q(`
+            SELECT stm.*, t.name AS team_name, t.short_name
+            FROM   stats_team_match stm
+            JOIN   teams t ON t.id = stm.team_id
+            WHERE  stm.match_id = $1
+        `, [matchId]);
+
+        const playerStats = await q(`
+            SELECT
+                spm.*,
+                p.name, p.surname, p.shirt_number, p.role,
+                t.name AS team_name
+            FROM  stats_player_match spm
+            JOIN  players p ON p.id = spm.player_id
+            JOIN  teams   t ON t.id = spm.team_id
+            WHERE spm.match_id = $1
+            ORDER BY spm.team_id, spm.points_scored DESC
+        `, [matchId]);
+
+        res.json({ teamStats, playerStats });
+    } catch (err) {
+        console.error('[matches] GET /:id/stats', err);
+        res.status(500).json({ error: 'Errore interno del server' });
+    }
+});
+
+
+// ================================================================
+//  POST /api/matches/:id/save
+//
+//  Salva il risultato completo di una partita nel database.
+//
+//  Body atteso:
+//  {
+//    homeTeamId    : number,
+//    awayTeamId    : number,
+//    setsWonHome   : number,           // set vinti squadra casa
+//    setsWonAway   : number,           // set vinti squadra ospite
+//    homeTotalPts  : number,           // punti totali casa (somma di tutti i set)
+//    awayTotalPts  : number,           // punti totali ospite
+//    sets: [                           // solo set COMPLETATI (winner !== null)
+//      { number, scoreA, scoreB, winnerTeamId }
+//    ],
+//    players: [                        // tutti i giocatori (titolari + panchina)
+//      { playerId, teamId, isHome, stats: { ace, attackWin, ... } }
+//    ]
+//  }
+//
+//  Operazioni in transazione:
+//  1. UPDATE matches  → status='completed', set vinti, punti, played_at
+//  2. DELETE + INSERT match_sets
+//  3. DELETE + INSERT stats_player_match  (UPSERT via ON CONFLICT)
+//  4. DELETE + INSERT stats_team_match    (UPSERT via ON CONFLICT)
+// ================================================================
+
+// Mappa chiave STAT (dal frontend JS) → colonna DB
+const STAT_TO_COL = {
+    ace:                    'aces',
+    serves:                 'serve_positive',
+    servesErr:              'serve_errors',
+    total_serves:           'serves_total',
+    attackWin:              'attack_kills',
+    attackOut:              'attack_errors',
+    attackNotSuccessful:    'attack_blocked',
+    totalAttack:            'attacks_total',
+    blockSuccessful:        'block_kills',
+    blockNotSuccessful:     'block_errors',
+    totalBlock:             'blocks_total',
+    defensePos:             'reception_positive',
+    defenseNeg:             'reception_negative',
+    totalRicezione:         'receptions_total',
+    ball_lost:              'dig_errors',
+    card_yellow:            'cards_yellow',
+    card_red:               'cards_red',
+};
+
+// Colonne DB con valore 0 di default (tutte le colonne numeriche delle tabelle stats)
+const STATS_COLS = [
+    'points_scored',
+    'aces', 'serve_positive', 'serve_errors', 'serves_total',
+    'attack_kills', 'attack_errors', 'attack_blocked', 'attacks_total',
+    'block_kills', 'block_errors', 'blocks_total',
+    'reception_positive', 'reception_negative', 'reception_errors', 'receptions_total',
+    'dig_errors', 'digs_total',
+    'cards_yellow', 'cards_red',
+];
+
+// Converte l'oggetto stats del frontend in un oggetto { col: valore }
+function mapStats(rawStats) {
+    const out = {};
+    STATS_COLS.forEach(col => out[col] = 0);
+
+    Object.entries(rawStats).forEach(([key, val]) => {
+        const col = STAT_TO_COL[key];
+        if (col && typeof val === 'number') out[col] = val;
+    });
+
+    // points_scored = kill vincenti + ace + muri vincenti
+    out.points_scored = (out.attack_kills ?? 0)
+                      + (out.aces        ?? 0)
+                      + (out.block_kills ?? 0);
+    return out;
+}
+
+// Somma stats di più giocatori in un unico oggetto (per stats_team_match)
+function sumStats(playerStatsList) {
+    const total = {};
+    STATS_COLS.forEach(col => total[col] = 0);
+    playerStatsList.forEach(ps => {
+        STATS_COLS.forEach(col => { total[col] += ps[col] ?? 0; });
+    });
+    return total;
+}
+
+router.post('/:id/save', async (req, res) => {
+    const matchId = parseInt(req.params.id);
+    const {
+        homeTeamId, awayTeamId,
+        setsWonHome, setsWonAway,
+        homeTotalPts, awayTotalPts,
+        sets = [],
+        players = [],
+    } = req.body;
+
+    // Validazione base
+    if (!homeTeamId || !awayTeamId) {
+        return res.status(400).json({ error: 'homeTeamId e awayTeamId sono obbligatori' });
+    }
+    if (!Array.isArray(sets) || !Array.isArray(players)) {
+        return res.status(400).json({ error: 'sets e players devono essere array' });
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // ── 1. Verifica che la partita esista ──────────────────────────
+        const matchCheck = await client.query(
+            'SELECT id, status FROM matches WHERE id = $1',
+            [matchId]
+        );
+        if (!matchCheck.rows[0]) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Partita non trovata' });
+        }
+
+        // ── 2. UPDATE matches ──────────────────────────────────────────
+        await client.query(`
+            UPDATE matches SET
+                status          = 'completed',
+                home_sets_won   = $2,
+                away_sets_won   = $3,
+                home_points     = $4,
+                away_points     = $5,
+                played_at       = NOW()
+            WHERE id = $1
+        `, [matchId, setsWonHome, setsWonAway, homeTotalPts, awayTotalPts]);
+
+        // ── 3. match_sets ──────────────────────────────────────────────
+        // Elimina eventuali set già salvati per questa partita
+        await client.query('DELETE FROM match_sets WHERE match_id = $1', [matchId]);
+
+        for (const s of sets) {
+            if (s.number == null) continue;
+            await client.query(`
+                INSERT INTO match_sets
+                    (match_id, set_number, home_score, away_score, winner_team_id)
+                VALUES ($1, $2, $3, $4, $5)
+            `, [
+                matchId,
+                s.number,
+                s.scoreA ?? 0,
+                s.scoreB ?? 0,
+                s.winnerTeamId ?? null,
+            ]);
+        }
+
+        // ── 4. stats_player_match ──────────────────────────────────────
+        // Elimina stats precedenti per questa partita
+        await client.query(
+            'DELETE FROM stats_player_match WHERE match_id = $1',
+            [matchId]
+        );
+
+        // Raggruppa le stats mappate per squadra (servirà per stats_team_match)
+        const teamStatsMap = { [homeTeamId]: [], [awayTeamId]: [] };
+
+        for (const p of players) {
+            if (!p.playerId || !p.teamId) continue;
+            const mapped = mapStats(p.stats ?? {});
+            const isHome = p.isHome ? 1 : 0;
+
+            // Accumula per stats_team_match
+            if (teamStatsMap[p.teamId]) teamStatsMap[p.teamId].push(mapped);
+
+            const cols   = ['match_id', 'player_id', 'team_id', 'is_home', ...STATS_COLS];
+            const vals   = [matchId, p.playerId, p.teamId, isHome, ...STATS_COLS.map(c => mapped[c] ?? 0)];
+            const placeholders = vals.map((_, i) => `$${i + 1}`).join(', ');
+
+            await client.query(
+                `INSERT INTO stats_player_match (${cols.join(', ')}) VALUES (${placeholders})
+                 ON CONFLICT (match_id, player_id) DO UPDATE SET
+                 ${STATS_COLS.map(c => `${c} = EXCLUDED.${c}`).join(', ')},
+                 is_home = EXCLUDED.is_home`,
+                vals
+            );
+        }
+
+        // ── 5. stats_team_match ────────────────────────────────────────
+        await client.query(
+            'DELETE FROM stats_team_match WHERE match_id = $1',
+            [matchId]
+        );
+
+        for (const [teamId, statsList] of Object.entries(teamStatsMap)) {
+            const isHome  = parseInt(teamId) === homeTeamId ? 1 : 0;
+            const totals  = sumStats(statsList);
+
+            const cols    = ['match_id', 'team_id', 'is_home', ...STATS_COLS];
+            const vals    = [matchId, parseInt(teamId), isHome, ...STATS_COLS.map(c => totals[c] ?? 0)];
+            const placeholders = vals.map((_, i) => `$${i + 1}`).join(', ');
+
+            await client.query(
+                `INSERT INTO stats_team_match (${cols.join(', ')}) VALUES (${placeholders})
+                 ON CONFLICT (match_id, team_id) DO UPDATE SET
+                 ${STATS_COLS.map(c => `${c} = EXCLUDED.${c}`).join(', ')},
+                 is_home = EXCLUDED.is_home`,
+                vals
+            );
+        }
+
+        await client.query('COMMIT');
+
+        res.json({
+            ok:       true,
+            matchId,
+            sets:     sets.length,
+            players:  players.length,
+            message:  'Partita salvata correttamente',
+        });
+
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('[matches] POST /:id/save', err);
+        res.status(500).json({ error: 'Errore salvataggio partita', detail: err.message });
+    } finally {
+        client.release();
+    }
+});
+
+
+module.exports = router;

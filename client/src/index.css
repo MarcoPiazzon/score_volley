@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background-color: #0b0e17;
+    color: #e8eaf2;
+    font-family: 'Barlow', sans-serif;
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #3c4260; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+}
+
+@layer components {
+  /* Ripple effect */
+  .ripple-container { position: relative; overflow: hidden; }
+  .ripple {
+    position: absolute;
+    border-radius: 50%;
+    transform: scale(0);
+    animation: ripple-anim 0.5s linear;
+    background: rgba(255,255,255,0.2);
+    pointer-events: none;
+  }
+  @keyframes ripple-anim {
+    to { transform: scale(4); opacity: 0; }
+  }
+
+  /* Court player bubble */
+  .court-player {
+    @apply absolute flex items-center justify-center
+           rounded-full font-condensed font-bold
+           cursor-pointer select-none
+           transition-all duration-150;
+    width: 42px;
+    height: 42px;
+    font-size: 15px;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+  .court-player.team-a {
+    @apply bg-teamA text-white;
+  }
+  .court-player.team-b {
+    @apply bg-teamB text-white;
+  }
+  .court-player.selected {
+    @apply ring-2 ring-white ring-offset-1;
+    ring-offset-color: transparent;
+    transform: translate(-50%, -50%) scale(1.15);
+    box-shadow: 0 0 16px rgba(255,255,255,0.4);
+  }
+  .court-player.libero {
+    background: repeating-linear-gradient(
+      45deg, #2a3a7c, #2a3a7c 4px, #1d2a5e 4px, #1d2a5e 8px
+    ) !important;
+  }
+  .court-player.libero.team-b {
+    background: repeating-linear-gradient(
+      45deg, #8b3a1a, #8b3a1a 4px, #6b2a10 4px, #6b2a10 8px
+    ) !important;
+  }
+  .court-player.out-target { @apply ring-2 ring-amber; }
+
+  /* Serve dot */
+  .serve-dot {
+    @apply absolute rounded-full bg-amber;
+    width: 8px;
+    height: 8px;
+    top: 2px;
+    right: 2px;
+    box-shadow: 0 0 6px rgba(245,197,66,0.8);
+  }
+
+  /* Flash notification */
+  .flash-msg {
+    @apply fixed top-4 left-1/2 -translate-x-1/2
+           px-5 py-2.5 rounded-xl font-condensed font-semibold text-sm
+           pointer-events-none z-50 text-bg;
+    animation: flash-in-out 2s ease forwards;
+  }
+  @keyframes flash-in-out {
+    0%   { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+    12%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+    75%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+}
