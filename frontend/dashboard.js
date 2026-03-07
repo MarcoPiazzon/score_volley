@@ -28,6 +28,24 @@ const state = {
   currentStat: "pts",
 };
 
+// ── Stato formazione (toast) ─────────────────────────────────────
+const lineupState = {
+  matchId: null,
+  matchData: null, // { home_team, away_team, matchday, home_team_id }
+  slots: {}, // { '1': player|null, ..., '6': player|null }
+  filter: "all", // filtro ruolo attivo nella lista
+  cache: {}, // { [teamId]: [...players] } — evita re-fetch inutili
+};
+
+const ROLE_LABELS = {
+  setter: "Palleggiatore",
+  outside_hitter: "Schiacciatore",
+  opposite: "Opposto",
+  middle_blocker: "Centrale",
+  libero: "Libero",
+  defensive_specialist: "Difensore",
+};
+
 const STAT_LABELS = {
   pts: "Punti",
   ace: "Ace",
@@ -572,14 +590,14 @@ function buildMatchCard(m) {
   btn?.addEventListener("click", async (e) => {
     e.stopPropagation();
     if (isPlayed || isLive) {
-      await openMatch(m.id);
+      await openMatch(m.id, isLive);
     } else {
-      await loadLineup(m.id, btn);
+      await loadLineup(m.id, btn, m);
     }
   });
 
   // Click sull'intera card (solo se giocata)
-  if (isPlayed) card.addEventListener("click", () => openMatch(m.id));
+  if (isPlayed) card.addEventListener("click", () => openMatch(m.id, false));
 
   return card;
 }
@@ -653,34 +671,422 @@ function syncTrophyHighlight() {
 // ================================================================
 //  NAVIGAZIONE
 // ================================================================
-async function openMatch(matchId) {
+async function openMatch(matchId, isLive = false) {
   try {
     const match = await api.matches.get(matchId);
     localStorage.setItem("openMatch", JSON.stringify(match));
   } catch (err) {
     console.warn("[dashboard] openMatch fetch failed, navigating anyway:", err);
   }
-  window.location.href = "timeline.html";
+  window.location.href = isLive ? "monitor.html" : "timeline.html";
 }
 
-async function loadLineup(matchId, btn) {
+// ================================================================
+//  LINEUP TOAST — apertura
+//  Chiamata quando si preme "⬡ Formazione" su una partita upcoming.
+//  1. Carica la rosa della squadra (con cache)
+//  2. Carica la formazione già salvata per questa partita (se esiste)
+//  3. Pre-popola gli slot del campo
+//  4. Apre il toast
+// ================================================================
+async function loadLineup(matchId, btn, matchData) {
   if (btn) {
     btn.disabled = true;
     btn.textContent = "⌛ Caricamento…";
   }
+
   try {
-    const lineup = await api.matches.getLineup(matchId);
-    localStorage.setItem("pendingLineup", JSON.stringify({ matchId, lineup }));
-    window.location.href = "lineup.html";
+    // ── 1. Inizializza stato ────────────────────────────────
+    lineupState.matchId = matchId;
+    lineupState.matchData = matchData ?? null;
+    lineupState.slots = {
+      1: null,
+      2: null,
+      3: null,
+      4: null,
+      5: null,
+      6: null,
+    };
+    lineupState.filter = "all";
+
+    // ── 2. Carica rosa (usa cache se disponibile) ───────────
+    if (!lineupState.cache[state.teamId]) {
+      lineupState.cache[state.teamId] = await api.teams.getPlayers(
+        state.teamId,
+      );
+    }
+
+    // ── 3. Carica eventuale formazione già salvata ──────────
+    try {
+      const existing = await api.matches.getLineup(matchId);
+      // Determina quale delle due lineup è la nostra
+      const side =
+        existing.home?.team_id === state.teamId
+          ? existing.home
+          : existing.away?.team_id === state.teamId
+            ? existing.away
+            : null;
+
+      if (side?.starters?.length) {
+        const allPlayers = lineupState.cache[state.teamId];
+        for (const lp of side.starters) {
+          const pos = lp.position_number;
+          if (!pos || pos < 1 || pos > 6) continue;
+          // Trova il player completo dalla cache
+          const full = allPlayers.find((p) => p.id === lp.player_id) ?? lp;
+          lineupState.slots[pos] = full;
+        }
+      }
+    } catch {
+      // Nessuna lineup salvata — campo vuoto, va bene
+    }
+
+    // ── 4. Apre il toast ────────────────────────────────────
+    ltOpen();
   } catch (err) {
     console.error("[dashboard] loadLineup:", err);
+    showToast("Errore nel caricamento della formazione", "error");
+  } finally {
     if (btn) {
       btn.disabled = false;
       btn.textContent = "⬡ Formazione";
     }
-    showToast("Errore nel caricamento della formazione", "error");
   }
 }
+
+// ================================================================
+//  LINEUP TOAST — apertura / chiusura UI
+// ================================================================
+function ltOpen() {
+  const overlay = document.getElementById("lineup-toast");
+  if (!overlay) return;
+
+  // Titolo partita
+  const m = lineupState.matchData;
+  const titleEl = document.getElementById("lt-match-title");
+  if (titleEl && m) {
+    titleEl.textContent =
+      `${m.home_team} vs ${m.away_team}` +
+      (m.matchday ? ` · Giornata ${m.matchday}` : "");
+  }
+
+  ltBuildRoleFilters();
+  ltRenderPlayers();
+  ltRenderCourt();
+  ltUpdateCount();
+
+  overlay.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+}
+
+function ltClose() {
+  const overlay = document.getElementById("lineup-toast");
+  if (overlay) overlay.classList.add("hidden");
+  document.body.style.overflow = "";
+}
+
+// ================================================================
+//  LINEUP TOAST — filtri ruolo
+// ================================================================
+function ltBuildRoleFilters() {
+  const container = document.getElementById("lt-role-filters");
+  if (!container) return;
+
+  const players = lineupState.cache[state.teamId] ?? [];
+  // Ruoli presenti nella rosa
+  const roles = [...new Set(players.map((p) => p.role).filter(Boolean))];
+
+  container.innerHTML = "";
+  ["all", ...roles].forEach((role) => {
+    const btn = document.createElement("button");
+    btn.className = `lt-role-pill${role === lineupState.filter ? " active" : ""}`;
+    btn.textContent = role === "all" ? "Tutti" : (ROLE_LABELS[role] ?? role);
+    btn.dataset.role = role;
+    btn.addEventListener("click", () => {
+      lineupState.filter = role;
+      container
+        .querySelectorAll(".lt-role-pill")
+        .forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      ltRenderPlayers();
+    });
+    container.appendChild(btn);
+  });
+}
+
+// ================================================================
+//  LINEUP TOAST — lista giocatori (sinistra)
+// ================================================================
+function ltRenderPlayers() {
+  const container = document.getElementById("lt-players-list");
+  if (!container) return;
+
+  const allPlayers = lineupState.cache[state.teamId] ?? [];
+  const placedIds = new Set(
+    Object.values(lineupState.slots)
+      .filter(Boolean)
+      .map((p) => p.id),
+  );
+
+  const visible = allPlayers.filter((p) => {
+    if (lineupState.filter !== "all" && p.role !== lineupState.filter)
+      return false;
+    return true;
+  });
+
+  container.innerHTML = "";
+
+  if (!visible.length) {
+    container.innerHTML = `
+            <div class="lt-list-empty">
+                <div class="lt-list-empty-icon">🔍</div>
+                <div>Nessun giocatore per questo ruolo</div>
+            </div>`;
+    return;
+  }
+
+  for (const p of visible) {
+    const isPlaced = placedIds.has(p.id);
+    const el = ltMakePlayerItem(p, isPlaced);
+    container.appendChild(el);
+  }
+}
+
+function ltMakePlayerItem(player, placed = false) {
+  const el = document.createElement("div");
+  el.className = `lt-player-item${placed ? " lt-placed" : ""}`;
+  el.draggable = !placed;
+  el.dataset.playerId = player.id;
+
+  const roleClass = `lt-role-${player.role ?? "setter"}`;
+  const roleLabel = ROLE_LABELS[player.role] ?? player.role ?? "—";
+
+  el.innerHTML = `
+        <div class="lt-player-num ${roleClass}">#${player.shirt_number ?? "?"}</div>
+        <div class="lt-player-info">
+            <div class="lt-player-name">${player.surname} ${player.name}</div>
+            <div class="lt-player-role">${roleLabel}</div>
+        </div>
+        <div class="lt-player-drag-hint">${placed ? "✓" : "⠿"}</div>`;
+
+  if (!placed) {
+    el.addEventListener("dragstart", (e) => {
+      el.classList.add("dragging");
+      e.dataTransfer.setData("lt-player-id", String(player.id));
+      e.dataTransfer.effectAllowed = "move";
+    });
+    el.addEventListener("dragend", () => el.classList.remove("dragging"));
+  }
+
+  return el;
+}
+
+// ================================================================
+//  LINEUP TOAST — campo (destra)
+// ================================================================
+function ltRenderCourt() {
+  document.querySelectorAll("#lineup-toast .lt-slot").forEach((slot) => {
+    const pos = parseInt(slot.dataset.pos);
+    const player = lineupState.slots[pos] ?? null;
+
+    // Pulisce slot
+    slot.innerHTML = "";
+    slot.classList.remove("lt-filled");
+
+    // Ripristina label posizione
+    slot.innerHTML = `
+            <span class="lt-pos-num">${pos}</span>
+            <span class="lt-pos-hint">${ltPosHint(pos)}</span>`;
+
+    // Drag-over / drop handlers
+    slot.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      slot.classList.add("lt-drag-over");
+    });
+    slot.addEventListener("dragleave", () =>
+      slot.classList.remove("lt-drag-over"),
+    );
+    slot.addEventListener("drop", (e) => ltHandleDrop(e, slot));
+
+    if (player) {
+      ltFillSlot(slot, pos, player, false);
+    }
+  });
+}
+
+function ltPosHint(pos) {
+  return (
+    {
+      1: "Pall.",
+      2: "Opp.",
+      3: "Centr.",
+      4: "Sch.sx",
+      5: "Dif.sx",
+      6: "Centr.",
+    }[pos] ?? ""
+  );
+}
+
+function ltFillSlot(slot, pos, player, rerender = true) {
+  slot.classList.add("lt-filled");
+  slot.classList.remove("lt-drag-over");
+
+  const roleClass = `lt-role-${player.role ?? "setter"}`;
+
+  // Mantiene label posizione
+  slot.innerHTML = `
+        <span class="lt-pos-num">${pos}</span>
+        <button class="lt-slot-remove" data-pos="${pos}" title="Rimuovi">✕</button>
+        <div class="lt-slot-player" draggable="true" data-player-id="${player.id}">
+            <div class="lt-player-num ${roleClass}">#${player.shirt_number ?? "?"}</div>
+            <div class="lt-player-name">${player.surname}</div>
+        </div>`;
+
+  // Click su ✕ → rimuove dallo slot
+  slot.querySelector(".lt-slot-remove").addEventListener("click", (e) => {
+    e.stopPropagation();
+    lineupState.slots[pos] = null;
+    ltRefresh();
+  });
+
+  // Drag del player già nello slot → lo sposta in un altro slot
+  const inner = slot.querySelector(".lt-slot-player");
+  inner.addEventListener("dragstart", (e) => {
+    e.dataTransfer.setData("lt-player-id", String(player.id));
+    e.dataTransfer.setData("lt-from-pos", String(pos));
+    e.dataTransfer.effectAllowed = "move";
+  });
+
+  if (rerender) {
+    lineupState.slots[pos] = player;
+    ltRefresh();
+  }
+}
+
+function ltHandleDrop(e, slot) {
+  e.preventDefault();
+  slot.classList.remove("lt-drag-over");
+
+  const playerId = parseInt(e.dataTransfer.getData("lt-player-id"));
+  const fromPos = parseInt(e.dataTransfer.getData("lt-from-pos")) || null;
+  const toPos = parseInt(slot.dataset.pos);
+
+  if (!playerId) return;
+
+  const allPlayers = lineupState.cache[state.teamId] ?? [];
+  const player = allPlayers.find((p) => p.id === playerId);
+  if (!player) return;
+
+  // Se lo slot di destinazione aveva già un giocatore → scambia
+  const displaced = lineupState.slots[toPos] ?? null;
+
+  // Libera slot origine (se veniva da un altro slot)
+  if (fromPos && fromPos !== toPos) {
+    lineupState.slots[fromPos] = displaced; // scambia
+  } else if (!fromPos && displaced) {
+    // Veniva dalla lista: il displaced va liberato (torna in lista)
+    lineupState.slots[toPos] = null;
+  }
+
+  lineupState.slots[toPos] = player;
+  ltRefresh();
+}
+
+// ================================================================
+//  LINEUP TOAST — aggiornamento coordinato lista + campo + counter
+// ================================================================
+function ltRefresh() {
+  ltRenderPlayers();
+  ltRenderCourt();
+  ltUpdateCount();
+}
+
+function ltUpdateCount() {
+  const count = Object.values(lineupState.slots).filter(Boolean).length;
+  const el = document.getElementById("lt-count");
+  if (el) el.textContent = count;
+
+  const confirmBtn = document.getElementById("lt-confirm");
+  if (confirmBtn) confirmBtn.disabled = count < 6;
+}
+
+// ================================================================
+//  LINEUP TOAST — conferma e salvataggio
+// ================================================================
+async function ltConfirm() {
+  const confirmBtn = document.getElementById("lt-confirm");
+  if (confirmBtn) {
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = "⌛ Salvataggio…";
+  }
+
+  try {
+    const allPlayers = lineupState.cache[state.teamId] ?? [];
+    const placedIds = new Set(
+      Object.values(lineupState.slots)
+        .filter(Boolean)
+        .map((p) => p.id),
+    );
+
+    // Titolari: i 6 posizionati sul campo
+    const starters = Object.entries(lineupState.slots)
+      .filter(([, p]) => p !== null)
+      .map(([pos, p]) => ({
+        player_id: p.id,
+        position_number: parseInt(pos),
+        shirt_number: p.shirt_number,
+        is_starter: true,
+        is_libero: p.role === "libero",
+      }));
+
+    // Panchina: tutti gli altri della rosa
+    const bench = allPlayers
+      .filter((p) => !placedIds.has(p.id))
+      .map((p) => ({
+        player_id: p.id,
+        position_number: null,
+        shirt_number: p.shirt_number,
+        is_starter: false,
+        is_libero: p.role === "libero",
+      }));
+
+    await api.matches.saveLineup(lineupState.matchId, {
+      team_id: state.teamId,
+      players: [...starters, ...bench],
+    });
+
+    ltClose();
+    showToast("Formazione salvata ✓", "success");
+  } catch (err) {
+    console.error("[dashboard] ltConfirm:", err);
+    showToast("Errore nel salvataggio della formazione", "error");
+  } finally {
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = "Salva Formazione";
+    }
+  }
+}
+
+// ================================================================
+//  LINEUP TOAST — event listeners (montati una sola volta)
+// ================================================================
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("lt-close")?.addEventListener("click", ltClose);
+  document.getElementById("lt-cancel")?.addEventListener("click", ltClose);
+  document.getElementById("lt-confirm")?.addEventListener("click", ltConfirm);
+
+  // Click sull'overlay fuori dalla card → chiude
+  document.getElementById("lineup-toast")?.addEventListener("click", (e) => {
+    if (e.target === e.currentTarget) ltClose();
+  });
+
+  // ESC → chiude
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") ltClose();
+  });
+});
 
 // ================================================================
 //  UTILITY
@@ -714,12 +1120,24 @@ function formatTournamentType(type) {
 }
 
 function showToast(message, type = "info") {
+  const colors = {
+    error: { bg: "var(--red-dim)", border: "var(--red)", text: "var(--red)" },
+    success: {
+      bg: "var(--green-dim)",
+      border: "var(--green)",
+      text: "var(--green)",
+    },
+    info: {
+      bg: "var(--surf-3)",
+      border: "var(--border-m)",
+      text: "var(--text)",
+    },
+  };
+  const c = colors[type] ?? colors.info;
   const t = document.createElement("div");
   t.style.cssText = `
         position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
-        background:${type === "error" ? "var(--red-dim)" : "var(--surf-3)"};
-        border:1px solid ${type === "error" ? "var(--red)" : "var(--border-m)"};
-        color:${type === "error" ? "var(--red)" : "var(--text)"};
+        background:${c.bg};border:1px solid ${c.border};color:${c.text};
         padding:10px 20px;border-radius:8px;font-size:13px;
         font-family:'Barlow Condensed',sans-serif;font-weight:700;
         z-index:9999;pointer-events:none;animation:hdrFadeIn .2s ease;`;

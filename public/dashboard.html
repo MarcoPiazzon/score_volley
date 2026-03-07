@@ -1064,8 +1064,633 @@
 
     </div><!-- /app -->
 
+    <!-- ══ LINEUP TOAST ════════════════════════════════════════════════ -->
+    <div id="lineup-toast" class="lt-overlay hidden">
+        <div class="lt-card">
+
+            <!-- Header -->
+            <div class="lt-header">
+                <div class="lt-title-group">
+                    <div class="lt-icon">⬡</div>
+                    <div>
+                        <div class="lt-title">Formazione</div>
+                        <div class="lt-subtitle" id="lt-match-title">—</div>
+                    </div>
+                </div>
+                <button class="lt-close" id="lt-close" title="Chiudi">✕</button>
+            </div>
+
+            <!-- Body -->
+            <div class="lt-body">
+
+                <!-- ── SINISTRA: rosa disponibile ── -->
+                <div class="lt-left">
+                    <div class="lt-section-label">Rosa disponibile</div>
+                    <div class="lt-role-filters" id="lt-role-filters"></div>
+                    <div class="lt-players-list" id="lt-players-list">
+                        <!-- popolato da JS -->
+                    </div>
+                </div>
+
+                <!-- ── DESTRA: campo + panchina ── -->
+                <div class="lt-right">
+                    <div class="lt-section-label">Posizioni in campo</div>
+
+                    <!-- Campo diviso in 2 file: frontale e posteriore -->
+                    <div class="lt-court">
+
+                        <!-- Rete (separatore visivo) -->
+                        <div class="lt-net-label">← rete →</div>
+
+                        <!-- Fila anteriore: pos 4 3 2 -->
+                        <div class="lt-row">
+                            <div class="lt-slot" data-pos="4">
+                                <span class="lt-pos-num">4</span>
+                                <span class="lt-pos-hint">Sch.sx</span>
+                            </div>
+                            <div class="lt-slot" data-pos="3">
+                                <span class="lt-pos-num">3</span>
+                                <span class="lt-pos-hint">Centr.</span>
+                            </div>
+                            <div class="lt-slot" data-pos="2">
+                                <span class="lt-pos-num">2</span>
+                                <span class="lt-pos-hint">Opp.</span>
+                            </div>
+                        </div>
+
+                        <!-- Fila posteriore: pos 5 6 1 -->
+                        <div class="lt-row">
+                            <div class="lt-slot" data-pos="5">
+                                <span class="lt-pos-num">5</span>
+                                <span class="lt-pos-hint">Dif.sx</span>
+                            </div>
+                            <div class="lt-slot" data-pos="6">
+                                <span class="lt-pos-num">6</span>
+                                <span class="lt-pos-hint">Centr.</span>
+                            </div>
+                            <div class="lt-slot" data-pos="1">
+                                <span class="lt-pos-num">1</span>
+                                <span class="lt-pos-hint">Pall.</span>
+                            </div>
+                        </div>
+
+                    </div><!-- /lt-court -->
+
+                </div><!-- /lt-right -->
+
+            </div><!-- /lt-body -->
+
+            <!-- Footer -->
+            <div class="lt-footer">
+                <div class="lt-starter-count">
+                    <span id="lt-count">0</span>/6 titolari
+                </div>
+                <div class="lt-footer-btns">
+                    <button class="lt-btn lt-btn-cancel" id="lt-cancel">Annulla</button>
+                    <button class="lt-btn lt-btn-confirm" id="lt-confirm" disabled>Salva Formazione</button>
+                </div>
+            </div>
+
+        </div><!-- /lt-card -->
+    </div><!-- /lineup-toast -->
+
+    <style>
+        /* ── LINEUP TOAST ─────────────────────────────────────────────── */
+        .lt-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .65);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9998;
+            backdrop-filter: blur(3px);
+            animation: ltFadeIn .18s ease;
+        }
+
+        .lt-overlay.hidden {
+            display: none;
+        }
+
+        @keyframes ltFadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes ltSlideIn {
+            from {
+                transform: translateY(18px);
+                opacity: 0;
+            }
+
+            to {
+                transform: none;
+                opacity: 1;
+            }
+        }
+
+        .lt-card {
+            width: 940px;
+            max-width: 96vw;
+            max-height: 92vh;
+            background: var(--surf-1);
+            border: 1px solid var(--border-m);
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: ltSlideIn .2s ease;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, .55);
+        }
+
+        /* Header */
+        .lt-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px 13px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .lt-title-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .lt-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 9px;
+            background: var(--a-dim);
+            border: 1px solid rgba(59, 139, 255, .25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .lt-title {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: .5px;
+            color: var(--text);
+        }
+
+        .lt-subtitle {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 1px;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 600;
+            letter-spacing: .5px;
+        }
+
+        .lt-close {
+            width: 30px;
+            height: 30px;
+            border-radius: 6px;
+            border: 1px solid var(--border-m);
+            background: transparent;
+            color: var(--muted);
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all .12s;
+        }
+
+        .lt-close:hover {
+            border-color: var(--red);
+            color: var(--red);
+            background: var(--red-dim);
+        }
+
+        /* Body */
+        .lt-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            min-height: 0;
+            padding: 16px;
+            gap: 16px;
+        }
+
+        /* Sezione label comune */
+        .lt-section-label {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        /* ── SINISTRA ── */
+        .lt-left {
+            width: 290px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Filtri ruolo */
+        .lt-role-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+
+        .lt-role-pill {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: .5px;
+            text-transform: uppercase;
+            padding: 3px 8px;
+            border-radius: 20px;
+            cursor: pointer;
+            border: 1px solid var(--border-m);
+            background: var(--surf-2);
+            color: var(--muted);
+            transition: all .12s;
+            white-space: nowrap;
+        }
+
+        .lt-role-pill:hover {
+            border-color: var(--border-h);
+            color: var(--text);
+        }
+
+        .lt-role-pill.active {
+            background: var(--a-dim);
+            border-color: var(--a);
+            color: var(--a);
+        }
+
+        /* Lista giocatori */
+        .lt-players-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .lt-players-list::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .lt-players-list::-webkit-scrollbar-thumb {
+            background: var(--subtle);
+            border-radius: 2px;
+        }
+
+        .lt-player-item {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 8px 10px;
+            border-radius: 7px;
+            background: var(--surf-2);
+            border: 1px solid var(--border);
+            cursor: grab;
+            transition: all .12s;
+            user-select: none;
+        }
+
+        .lt-player-item:hover {
+            border-color: var(--border-h);
+            background: var(--surf-3);
+        }
+
+        .lt-player-item.dragging {
+            opacity: .4;
+            cursor: grabbing;
+        }
+
+        .lt-player-item.lt-placed {
+            opacity: .3;
+            pointer-events: none;
+        }
+
+        .lt-player-num {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            color: #fff;
+            border: 1.5px solid rgba(255, 255, 255, .15);
+        }
+
+        .lt-player-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .lt-player-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.2;
+        }
+
+        .lt-player-role {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 10px;
+            color: var(--muted);
+            margin-top: 1px;
+        }
+
+        .lt-player-drag-hint {
+            font-size: 11px;
+            color: var(--subtle);
+            flex-shrink: 0;
+        }
+
+        /* ── DESTRA ── */
+        .lt-right {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Campo */
+        .lt-court {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(180deg, rgba(34, 212, 122, .04) 0%, rgba(59, 139, 255, .04) 100%);
+            border: 1px solid var(--border-m);
+            border-radius: 10px;
+            padding: 10px 12px;
+            gap: 8px;
+            min-height: 0;
+        }
+
+        .lt-net-label {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--subtle);
+            text-align: center;
+            border-top: 2px solid var(--subtle);
+            padding-top: 4px;
+            margin: 2px 0 4px;
+            flex-shrink: 0;
+        }
+
+        .lt-row {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            min-height: 0;
+        }
+
+        /* Slot campo */
+        .lt-slot {
+            background: var(--surf-2);
+            border: 2px dashed var(--border-m);
+            border-radius: 9px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 2px;
+            transition: border-color .12s, background .12s;
+            min-height: 70px;
+        }
+
+        .lt-slot.lt-drag-over {
+            border-color: var(--a);
+            background: var(--a-dim);
+        }
+
+        .lt-slot.lt-filled {
+            border-style: solid;
+            border-color: var(--border-h);
+            background: var(--surf-3);
+        }
+
+        .lt-pos-num {
+            position: absolute;
+            top: 5px;
+            left: 7px;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--subtle);
+            pointer-events: none;
+        }
+
+        .lt-pos-hint {
+            position: absolute;
+            bottom: 4px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: .5px;
+            text-transform: uppercase;
+            color: var(--subtle);
+            pointer-events: none;
+        }
+
+        /* Il player dentro lo slot */
+        .lt-slot-player {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            cursor: grab;
+            pointer-events: all;
+        }
+
+        .lt-slot-player .lt-player-num {
+            width: 30px;
+            height: 30px;
+            font-size: 14px;
+        }
+
+        .lt-slot-player .lt-player-name {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text);
+            text-align: center;
+            line-height: 1.1;
+            max-width: 80px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* X per rimuovere dallo slot */
+        .lt-slot-remove {
+            position: absolute;
+            top: 4px;
+            right: 5px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--red-dim);
+            border: 1px solid var(--red);
+            color: var(--red);
+            font-size: 9px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            line-height: 1;
+            transition: background .1s;
+        }
+
+        .lt-slot-remove:hover {
+            background: var(--red);
+            color: #fff;
+        }
+
+        /* Footer */
+        .lt-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .lt-starter-count {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--muted);
+        }
+
+        .lt-starter-count span {
+            color: var(--a);
+            font-size: 16px;
+        }
+
+        .lt-footer-btns {
+            display: flex;
+            gap: 8px;
+        }
+
+        .lt-btn {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: .7px;
+            text-transform: uppercase;
+            padding: 7px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all .13s;
+        }
+
+        .lt-btn-cancel {
+            background: transparent;
+            border: 1px solid var(--border-m);
+            color: var(--muted);
+        }
+
+        .lt-btn-cancel:hover {
+            border-color: var(--red);
+            color: var(--red);
+            background: var(--red-dim);
+        }
+
+        .lt-btn-confirm {
+            background: var(--a-dim);
+            border: 1px solid var(--a);
+            color: var(--a);
+        }
+
+        .lt-btn-confirm:hover:not(:disabled) {
+            background: rgba(59, 139, 255, .25);
+        }
+
+        .lt-btn-confirm:disabled {
+            opacity: .4;
+            cursor: not-allowed;
+        }
+
+        /* Colori ruolo per avatar */
+        .lt-role-setter {
+            background: linear-gradient(135deg, #3b8bff, #1a5cd4);
+        }
+
+        .lt-role-outside_hitter {
+            background: linear-gradient(135deg, #22d47a, #138a4c);
+        }
+
+        .lt-role-opposite {
+            background: linear-gradient(135deg, #ff6b35, #c43d12);
+        }
+
+        .lt-role-middle_blocker {
+            background: linear-gradient(135deg, #a78bfa, #6b46d4);
+        }
+
+        .lt-role-libero {
+            background: linear-gradient(135deg, #f5c542, #c4900f);
+        }
+
+        .lt-role-defensive_specialist {
+            background: linear-gradient(135deg, #22d3ee, #0e8fa4);
+        }
+
+        /* Vuoto lista */
+        .lt-list-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px 10px;
+            gap: 6px;
+            color: var(--muted);
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .lt-list-empty-icon {
+            font-size: 24px;
+            opacity: .35;
+        }
+    </style>
+
     <!-- ══ Script principale (ES module) ══════════════════════════════ -->
-    <script type="module" src="../frontend/dashboard.js"></script>
+    <script type="module" src="/frontend/dashboard.js"></script>
 
 </body>
 

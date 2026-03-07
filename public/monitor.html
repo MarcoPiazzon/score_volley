@@ -1,0 +1,2533 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoraggio Partita</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=Barlow:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0b0e17;
+            --surf-1: #121622;
+            --surf-2: #1a1f30;
+            --surf-3: #222840;
+            --border: rgba(255, 255, 255, .07);
+            --border-m: rgba(255, 255, 255, .13);
+            --a: #3b8bff;
+            --a-dim: rgba(59, 139, 255, .15);
+            --a-glow: rgba(59, 139, 255, .35);
+            --b: #ff6b35;
+            --b-dim: rgba(255, 107, 53, .15);
+            --b-glow: rgba(255, 107, 53, .35);
+            --green: #22d47a;
+            --green-dim: rgba(34, 212, 122, .14);
+            --red: #f04e4e;
+            --red-dim: rgba(240, 78, 78, .14);
+            --amber: #f5c542;
+            --amber-dim: rgba(245, 197, 66, .14);
+            --purple: #a78bfa;
+            --purple-dim: rgba(167, 139, 250, .14);
+            --slate: #64748b;
+            --slate-dim: rgba(100, 116, 139, .14);
+            --text: #e8eaf2;
+            --muted: #7a829a;
+            --subtle: #3c4260;
+            --court: #c8a55a;
+            --r: 10px;
+            --r-sm: 6px;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Barlow', sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            user-select: none;
+        }
+
+        /* ── TOP BAR ── */
+        #topbar {
+            display: flex;
+            align-items: center;
+            background: var(--surf-1);
+            border-bottom: 1px solid var(--border);
+            height: 52px;
+            flex-shrink: 0;
+            padding: 0 16px;
+            position: relative;
+        }
+
+        #scoreboard {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            background: var(--surf-2);
+            border: 1px solid var(--border-m);
+            border-radius: var(--r);
+            overflow: hidden;
+            flex-shrink: 0;
+            z-index: 2;
+        }
+
+        .team-score-block {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+        }
+
+        .team-score-block.b {
+            flex-direction: row-reverse;
+        }
+
+        .team-name {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .team-name.a {
+            color: var(--a);
+        }
+
+        .team-name.b {
+            color: var(--b);
+        }
+
+        .score-sets {
+            display: flex;
+            gap: 4px;
+        }
+
+        .set-pip {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: var(--surf-3);
+            border: 1.5px solid var(--border-m);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--muted);
+            transition: all .2s;
+        }
+
+        .set-pip.won-a {
+            background: var(--a-dim);
+            border-color: var(--a);
+            color: var(--a);
+        }
+
+        .set-pip.won-b {
+            background: var(--b-dim);
+            border-color: var(--b);
+            color: var(--b);
+        }
+
+        .pts {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 42px;
+            font-weight: 800;
+            width: 68px;
+            text-align: center;
+            line-height: 1;
+            padding: 6px 0 4px;
+        }
+
+        .pts.a {
+            color: var(--a);
+        }
+
+        .pts.b {
+            color: var(--b);
+        }
+
+        .pts-div {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 28px;
+            font-weight: 300;
+            color: var(--subtle);
+            padding: 0 2px;
+        }
+
+        .set-label {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: var(--muted);
+            text-transform: uppercase;
+            text-align: center;
+            padding: 2px 10px;
+            background: var(--surf-3);
+            border-bottom-left-radius: 4px;
+            border-bottom-right-radius: 4px;
+            position: absolute;
+            top: 52px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+        }
+
+        /* ── MAIN ── */
+        #main {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        /* ── BENCH PANELS ── */
+        .bench-panel {
+            width: 130px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            padding: 10px 8px;
+            gap: 6px;
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+        }
+
+        .bench-panel.b {
+            border-right: none;
+            border-left: 1px solid var(--border);
+        }
+
+        .bench-header {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 2px;
+        }
+
+        .bench-title {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .bench-title.a {
+            color: var(--a);
+        }
+
+        .bench-title.b {
+            color: var(--b);
+        }
+
+        .bench-timeout {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 9px;
+            color: var(--subtle);
+            letter-spacing: .5px;
+        }
+
+        .bench-timeout.has-to {
+            color: var(--amber);
+        }
+
+        .bench-player {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 8px;
+            border-radius: var(--r-sm);
+            background: var(--surf-2);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+        .bench-player:hover {
+            border-color: var(--border-m);
+            background: var(--surf-3);
+        }
+
+        .bench-player.selected-a {
+            background: var(--a-dim);
+            border-color: var(--a);
+        }
+
+        .bench-player.selected-b {
+            background: var(--b-dim);
+            border-color: var(--b);
+        }
+
+        .bench-player.out-target {
+            background: var(--amber-dim);
+            border-color: var(--amber);
+        }
+
+        .bp-num {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+            flex-shrink: 0;
+        }
+
+        .bp-num.a {
+            background: var(--a);
+            color: #fff;
+        }
+
+        .bp-num.b {
+            background: var(--b);
+            color: #fff;
+        }
+
+        .bp-name {
+            font-size: 11px;
+            color: var(--muted);
+            line-height: 1.2;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        /* ── COURT AREA ── */
+        #court-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 12px 16px 8px;
+            gap: 10px;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        #court-wrap {
+            position: relative;
+            width: 100%;
+            max-width: 580px;
+            flex-shrink: 0;
+        }
+
+        #court {
+            width: 100%;
+            aspect-ratio: 2/1.05;
+            background: var(--court);
+            border-radius: 8px;
+            border: 2px solid rgba(255, 255, 255, .2);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, .4), 0 12px 40px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(255, 255, 255, .1);
+        }
+
+        #court::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 1;
+            background: linear-gradient(90deg, transparent calc(50% - 1px), rgba(255, 255, 255, .6) calc(50% - 1px), rgba(255, 255, 255, .6) calc(50% + 1px), transparent calc(50% + 1px)),
+                linear-gradient(90deg, transparent calc(25% - .5px), rgba(255, 255, 255, .25) calc(25% - .5px), rgba(255, 255, 255, .25) calc(25% + .5px), transparent calc(25% + .5px)),
+                linear-gradient(90deg, transparent calc(75% - .5px), rgba(255, 255, 255, .25) calc(75% - .5px), rgba(255, 255, 255, .25) calc(75% + .5px), transparent calc(75% + .5px));
+        }
+
+        #court::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 50%;
+            height: 100%;
+            background: rgba(255, 255, 255, .04);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .net {
+            position: absolute;
+            left: calc(50% - 2px);
+            top: -4px;
+            width: 4px;
+            height: calc(100% + 8px);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, .95) 8%, rgba(255, 255, 255, .95) 92%, rgba(255, 255, 255, 0) 100%);
+            z-index: 4;
+            border-radius: 2px;
+        }
+
+        .net::before {
+            content: '';
+            position: absolute;
+            left: -6px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 3px;
+            background: rgba(255, 255, 255, .5);
+            border-radius: 2px;
+        }
+
+        .court-player {
+            position: absolute;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 17px;
+            font-weight: 800;
+            cursor: pointer;
+            z-index: 5;
+            transform: translate(-50%, -50%);
+            transition: transform .15s, box-shadow .15s, border-color .15s;
+            border: 2.5px solid rgba(255, 255, 255, .2);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, .5);
+        }
+
+        .court-player.a {
+            background: linear-gradient(135deg, #4a9aff, #2266dd);
+            color: #fff;
+        }
+
+        .court-player.b {
+            background: linear-gradient(135deg, #ff8050, #dd4020);
+            color: #fff;
+        }
+
+        .court-player:hover {
+            transform: translate(-50%, -50%) scale(1.12);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, .6);
+        }
+
+        .court-player.selected {
+            border-color: #fff;
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, .4), 0 5px 20px rgba(0, 0, 0, .6);
+            transform: translate(-50%, -50%) scale(1.15);
+        }
+
+        .court-player.libero {
+            border-color: var(--amber);
+            border-width: 3px;
+        }
+
+        .court-player.out-selected {
+            border-color: var(--amber);
+            border-width: 3px;
+            box-shadow: 0 0 0 3px rgba(245, 197, 66, .4), 0 5px 20px rgba(0, 0, 0, .6);
+            transform: translate(-50%, -50%) scale(1.15);
+        }
+
+        .serve-dot {
+            position: absolute;
+            width: 9px;
+            height: 9px;
+            background: var(--amber);
+            border-radius: 50%;
+            top: 2px;
+            right: 2px;
+            border: 1.5px solid #fff;
+            animation: pulse-dot 1.5s infinite;
+            z-index: 10;
+        }
+
+        @keyframes pulse-dot {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1)
+            }
+
+            50% {
+                opacity: .6;
+                transform: scale(.75)
+            }
+        }
+
+        /* ── MODE BANNER (sub / card) ── */
+        #mode-banner {
+            display: none;
+            position: absolute;
+            bottom: -28px;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 4px 14px;
+            border-radius: 0 0 6px 6px;
+            z-index: 20;
+        }
+
+        #mode-banner.sub {
+            display: block;
+            background: var(--purple);
+            color: #fff;
+        }
+
+        #mode-banner.card-yellow {
+            display: block;
+            background: var(--amber);
+            color: #000;
+        }
+
+        #mode-banner.card-red {
+            display: block;
+            background: var(--red);
+            color: #fff;
+        }
+
+        #mode-banner.cancel-btn {
+            cursor: pointer;
+        }
+
+        #mode-banner.cancel-btn:hover {
+            opacity: .8;
+        }
+
+        /* ── SELECTED BAR ── */
+        #selected-bar {
+            width: 100%;
+            max-width: 580px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--surf-2);
+            border: 1px solid var(--border-m);
+            border-radius: var(--r-sm);
+            padding: 7px 12px;
+            min-height: 38px;
+            flex-shrink: 0;
+            transition: all .2s;
+        }
+
+        #selected-bar.none {
+            opacity: .4;
+        }
+
+        #selected-bar.sub-mode {
+            border-color: var(--purple);
+            background: var(--purple-dim);
+        }
+
+        #selected-bar.card-mode {
+            border-color: var(--amber);
+            background: var(--amber-dim);
+        }
+
+        .sel-badge {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            flex-shrink: 0;
+        }
+
+        .sel-badge.a {
+            background: var(--a);
+            color: #fff;
+        }
+
+        .sel-badge.b {
+            background: var(--b);
+            color: #fff;
+        }
+
+        .sel-badge.neutral {
+            background: var(--surf-3);
+            color: var(--muted);
+        }
+
+        .sel-info {
+            flex: 1;
+        }
+
+        .sel-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .sel-role {
+            font-size: 10px;
+            color: var(--muted);
+            letter-spacing: .5px;
+            text-transform: uppercase;
+        }
+
+        /* ── ACTION PANEL ── */
+        #action-panel {
+            width: 100%;
+            max-width: 580px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .action-group {
+            display: flex;
+            gap: 5px;
+            flex-shrink: 0;
+        }
+
+        .action-group-label {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--subtle);
+            padding: 2px 0;
+            flex-shrink: 0;
+        }
+
+        .act-btn {
+            flex: 1;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: .8px;
+            text-transform: uppercase;
+            padding: 10px 6px;
+            border-radius: var(--r-sm);
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all .12s;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .act-btn:active {
+            transform: scale(.97);
+        }
+
+        .act-btn.lg {
+            font-size: 15px;
+            padding: 12px 6px;
+        }
+
+        .act-btn.green {
+            background: var(--green-dim);
+            border-color: rgba(34, 212, 122, .3);
+            color: var(--green);
+        }
+
+        .act-btn.red {
+            background: var(--red-dim);
+            border-color: rgba(240, 78, 78, .3);
+            color: var(--red);
+        }
+
+        .act-btn.amber {
+            background: var(--amber-dim);
+            border-color: rgba(245, 197, 66, .3);
+            color: var(--amber);
+        }
+
+        .act-btn.purple {
+            background: var(--purple-dim);
+            border-color: rgba(167, 139, 250, .3);
+            color: var(--purple);
+        }
+
+        .act-btn.slate {
+            background: var(--slate-dim);
+            border-color: rgba(100, 116, 139, .3);
+            color: var(--slate);
+        }
+
+        .act-btn.a-col {
+            background: var(--a-dim);
+            border-color: rgba(59, 139, 255, .3);
+            color: var(--a);
+        }
+
+        .act-btn.b-col {
+            background: var(--b-dim);
+            border-color: rgba(255, 107, 53, .3);
+            color: var(--b);
+        }
+
+        .act-btn.green:hover {
+            background: rgba(34, 212, 122, .22);
+            border-color: var(--green);
+        }
+
+        .act-btn.red:hover {
+            background: rgba(240, 78, 78, .22);
+            border-color: var(--red);
+        }
+
+        .act-btn.amber:hover {
+            background: rgba(245, 197, 66, .22);
+            border-color: var(--amber);
+        }
+
+        .act-btn.purple:hover {
+            background: rgba(167, 139, 250, .22);
+            border-color: var(--purple);
+        }
+
+        .act-btn.slate:hover {
+            background: rgba(100, 116, 139, .22);
+            border-color: var(--slate);
+        }
+
+        .act-btn.a-col:hover {
+            background: rgba(59, 139, 255, .22);
+            border-color: var(--a);
+        }
+
+        .act-btn.b-col:hover {
+            background: rgba(255, 107, 53, .22);
+            border-color: var(--b);
+        }
+
+        .act-btn.active-mode {
+            box-shadow: inset 0 0 0 2px currentColor;
+            opacity: 1 !important;
+        }
+
+        .act-icon {
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        .util-controls {
+            display: flex;
+            gap: 5px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .ctrl-btn {
+            flex: 1;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: .8px;
+            text-transform: uppercase;
+            padding: 9px 8px;
+            border-radius: var(--r-sm);
+            border: 1px solid var(--border-m);
+            background: var(--surf-3);
+            color: var(--muted);
+            cursor: pointer;
+            transition: all .15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .ctrl-btn:hover {
+            background: var(--surf-2);
+            color: var(--text);
+        }
+
+        .ctrl-btn.undo {
+            color: var(--amber);
+            border-color: var(--amber-dim);
+        }
+
+        .ctrl-btn.undo:hover {
+            background: var(--amber-dim);
+            border-color: var(--amber);
+        }
+
+        /* ── FIXED STATS BTN ── */
+        #stats-fixed {
+            position: fixed;
+            bottom: 14px;
+            right: 14px;
+            z-index: 499;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 8px 16px;
+            border-radius: 7px;
+            border: 1px solid var(--a-dim);
+            background: var(--surf-2);
+            color: var(--a);
+            cursor: pointer;
+            transition: all .15s;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, .4);
+        }
+
+        #stats-fixed:hover {
+            background: var(--a-dim);
+            border-color: var(--a);
+        }
+
+        /* ── FLASH ── */
+        .flash {
+            position: fixed;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-10px);
+            background: var(--surf-2);
+            border: 1px solid var(--border-m);
+            border-radius: var(--r);
+            padding: 8px 20px;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            opacity: 0;
+            transition: opacity .2s, transform .2s;
+            pointer-events: none;
+            z-index: 600;
+        }
+
+        .flash.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ── SCROLLBAR ── */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--subtle);
+            border-radius: 2px;
+        }
+
+        /* ── RIPPLE ── */
+        @keyframes ripple {
+            from {
+                transform: scale(0);
+                opacity: .4
+            }
+
+            to {
+                transform: scale(4);
+                opacity: 0
+            }
+        }
+
+        .ripple-el {
+            position: absolute;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            margin-left: -25px;
+            margin-top: -25px;
+            background: rgba(255, 255, 255, .2);
+            animation: ripple .4s linear forwards;
+            pointer-events: none;
+        }
+
+        /* ══════════════════════════════════════════
+           STATS PANEL
+        ══════════════════════════════════════════ */
+        #stats-panel {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: min(740px, 95vw);
+            height: 100vh;
+            background: var(--surf-1);
+            border-left: 1px solid var(--border-m);
+            z-index: 500;
+            display: flex;
+            flex-direction: column;
+            transition: right .3s cubic-bezier(.4, 0, .2, 1);
+            box-shadow: -8px 0 32px rgba(0, 0, 0, .6);
+        }
+
+        #stats-panel.open {
+            right: 0;
+        }
+
+        .sp-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-m);
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+
+        .sp-title {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text);
+            flex-shrink: 0;
+        }
+
+        .sp-pills {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+
+        .sp-cat-btn {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .8px;
+            text-transform: uppercase;
+            padding: 4px 10px;
+            border-radius: 4px;
+            border: 1px solid var(--border-m);
+            background: var(--surf-3);
+            color: var(--muted);
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+        .sp-cat-btn.active,
+        .sp-cat-btn:hover {
+            background: var(--a-dim);
+            border-color: var(--a);
+            color: var(--a);
+        }
+
+        .sp-close {
+            font-size: 16px;
+            background: none;
+            border: none;
+            color: var(--muted);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .sp-close:hover {
+            color: var(--text);
+        }
+
+        .sp-tabs {
+            display: flex;
+            gap: 2px;
+            padding: 8px 16px 0;
+            flex-shrink: 0;
+        }
+
+        .sp-tab {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .5px;
+            text-transform: uppercase;
+            padding: 5px 12px;
+            border-radius: 4px 4px 0 0;
+            border: 1px solid var(--border-m);
+            border-bottom: none;
+            background: var(--surf-2);
+            color: var(--muted);
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+        .sp-tab.active {
+            background: var(--surf-3);
+            color: var(--text);
+            border-color: var(--border-m);
+        }
+
+        .sp-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 16px 24px;
+        }
+
+        .stats-two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        @media(max-width:500px) {
+            .stats-two-col {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .stats-col-title {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+
+        .stats-col-meta {
+            font-size: 11px;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .stats-tbl {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+
+        .stats-tbl th {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .5px;
+            color: var(--muted);
+            text-transform: uppercase;
+            padding: 4px 5px;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .stats-tbl th:first-child,
+        .stats-tbl th:nth-child(2) {
+            text-align: left;
+        }
+
+        .stats-tbl td {
+            padding: 5px 5px;
+            border-bottom: 1px solid var(--border);
+            text-align: center;
+            color: var(--text);
+        }
+
+        .stats-tbl td:first-child,
+        .stats-tbl td:nth-child(2) {
+            text-align: left;
+        }
+
+        .stats-tbl tr.bench-row td {
+            color: var(--muted);
+            opacity: .55;
+        }
+
+        .stats-tbl tr:last-child td {
+            border-bottom: none;
+        }
+
+        .stat-num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .stat-num.a {
+            background: var(--a);
+            color: #fff;
+        }
+
+        .stat-num.b {
+            background: var(--b);
+            color: #fff;
+        }
+
+        .stat-name {
+            font-size: 11px;
+            max-width: 80px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .stat-val {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .stat-val.nz {
+            color: var(--green);
+        }
+
+        .lib-badge {
+            display: inline-block;
+            background: var(--amber);
+            color: #000;
+            font-size: 8px;
+            font-weight: 800;
+            padding: 1px 3px;
+            border-radius: 2px;
+            vertical-align: middle;
+        }
+
+        .stats-squad-bar {
+            display: flex;
+            gap: 16px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 12px;
+        }
+
+        .ssb-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .ssb-val {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 22px;
+            font-weight: 800;
+        }
+
+        .ssb-lbl {
+            font-size: 9px;
+            color: var(--muted);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .ssb-sep {
+            width: 1px;
+            background: var(--border);
+            align-self: stretch;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- FLASH -->
+    <div class="flash" id="flash"></div>
+
+    <!-- TOP BAR -->
+    <div id="topbar">
+        <div class="team-score-block a">
+            <span class="team-name a" id="team-name-a">Squadra A</span>
+            <div class="score-sets" id="sets-a">
+                <div class="set-pip" id="spa0">0</div>
+                <div class="set-pip" id="spa1">0</div>
+                <div class="set-pip" id="spa2">0</div>
+            </div>
+        </div>
+        <div id="scoreboard">
+            <div class="pts a" id="pts-a">0</div>
+            <div class="pts-div">:</div>
+            <div class="pts b" id="pts-b">0</div>
+        </div>
+        <div class="team-score-block b">
+            <span class="team-name b" id="team-name-b">Squadra B</span>
+            <div class="score-sets" id="sets-b">
+                <div class="set-pip" id="spb0">0</div>
+                <div class="set-pip" id="spb1">0</div>
+                <div class="set-pip" id="spb2">0</div>
+            </div>
+        </div>
+    </div>
+    <div class="set-label" id="set-label">Set 1</div>
+
+    <!-- MAIN -->
+    <div id="main">
+
+        <!-- Bench A -->
+        <div class="bench-panel a">
+            <div class="bench-header">
+                <div class="bench-title a" id="bench-title-a">Panchina A</div>
+                <div class="bench-timeout" id="to-a">Timeout: 0 / 2</div>
+            </div>
+        </div>
+
+        <!-- Court + Actions -->
+        <div id="court-area">
+            <div id="court-wrap">
+                <div id="court">
+                    <div class="net"></div>
+                </div>
+                <div id="mode-banner"></div>
+            </div>
+
+            <!-- Selected player bar -->
+            <div id="selected-bar" class="none">
+                <div class="sel-badge neutral" id="sel-badge">–</div>
+                <div class="sel-info">
+                    <div class="sel-name" id="sel-name">Nessun giocatore selezionato</div>
+                    <div class="sel-role" id="sel-role">Seleziona un giocatore sul campo o in panchina</div>
+                </div>
+            </div>
+
+            <!-- Action panel -->
+            <div id="action-panel">
+                <div class="action-group-label">▸ PUNTO / ERRORE</div>
+                <div class="action-group">
+                    <button class="act-btn green lg" onclick="registerEvent('POINT')"><span class="act-icon">✦</span>
+                        Point</button>
+                    <button class="act-btn red" onclick="registerEvent('OUT')"><span class="act-icon">✕</span>
+                        Out</button>
+                    <button class="act-btn red" onclick="registerEvent('LOST_BALL')"><span class="act-icon">○</span>
+                        Lost Ball</button>
+                    <button class="act-btn slate" onclick="registerEvent('BLOCKED')"><span class="act-icon">▣</span>
+                        Blocked</button>
+                </div>
+
+                <div class="action-group-label">▸ BATTUTA</div>
+                <div class="action-group">
+                    <button class="act-btn green lg" onclick="registerEvent('ACE')"><span class="act-icon">⚡</span>
+                        Ace</button>
+                    <button class="act-btn red lg" onclick="registerEvent('SERVE_ERROR')"><span
+                            class="act-icon">✗</span> Serve Error</button>
+                </div>
+
+                <div class="action-group-label">▸ FALLI</div>
+                <div class="action-group">
+                    <button class="act-btn amber" onclick="registerEvent('DOUBLE')">Double</button>
+                    <button class="act-btn amber" onclick="registerEvent('4TOUCHES')">4 Touches</button>
+                    <button class="act-btn amber" onclick="registerEvent('RAISED')">Raised</button>
+                    <button class="act-btn amber" onclick="registerEvent('POSITION')">Position</button>
+                    <button class="act-btn amber" onclick="registerEvent('INVASION')">Invasion</button>
+                </div>
+
+                <div class="action-group-label">▸ GESTIONE</div>
+                <div class="action-group">
+                    <button class="act-btn amber" id="btn-yellow" onclick="registerEvent('YELLOW_CARD')"><span
+                            class="act-icon">▪</span> Yellow</button>
+                    <button class="act-btn red" id="btn-red" onclick="registerEvent('RED_CARD')"><span
+                            class="act-icon">▪</span> Red</button>
+                    <button class="act-btn purple" id="btn-change" onclick="registerEvent('CHANGE')"><span
+                            class="act-icon">⇄</span> Change</button>
+                    <button class="act-btn a-col" onclick="registerEvent('TIMEOUT_A')"><span class="act-icon">◷</span>
+                        T/O A</button>
+                    <button class="act-btn b-col" onclick="registerEvent('TIMEOUT_B')"><span class="act-icon">◷</span>
+                        T/O B</button>
+                </div>
+
+                <div class="util-controls">
+                    <button class="ctrl-btn undo" onclick="undoPoint()">↩ Undo</button>
+                    <button class="ctrl-btn" onclick="swapServe()">⇄ Battuta</button>
+                    <button class="ctrl-btn" onclick="exportData()">↑ Export</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bench B -->
+        <div class="bench-panel b">
+            <div class="bench-header">
+                <div class="bench-title b" id="bench-title-b">Panchina B</div>
+                <div class="bench-timeout" id="to-b">Timeout: 0 / 2</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats button -->
+    <button id="stats-fixed" onclick="toggleStats()">◉ Stats</button>
+
+    <!-- STATS PANEL -->
+    <div id="stats-panel">
+        <div class="sp-header">
+            <span class="sp-title">◉ Statistiche</span>
+            <div class="sp-pills" id="sp-pills"></div>
+            <button class="sp-close" onclick="toggleStats()">✕</button>
+        </div>
+        <div class="sp-tabs" id="sp-tabs"></div>
+        <div class="sp-body" id="sp-body"></div>
+    </div>
+
+    <script>
+        // ══════════════════════════════════════════════════════════════
+        //  ENUMS  (da enums.js)
+        // ══════════════════════════════════════════════════════════════
+        const STAT = Object.freeze({
+            TOUCHES: 'touches',
+            ATTACK_WIN: 'attackWin', ATTACK_OUT: 'attackOut',
+            ATTACK_NOT_SUCCESSFUL: 'attackNotSuccessful', TOTAL_ATTACK: 'totalAttack',
+            ACE: 'ace', SERVES: 'serves', SERVES_ERR: 'servesErr', TOTAL_SERVES: 'total_serves',
+            TOTAL_RECEIVE: 'totalRicezione',
+            FOUL_DOUBLE: 'foul_double', FOUL_FOUR_TOUCHES: 'foul_four_touches',
+            FOUL_RAISED: 'foul_raised', FOUL_POSITION: 'foul_position', FOUL_INVASION: 'foul_invasion',
+            TOTAL_FOUL: 'total_foul',
+            BALL_LOST: 'ball_lost', DEF_POS: 'defensePos', DEF_NEG: 'defenseNeg',
+            BLOCK_SUCCESSFUL: 'blockSuccessful', BLOCK_NOT_SUCCESSFUL: 'blockNotSuccessful', TOTAL_BLOCK: 'totalBlock',
+            CARD_YELLOW: 'card_yellow', CARD_RED: 'card_red', TOTAL_CARD: 'totalCard',
+            TOTAL_SET_POINTS: 'total_set_points', SET_POINTS_WIN: 'set_points_win',
+            SET_POINTS_ERR: 'set_points_err', SET_POINTS_CANCELLED: 'set_points_cancelled',
+            TOTAL_MATCH_POINTS: 'total_match_points', MATCH_POINTS_WIN: 'match_points_win',
+            MATCH_POINTS_ERR: 'match_points_err', MATCH_POINTS_CANCELLED: 'match_points_cancelled',
+            TOTAL_CHANGE: 'total_change', TOTAL_TIMEOUT: 'total_timeout', POINTS_PLAYED: 'points_played',
+        });
+
+        const ROLE_MAP = {
+            setter: 'Palleggiatore', outside_hitter: 'Schiacciatore', opposite: 'Opposto',
+            middle_blocker: 'Centrale', libero: 'Libero', defensive_specialist: 'Difensore',
+        };
+
+        // ══════════════════════════════════════════════════════════════
+        //  PLAYER CLASS  (adattato da player.js — senza dom)
+        // ══════════════════════════════════════════════════════════════
+        class Player {
+            constructor(id, shirtNumber, team, role, name, surname, libero, onCourt) {
+                this.id = id;
+                this.shirtNumber = shirtNumber;
+                this.team = team;       // 'a' | 'b'
+                this.role = role;
+                this.name = name;
+                this.surname = surname;
+                this.displayName = `${surname} ${(name || '')[0] || ''}.`;
+                this.fullName = `${surname} ${name}`;
+                this.libero = libero;
+                this.onCourt = onCourt;
+                this.stats = this._emptyStats();
+            }
+            _emptyStats() {
+                const s = {};
+                Object.values(STAT).forEach(k => s[k] = 0);
+                return s;
+            }
+            addStat(type) { if (this.stats[type] !== undefined) this.stats[type]++; }
+            toJSON() {
+                return {
+                    id: this.id, shirtNumber: this.shirtNumber, team: this.team, role: this.role,
+                    name: this.name, surname: this.surname, libero: this.libero,
+                    onCourt: this.onCourt, stats: { ...this.stats }
+                };
+            }
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        //  SQUAD CLASS  (adattato da squad.js — senza dom)
+        // ══════════════════════════════════════════════════════════════
+        class Squad {
+            constructor(name, shortName, teamId, side) {
+                this.name = name;
+                this.shortName = shortName;
+                this.teamId = teamId;
+                this.side = side;     // 'a' | 'b'
+                this.players = [];       // 6 titolari in ordine di rotazione (index 0 = pos 1 = battitore)
+                this.bench = [];
+                this.servingPlayer = null;
+                this.score = 0;
+                this.setsWon = 0;
+                this.timeout = 0;
+                this.stats = this._emptyStats();
+            }
+            _emptyStats() {
+                const s = {};
+                Object.values(STAT).forEach(k => s[k] = 0);
+                return s;
+            }
+
+            // Rotazione pallavolo standard:
+            // la squadra che conquista il diritto di battuta ruota in senso orario.
+            // Nel nostro array: scorrimento ciclico a sinistra (pos2→pos1, pos3→pos2 … pos1→pos6)
+            rotate() {
+                if (this.players.length < 6) return;
+                this.players = [...this.players.slice(1), this.players[0]];
+                this.setServingPlayer();
+            }
+
+            setServingPlayer() {
+                this.servingPlayer = this.players[0] ?? null; // pos 1 = battitore
+            }
+
+            substitute(outPlayer, inPlayer) {
+                if (!outPlayer.onCourt) throw new Error('Il giocatore non è in campo');
+                if (inPlayer.onCourt) throw new Error('Il giocatore è già in campo');
+                if ((inPlayer.stats[STAT.CARD_RED] ?? 0) > 0) throw new Error('Giocatore espulso');
+                const pos = this.players.findIndex(p => p.id === outPlayer.id);
+                if (pos === -1) throw new Error('Giocatore non trovato in campo');
+                this.players[pos] = inPlayer;
+                inPlayer.onCourt = true;
+                outPlayer.onCourt = false;
+                this.bench = this.bench.filter(p => p.id !== inPlayer.id);
+                this.bench.push(outPlayer);
+            }
+
+            scorePoint() { this.score++; }
+            resetScore() { this.score = 0; }
+            resetTimeouts() { this.timeout = 0; }
+            takeTimeout() {
+                if (this.timeout >= 2) return false;
+                this.timeout++;
+                return true;
+            }
+            addStat(type) { if (this.stats[type] !== undefined) this.stats[type]++; }
+
+            toJSON() {
+                return {
+                    name: this.name, side: this.side, score: this.score, setsWon: this.setsWon,
+                    timeout: this.timeout, players: this.players.map(p => p.toJSON()),
+                    bench: this.bench.map(p => p.toJSON())
+                };
+            }
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        //  SSET CLASS  (adattato da set.js — senza dom)
+        // ══════════════════════════════════════════════════════════════
+        class Sset {
+            constructor(number) {
+                this.number = number;
+                this.scoreA = 0;
+                this.scoreB = 0;
+                this.events = [];
+                this.winner = null;
+                this.stats = { players: new Map(), squads: { a: this._emptySquadStats(), b: this._emptySquadStats() } };
+            }
+            _emptySquadStats() {
+                const s = {};
+                Object.values(STAT).forEach(k => s[k] = 0);
+                return s;
+            }
+            _updateSetPlayerStats(player, key) {
+                if (!this.stats.players.has(player.id))
+                    this.stats.players.set(player.id, { ...player.stats });
+                const ps = this.stats.players.get(player.id);
+                if (ps[key] !== undefined) ps[key]++;
+            }
+            _updateSetSquadStats(team, key) {
+                if (this.stats.squads[team]?.[key] !== undefined) this.stats.squads[team][key]++;
+            }
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        //  MATCH CLASS  (adattato da match.js — senza dom)
+        // ══════════════════════════════════════════════════════════════
+        class Match {
+            constructor(squadA, squadB) {
+                this.squadA = squadA;
+                this.squadB = squadB;
+                this.currentSetNumber = 1;
+                this.sets = [];
+                this.currentSet = null;
+                this.servingSquad = null;
+                this.inizialServingSide = null;
+                this.history = [];
+                this.undoHistory = [];
+                this.maxSet = 5;
+                this.setsToWin = 3;
+                this.setPoints = 25;
+                this.tieBreakPoints = 15;
+                this.fieldChangeDone = false; // cambio campo al 5° set
+                // Callbacks UI
+                this._onSetEnd = null;
+                this._onMatchEnd = null;
+                this._onFieldChange = null;
+            }
+
+            startMatch(servingSquad) {
+                this.servingSquad = servingSquad;
+                this.inizialServingSide = servingSquad.side;
+                this.currentSet = this._startNewSet();
+                this.assignServe();
+                this._snapshotPoint(servingSquad.side); // snapshot iniziale per undo
+            }
+
+            _startNewSet() {
+                const set = new Sset(this.currentSetNumber);
+                this.sets.push(set);
+                this.squadA.score = 0; this.squadB.score = 0;
+                this.squadA.resetTimeouts(); this.squadB.resetTimeouts();
+                this.fieldChangeDone = false;
+                return set;
+            }
+
+            assignServe() {
+                this.squadA.setServingPlayer();
+                this.squadB.setServingPlayer();
+            }
+
+            // ── Metodo principale punteggio (da match.js scorePoint) ──────────────
+            // player: Player che ha eseguito l'azione
+            // value:  true = azione positiva (squadra del player segna)
+            //         false = errore (squadra avversaria segna)
+            // statType: costante STAT
+            scorePoint(player, value, statType) {
+                const squad = player.team === 'a' ? this.squadA : this.squadB;
+                const opponent = squad === this.squadA ? this.squadB : this.squadA;
+
+                // Snapshot PRIMA di modificare lo stato (per undo)
+                this._snapshotPoint(player.team);
+
+                // Stat principale sull'azione
+                this.addStatPlayer(player, statType);
+                this.addStatSquad(squad, statType);
+                this.addStatSet(player, statType);
+
+                // Ogni giocatore in campo ha giocato questo punto
+                [...this.squadA.players, ...this.squadB.players].forEach(p => {
+                    this.addStatPlayer(p, STAT.POINTS_PLAYED);
+                    this.addStatSet(p, STAT.POINTS_PLAYED);
+                });
+
+                // Assegna il punto
+                const scoringSquad = value ? squad : opponent;
+                scoringSquad.scorePoint();
+
+                // Log evento
+                this._logEvent(player, value, statType);
+
+                // Cambio battuta: se la squadra che ha appena segnato non era quella che batteva, ruota
+                if (this.servingSquad !== scoringSquad) {
+                    this.servingSquad = scoringSquad;
+                    scoringSquad.rotate();
+                }
+
+                this.checkSetEnd();
+            }
+
+            checkSetEnd() {
+                const a = this.squadA.score, b = this.squadB.score;
+                const target = this.currentSetNumber === this.maxSet
+                    ? this.tieBreakPoints : this.setPoints;
+
+                if ((a >= target || b >= target) && Math.abs(a - b) >= 2) {
+                    const winner = a > b ? this.squadA : this.squadB;
+                    this._winSet(winner, a, b);
+                    return;
+                }
+
+                // 5° set: cambio campo a metà (regola FIVB: al raggiungimento di 8 punti)
+                if (this.currentSetNumber === this.maxSet && !this.fieldChangeDone) {
+                    const half = Math.floor(this.tieBreakPoints / 2);
+                    if (a >= half || b >= half) {
+                        this.fieldChangeDone = true;
+                        if (this._onFieldChange) this._onFieldChange();
+                    }
+                }
+            }
+
+            _winSet(winner, scoreA, scoreB) {
+                winner.setsWon++;
+                // Salva il punteggio finale del set
+                if (this.currentSet) {
+                    this.currentSet.winner = winner.side;
+                    this.currentSet.scoreA = scoreA;
+                    this.currentSet.scoreB = scoreB;
+                }
+
+                this.currentSetNumber++;
+
+                // Notifica UI prima di resettare
+                if (this._onSetEnd) this._onSetEnd(winner, scoreA, scoreB);
+
+                // Controlla fine match
+                if (winner.setsWon >= this.setsToWin) {
+                    if (this._onMatchEnd) this._onMatchEnd(winner);
+                    return;
+                }
+
+                // Nuovo set
+                this.currentSet = this._startNewSet();
+                this.servingSquad = winner; // il vincitore del set batte per primo nel prossimo
+                this.assignServe();
+            }
+
+            // ── Stats ────────────────────────────────────────────────────────────
+            addStatPlayer(player, type) { player.addStat(type); }
+            addStatSquad(squad, type) { squad.addStat(type); }
+            addStatSet(player, type) {
+                if (!this.currentSet) return;
+                this.currentSet._updateSetPlayerStats(player, type);
+                this.currentSet._updateSetSquadStats(player.team, type);
+            }
+
+            // ── Cartellino ───────────────────────────────────────────────────────
+            assignCard(player, cardType) {
+                const squad = player.team === 'a' ? this.squadA : this.squadB;
+                const opponent = squad === this.squadA ? this.squadB : this.squadA;
+                const statType = cardType === 'red' ? STAT.CARD_RED : STAT.CARD_YELLOW;
+
+                this.addStatPlayer(player, statType);
+                this.addStatPlayer(player, STAT.TOTAL_CARD);
+                this.addStatSquad(squad, statType);
+                this.addStatSquad(squad, STAT.TOTAL_CARD);
+                this.addStatSet(player, statType);
+                this.addStatSet(player, STAT.TOTAL_CARD);
+
+                this.history.push({
+                    type: cardType === 'red' ? 'RED_CARD' : 'YELLOW_CARD',
+                    playerId: player.id, team: player.team, timestamp: Date.now()
+                });
+
+                // Cartellino rosso → punto all'avversario
+                if (cardType === 'red') {
+                    opponent.scorePoint();
+                    if (this.servingSquad !== opponent) {
+                        this.servingSquad = opponent;
+                        opponent.rotate();
+                    }
+                    this.checkSetEnd();
+                }
+            }
+
+            // ── Timeout ──────────────────────────────────────────────────────────
+            callTimeout(squad) {
+                if (!squad.takeTimeout()) return false;
+                squad.addStat(STAT.TOTAL_TIMEOUT);
+                if (this.currentSet) this.currentSet._updateSetSquadStats(squad.side, STAT.TOTAL_TIMEOUT);
+                this.history.push({ type: 'TIMEOUT', team: squad.side, count: squad.timeout, timestamp: Date.now() });
+                return true;
+            }
+
+            // ── Sostituzione ─────────────────────────────────────────────────────
+            makeSubstitute(squad, outPlayer, inPlayer) {
+                squad.substitute(outPlayer, inPlayer);
+                // I liberi non consumano il conteggio sostituzioni
+                if (!outPlayer.libero && !inPlayer.libero) {
+                    squad.addStat(STAT.TOTAL_CHANGE);
+                    if (this.currentSet) this.currentSet._updateSetSquadStats(squad.side, STAT.TOTAL_CHANGE);
+                }
+                this.history.push({
+                    type: 'CHANGE', team: squad.side,
+                    outId: outPlayer.id, inId: inPlayer.id, timestamp: Date.now()
+                });
+            }
+
+            // ── Undo ─────────────────────────────────────────────────────────────
+            // Annulla l'ultimo PUNTO (non gestisce undo di sub/timeout/cartellini per ora)
+            undoLastPoint() {
+                // Ci vuole almeno 2 snapshot (il primo è quello iniziale di startMatch)
+                if (this.undoHistory.length <= 1) return false;
+                this.undoHistory.pop();                              // rimuove snapshot corrente
+                const snap = this.undoHistory[this.undoHistory.length - 1]; // ripristina il precedente
+                this._restoreFromSnapshot(snap);
+                // Rimuove l'ultimo evento di tipo point dalla history
+                for (let i = this.history.length - 1; i >= 0; i--) {
+                    if (!['TIMEOUT', 'CHANGE', 'YELLOW_CARD', 'RED_CARD'].includes(this.history[i].type)) {
+                        this.history.splice(i, 1);
+                        break;
+                    }
+                }
+                return true;
+            }
+
+            _snapshotPoint(scoringTeam) {
+                this.undoHistory.push({
+                    type: 'point',
+                    scoringTeam,
+                    servingSide: this.servingSquad?.side ?? null,
+                    setNumber: this.currentSetNumber,
+                    squads: {
+                        a: this._snapSquad(this.squadA),
+                        b: this._snapSquad(this.squadB),
+                    },
+                });
+            }
+
+            _snapSquad(squad) {
+                return {
+                    score: squad.score,
+                    setsWon: squad.setsWon,
+                    timeout: squad.timeout,
+                    playerIds: squad.players.map(p => p.id),
+                    benchIds: squad.bench.map(p => p.id),
+                    playerStats: [...squad.players, ...squad.bench].map(p => ({
+                        id: p.id,
+                        onCourt: p.onCourt,
+                        stats: { ...p.stats },
+                    })),
+                };
+            }
+
+            _restoreFromSnapshot(snap) {
+                const allA = [...this.squadA.players, ...this.squadA.bench];
+                const allB = [...this.squadB.players, ...this.squadB.bench];
+                this._restoreSquad(this.squadA, snap.squads.a, allA);
+                this._restoreSquad(this.squadB, snap.squads.b, allB);
+                this.servingSquad = snap.servingSide === 'a' ? this.squadA : this.squadB;
+                this.currentSetNumber = snap.setNumber;
+                this.assignServe();
+                // Aggiorna il punteggio del set corrente nei set
+                if (this.currentSet) {
+                    this.currentSet.scoreA = this.squadA.score;
+                    this.currentSet.scoreB = this.squadB.score;
+                }
+            }
+
+            _restoreSquad(squad, snap, allPlayers) {
+                squad.score = snap.score;
+                squad.setsWon = snap.setsWon;
+                squad.timeout = snap.timeout;
+                snap.playerStats.forEach(ps => {
+                    const p = allPlayers.find(pl => pl.id === ps.id);
+                    if (p) { p.stats = { ...ps.stats }; p.onCourt = ps.onCourt; }
+                });
+                squad.players = snap.playerIds.map(id => allPlayers.find(p => p.id === id)).filter(Boolean);
+                squad.bench = snap.benchIds.map(id => allPlayers.find(p => p.id === id)).filter(Boolean);
+                squad.setServingPlayer();
+            }
+
+            _logEvent(player, value, type) {
+                this.history.push({
+                    type, playerId: player.id, team: player.team, value,
+                    set: this.currentSetNumber, scoreA: this.squadA.score, scoreB: this.squadB.score,
+                    timestamp: Date.now(),
+                });
+                if (this.currentSet) {
+                    this.currentSet.events.push({
+                        type, playerId: player.id, team: player.team, value, timestamp: Date.now(),
+                    });
+                }
+            }
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        //  COORDINAMENTO POSIZIONI CAMPO
+        // ══════════════════════════════════════════════════════════════
+        //  POSIZIONI CAMPO  —  2 colonne × 3 righe per metà
+        //
+        //  Rotazione standard pallavolo vista dall'arbitro (team A a sinistra):
+        //
+        //   Team A guarda verso destra (rete):
+        //     "destra" per A = sud = y alto% sullo schermo
+        //     "sinistra" per A = nord = y basso%
+        //     "vicino rete" = est = x alto%  →  col x=37%
+        //     "lontano rete" = ovest = x basso%  →  col x=14%
+        //
+        //   Layout schermo per Team A:
+        //
+        //        x=14% (lontana)  |  x=37% (vicina)
+        //   y=20% (nord/alto):   pos5           pos4
+        //   y=50% (centro):      pos6           pos3
+        //   y=80% (sud/basso):   pos1* ←        pos2
+        //                         BATTITORE
+        //
+        //   Team B guarda verso sinistra (rete):
+        //     "destra" per B = nord = y basso% sullo schermo
+        //     "vicino rete" = ovest = x basso%  →  col x=63%
+        //     "lontano rete" = est = x alto%  →  col x=86%
+        //
+        //        x=63% (vicina)  |  x=86% (lontana)
+        //   y=20% (nord/alto):  pos2           pos1* ←BATTITORE
+        //   y=50% (centro):     pos3           pos6
+        //   y=80% (sud/basso):  pos4           pos5
+        //
+        // ══════════════════════════════════════════════════════════════
+        const COURT_POS_A = {
+            1: [14, 80],   // back-right  (destra A = sud, lontano rete)  ← BATTITORE
+            2: [37, 80],   // front-right (destra A = sud, vicino rete)
+            3: [37, 50],   // front-center
+            4: [37, 20],   // front-left  (sinistra A = nord, vicino rete)
+            5: [14, 20],   // back-left   (sinistra A = nord, lontano rete)
+            6: [14, 50],   // back-center
+        };
+        const COURT_POS_B = {
+            1: [86, 20],   // back-right  (destra B = nord, lontano rete)  ← BATTITORE
+            2: [63, 20],   // front-right (destra B = nord, vicino rete)
+            3: [63, 50],   // front-center
+            4: [63, 80],   // front-left  (sinistra B = sud, vicino rete)
+            5: [86, 80],   // back-left   (sinistra B = sud, lontano rete)
+            6: [86, 50],   // back-center
+        };
+
+        // ══════════════════════════════════════════════════════════════
+        //  STATO UI
+        // ══════════════════════════════════════════════════════════════
+        let match = null;
+
+        const ui = {
+            selectedPlayer: null,
+            subMode: false,
+            outPlayer: null,
+            cardMode: null,    // 'yellow' | 'red' | null
+            statsOpen: false,
+            statsCat: 'Generali',
+            statsSet: 'match', // 'match' | set-number
+        };
+
+        // ── Auto-selezione battitore ──────────────────────────────────
+        // Chiamata dopo ogni punto, undo, inizio match e cambio battuta.
+        // Imposta come selectedPlayer il giocatore in posizione 1
+        // (index 0 nell'array players) della squadra che batte.
+        function autoSelectServer() {
+            if (!match || !match.servingSquad) return;
+            const server = match.servingSquad.players[0] ?? null;
+            ui.selectedPlayer = server;
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        //  API
+        // ══════════════════════════════════════════════════════════════
+        const API_BASE = '/api';
+        const getToken = () => localStorage.getItem('token');
+
+        async function apiFetch(path) {
+            const res = await fetch(`${API_BASE}${path}`, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+                },
+            });
+            if (!res.ok) throw new Error(`API ${path} → ${res.status}`);
+            return res.json();
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        //  CARICAMENTO LINEUP
+        // ══════════════════════════════════════════════════════════════
+        function _buildPlayer(raw, teamSide, onCourt) {
+            return new Player(
+                raw.player_id,
+                raw.shirt_number ?? '?',
+                teamSide,
+                ROLE_MAP[raw.role] ?? raw.role ?? '—',
+                raw.name ?? '',
+                raw.surname ?? '',
+                !!(raw.is_libero),
+                onCourt,
+            );
+        }
+
+        async function loadLineup() {
+            const matchRaw = localStorage.getItem('openMatch');
+            if (!matchRaw) { showFatalError('Nessuna partita selezionata.'); return false; }
+
+            const matchData = JSON.parse(matchRaw);
+            const homeShort = matchData.home_short || matchData.home_team || 'Squadra A';
+            const awayShort = matchData.away_short || matchData.away_team || 'Squadra B';
+
+            document.getElementById('team-name-a').textContent = homeShort;
+            document.getElementById('team-name-b').textContent = awayShort;
+            document.getElementById('bench-title-a').textContent = homeShort;
+            document.getElementById('bench-title-b').textContent = awayShort;
+            document.title = `${matchData.home_team} vs ${matchData.away_team} · Monitor`;
+
+            const squadA = new Squad(matchData.home_team || homeShort, homeShort, matchData.home_team_id, 'a');
+            const squadB = new Squad(matchData.away_team || awayShort, awayShort, matchData.away_team_id, 'b');
+
+            try {
+                const lineup = await apiFetch(`/matches/${matchData.id}/lineup`);
+                if (!lineup.home || !lineup.away) throw new Error('Formazione incompleta');
+
+                const sortByPos = arr => [...arr].sort((x, y) => (x.position_number ?? 99) - (y.position_number ?? 99));
+
+                squadA.players = sortByPos(lineup.home.starters).map(p => _buildPlayer(p, 'a', true));
+                squadA.bench = lineup.home.bench.map(p => _buildPlayer(p, 'a', false));
+                squadB.players = sortByPos(lineup.away.starters).map(p => _buildPlayer(p, 'b', true));
+                squadB.bench = lineup.away.bench.map(p => _buildPlayer(p, 'b', false));
+
+            } catch (err) {
+                console.warn('[monitor] lineup non disponibile:', err.message);
+                flashMsg('Formazione non trovata — campo vuoto', '#f5c542');
+            }
+
+            match = new Match(squadA, squadB);
+
+            // Callback al termine di ogni set
+            match._onSetEnd = (winner, scoreA, scoreB) => {
+                const setNum = match.currentSetNumber - 1;
+                flashMsg(`Set ${setNum} → ${winner.shortName}! (${scoreA}-${scoreB})`,
+                    winner.side === 'a' ? '#3b8bff' : '#ff6b35');
+                updateSetPips();
+                // Dopo il set il battitore è già stato aggiornato da _winSet →
+                // auto-selezioniamo il nuovo battitore prima di ridisegnare
+                autoSelectServer();
+                setTimeout(renderAll, 100);
+            };
+
+            match._onMatchEnd = (winner) => {
+                setTimeout(() => {
+                    flashMsg(`🏆 Vittoria ${winner.shortName}! (${winner.setsWon}-${(winner === match.squadA ? match.squadB : match.squadA).setsWon})`, '#f5c542');
+                }, 300);
+            };
+
+            match._onFieldChange = () => {
+                flashMsg('↕ Cambio campo (5° set)', '#f5c542');
+            };
+
+            match.startMatch(squadA);
+            // Seleziona subito il battitore iniziale
+            autoSelectServer();
+            return true;
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        //  RENDER
+        // ══════════════════════════════════════════════════════════════
+        function renderCourt() {
+            const court = document.getElementById('court');
+            court.querySelectorAll('.court-player').forEach(el => el.remove());
+
+            [match.squadA, match.squadB].forEach(squad => {
+                const posMap = squad.side === 'a' ? COURT_POS_A : COURT_POS_B;
+                squad.players.forEach((p, idx) => {
+                    const rotPos = idx + 1;
+                    const coords = posMap[rotPos];
+                    if (!coords) return;
+
+                    const isSelected = ui.selectedPlayer?.id === p.id;
+                    const isOutTarget = ui.outPlayer?.id === p.id;
+                    const isServing = match.servingSquad === squad && idx === 0;
+
+                    const el = document.createElement('div');
+                    el.className = ['court-player', squad.side,
+                        p.libero ? 'libero' : '',
+                        isSelected ? 'selected' : '',
+                        isOutTarget ? 'out-selected' : '',
+                    ].filter(Boolean).join(' ');
+                    el.style.left = coords[0] + '%';
+                    el.style.top = coords[1] + '%';
+                    el.textContent = p.shirtNumber;
+                    el.title = `#${p.shirtNumber} ${p.fullName} · ${p.role}`;
+
+                    if (isServing) {
+                        const dot = document.createElement('div');
+                        dot.className = 'serve-dot';
+                        el.appendChild(dot);
+                    }
+
+                    el.addEventListener('click', e => { handleCourtClick(p); ripple(e, el); });
+                    court.appendChild(el);
+                });
+            });
+        }
+
+        function renderBench() {
+            const bA = document.querySelector('.bench-panel.a');
+            const bB = document.querySelector('.bench-panel.b');
+            bA.querySelectorAll('.bench-player').forEach(el => el.remove());
+            bB.querySelectorAll('.bench-player').forEach(el => el.remove());
+            match.squadA.bench.forEach(p => bA.appendChild(_benchEl(p)));
+            match.squadB.bench.forEach(p => bB.appendChild(_benchEl(p)));
+        }
+
+        function _benchEl(p) {
+            const el = document.createElement('div');
+            const sel = ui.selectedPlayer?.id === p.id;
+            el.className = `bench-player${sel ? ' selected-' + p.team : ''}`;
+            el.innerHTML = `<div class="bp-num ${p.team}">${p.shirtNumber}</div>
+        <div>
+          <div class="bp-name">${p.displayName}</div>
+          <div class="bp-name" style="font-size:9px;color:var(--subtle)">${p.role}</div>
+        </div>`;
+            el.addEventListener('click', e => { handleBenchClick(p); ripple(e, el); });
+            return el;
+        }
+
+        function renderScore() {
+            document.getElementById('pts-a').textContent = match.squadA.score;
+            document.getElementById('pts-b').textContent = match.squadB.score;
+        }
+
+        function updateSetPips() {
+            const sA = match.squadA.setsWon, sB = match.squadB.setsWon;
+            for (let i = 0; i < 3; i++) {
+                const pa = document.getElementById('spa' + i);
+                const pb = document.getElementById('spb' + i);
+                const setData = match.sets[i]; // set i completato o corrente
+                pa.className = 'set-pip' + (i < sA ? ' won-a' : '');
+                pb.className = 'set-pip' + (i < sB ? ' won-b' : '');
+                pa.textContent = i < sA ? '✓' : (setData?.scoreA ?? 0);
+                pb.textContent = i < sB ? '✓' : (setData?.scoreB ?? 0);
+            }
+        }
+
+        function updateSelectedBar() {
+            const bar = document.getElementById('selected-bar');
+            const badge = document.getElementById('sel-badge');
+            const name = document.getElementById('sel-name');
+            const role = document.getElementById('sel-role');
+
+            if (ui.subMode) {
+                bar.className = 'sub-mode';
+                badge.className = 'sel-badge neutral'; badge.textContent = '⇄';
+                if (!ui.outPlayer) {
+                    name.textContent = 'Modalità cambio — seleziona il giocatore che ESCE';
+                    role.textContent = 'Clicca un titolare in campo';
+                } else {
+                    name.textContent = `Fuori: #${ui.outPlayer.shirtNumber} ${ui.outPlayer.fullName}`;
+                    role.textContent = 'Ora seleziona dalla panchina il giocatore che ENTRA';
+                }
+                return;
+            }
+            if (ui.cardMode) {
+                bar.className = 'card-mode';
+                badge.className = 'sel-badge neutral';
+                badge.textContent = ui.cardMode === 'red' ? '🟥' : '🟨';
+                name.textContent = `Cartellino ${ui.cardMode === 'red' ? 'rosso' : 'giallo'} — seleziona il giocatore`;
+                role.textContent = 'Clicca un giocatore in campo o panchina';
+                return;
+            }
+            if (!ui.selectedPlayer) {
+                bar.className = 'none';
+                badge.className = 'sel-badge neutral'; badge.textContent = '–';
+                name.textContent = 'Nessun giocatore selezionato';
+                role.textContent = 'Seleziona un giocatore sul campo o in panchina';
+                return;
+            }
+            const p = ui.selectedPlayer;
+            bar.className = '';
+            badge.textContent = p.shirtNumber;
+            badge.className = `sel-badge ${p.team}`;
+            name.textContent = `#${p.shirtNumber} ${p.fullName}`;
+            role.textContent = p.role + (p.libero ? ' · LIBERO' : '') + (p.onCourt ? '' : ' · PANCHINA');
+        }
+
+        function updateModeBanner() {
+            const banner = document.getElementById('mode-banner');
+            if (ui.subMode && !ui.outPlayer) {
+                banner.className = 'sub cancel-btn';
+                banner.textContent = '⇄ Seleziona chi ESCE — clic qui per annullare';
+                banner.onclick = cancelMode;
+            } else if (ui.subMode && ui.outPlayer) {
+                banner.className = 'sub cancel-btn';
+                banner.textContent = `⇄ Fuori #${ui.outPlayer.shirtNumber} — seleziona dalla panchina • Annulla`;
+                banner.onclick = cancelMode;
+            } else if (ui.cardMode === 'yellow') {
+                banner.className = 'card-yellow cancel-btn';
+                banner.textContent = '🟨 Seleziona giocatore per cartellino giallo • Annulla';
+                banner.onclick = cancelMode;
+            } else if (ui.cardMode === 'red') {
+                banner.className = 'card-red cancel-btn';
+                banner.textContent = '🟥 Seleziona giocatore per cartellino rosso • Annulla';
+                banner.onclick = cancelMode;
+            } else {
+                banner.className = '';
+                banner.textContent = '';
+                banner.onclick = null;
+            }
+        }
+
+        function updateTimeouts() {
+            const tA = match.squadA.timeout, tB = match.squadB.timeout;
+            const elA = document.getElementById('to-a');
+            const elB = document.getElementById('to-b');
+            elA.textContent = `Timeout: ${tA} / 2`;
+            elA.className = `bench-timeout${tA > 0 ? ' has-to' : ''}`;
+            elB.textContent = `Timeout: ${tB} / 2`;
+            elB.className = `bench-timeout${tB > 0 ? ' has-to' : ''}`;
+        }
+
+        function updateSetLabel() {
+            document.getElementById('set-label').textContent = `Set ${match.currentSetNumber}`;
+        }
+
+        function updateActionBtnStates() {
+            // Evidenzia il pulsante attivo in modalità speciale
+            document.getElementById('btn-change').classList.toggle('active-mode', ui.subMode);
+            document.getElementById('btn-yellow').classList.toggle('active-mode', ui.cardMode === 'yellow');
+            document.getElementById('btn-red').classList.toggle('active-mode', ui.cardMode === 'red');
+        }
+
+        function renderAll() {
+            renderCourt();
+            renderBench();
+            renderScore();
+            updateSetPips();
+            updateSelectedBar();
+            updateModeBanner();
+            updateTimeouts();
+            updateSetLabel();
+            updateActionBtnStates();
+            if (ui.statsOpen) renderStatsBody();
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        //  GESTIONE CLICK GIOCATORI
+        // ══════════════════════════════════════════════════════════════
+        function handleCourtClick(player) {
+            // ── Modalità cartellino ──
+            if (ui.cardMode) {
+                const type = ui.cardMode;
+                cancelMode();
+                match.assignCard(player, type);
+                flashMsg(type === 'red' ? '🟥 Cartellino rosso' : '🟨 Cartellino giallo',
+                    type === 'red' ? '#f04e4e' : '#f5c542');
+                renderAll();
+                return;
+            }
+
+            // ── Modalità cambio ──
+            if (ui.subMode) {
+                if (!player.onCourt) { flashMsg('Seleziona un titolare in campo!', '#f04e4e'); return; }
+                ui.outPlayer = player;
+                ui.selectedPlayer = player;
+                renderAll();
+                return;
+            }
+
+            // ── Selezione normale ──
+            ui.selectedPlayer = (ui.selectedPlayer?.id === player.id) ? null : player;
+            updateSelectedBar();
+            renderCourt();
+            renderBench();
+        }
+
+        function handleBenchClick(player) {
+            // ── Modalità cartellino ──
+            if (ui.cardMode) {
+                const type = ui.cardMode;
+                cancelMode();
+                match.assignCard(player, type);
+                flashMsg(type === 'red' ? '🟥 Cartellino rosso' : '🟨 Cartellino giallo',
+                    type === 'red' ? '#f04e4e' : '#f5c542');
+                renderAll();
+                return;
+            }
+
+            // ── Modalità cambio: secondo click = il giocatore che entra ──
+            if (ui.subMode && ui.outPlayer) {
+                if (player.team !== ui.outPlayer.team) {
+                    flashMsg('Giocatori di squadre diverse!', '#f04e4e');
+                    return;
+                }
+                const squad = ui.outPlayer.team === 'a' ? match.squadA : match.squadB;
+                try {
+                    match.makeSubstitute(squad, ui.outPlayer, player);
+                    flashMsg(`⇄ #${ui.outPlayer.shirtNumber} ${ui.outPlayer.displayName} → #${player.shirtNumber} ${player.displayName}`, '#a78bfa');
+                } catch (e) {
+                    flashMsg(e.message, '#f04e4e');
+                }
+                cancelMode();
+                renderAll();
+                return;
+            }
+
+            if (ui.subMode && !ui.outPlayer) {
+                flashMsg('Prima seleziona il giocatore in campo che esce!', '#f04e4e');
+                return;
+            }
+
+            // ── Selezione normale ──
+            ui.selectedPlayer = (ui.selectedPlayer?.id === player.id) ? null : player;
+            updateSelectedBar();
+            renderBench();
+            renderCourt();
+        }
+
+        function cancelMode() {
+            ui.subMode = false;
+            ui.outPlayer = null;
+            ui.cardMode = null;
+            // Torna a selezionare il battitore corrente
+            autoSelectServer();
+            renderAll();
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        //  PULSANTI AZIONE — mapping evento → stat + valore
+        // ══════════════════════════════════════════════════════════════
+        const ACTION_MAP = {
+            POINT: { stat: STAT.ATTACK_WIN, value: true },
+            ACE: { stat: STAT.ACE, value: true },
+            OUT: { stat: STAT.ATTACK_OUT, value: false },
+            LOST_BALL: { stat: STAT.BALL_LOST, value: false },
+            SERVE_ERROR: { stat: STAT.SERVES_ERR, value: false },
+            BLOCKED: { stat: STAT.BLOCK_NOT_SUCCESSFUL, value: false },
+            DOUBLE: { stat: STAT.FOUL_DOUBLE, value: false },
+            '4TOUCHES': { stat: STAT.FOUL_FOUR_TOUCHES, value: false },
+            RAISED: { stat: STAT.FOUL_RAISED, value: false },
+            POSITION: { stat: STAT.FOUL_POSITION, value: false },
+            INVASION: { stat: STAT.FOUL_INVASION, value: false },
+        };
+        // Statistiche extra da incrementare insieme a quella principale
+        const ACTION_EXTRA = {
+            POINT: [STAT.TOTAL_ATTACK],
+            ACE: [STAT.TOTAL_SERVES, STAT.SERVES],
+            OUT: [STAT.TOTAL_ATTACK],
+            SERVE_ERROR: [STAT.TOTAL_SERVES],
+            BLOCKED: [STAT.TOTAL_BLOCK],
+            DOUBLE: [STAT.TOTAL_FOUL],
+            '4TOUCHES': [STAT.TOTAL_FOUL],
+            RAISED: [STAT.TOTAL_FOUL],
+            POSITION: [STAT.TOTAL_FOUL],
+            INVASION: [STAT.TOTAL_FOUL],
+        };
+        const ACTION_LABELS = {
+            POINT: 'Punto!', OUT: 'Out', LOST_BALL: 'Palla persa', ACE: '⚡ Ace!',
+            SERVE_ERROR: 'Errore battuta', BLOCKED: 'Murato', DOUBLE: 'Doppio fallo',
+            '4TOUCHES': '4 tocchi', RAISED: 'Alzata irregolare',
+            POSITION: 'Fallo di posizione', INVASION: 'Invasione',
+        };
+        const ACTION_COLORS = {
+            POINT: '#22d47a', ACE: '#22d47a', SERVE_ERROR: '#f04e4e', OUT: '#f04e4e',
+            BLOCKED: '#64748b', DOUBLE: '#f5c542', '4TOUCHES': '#f5c542',
+            RAISED: '#f5c542', POSITION: '#f5c542', INVASION: '#f5c542', LOST_BALL: '#64748b',
+        };
+
+        function registerEvent(type) {
+            // ── CHANGE ──
+            if (type === 'CHANGE') {
+                if (ui.subMode) { cancelMode(); return; }
+                ui.subMode = true;
+                ui.outPlayer = null;
+                flashMsg('Modalità cambio attiva', '#a78bfa');
+                renderAll();
+                return;
+            }
+
+            // ── TIMEOUT A / B ──
+            if (type === 'TIMEOUT_A' || type === 'TIMEOUT_B') {
+                const squad = type === 'TIMEOUT_A' ? match.squadA : match.squadB;
+                if (!match.callTimeout(squad)) {
+                    flashMsg(`${squad.shortName}: timeout esauriti`, '#f04e4e');
+                    return;
+                }
+                flashMsg(`⏱ Timeout ${squad.shortName} (${squad.timeout}/2)`, '#3b8bff');
+                renderAll();
+                return;
+            }
+
+            // ── CARTELLINI ──
+            if (type === 'YELLOW_CARD') {
+                if (ui.cardMode === 'yellow') { cancelMode(); return; }
+                ui.cardMode = 'yellow';
+                flashMsg('Seleziona giocatore per cartellino giallo', '#f5c542');
+                renderAll();
+                return;
+            }
+            if (type === 'RED_CARD') {
+                if (ui.cardMode === 'red') { cancelMode(); return; }
+                ui.cardMode = 'red';
+                flashMsg('Seleziona giocatore per cartellino rosso', '#f04e4e');
+                renderAll();
+                return;
+            }
+
+            // ── AZIONI PUNTEGGIO ──
+            const action = ACTION_MAP[type];
+            if (!action) { console.warn('Evento sconosciuto:', type); return; }
+
+            if (!ui.selectedPlayer) {
+                flashMsg('Seleziona prima un giocatore!', '#f04e4e');
+                return;
+            }
+
+            const player = ui.selectedPlayer;
+            const squad = player.team === 'a' ? match.squadA : match.squadB;
+
+            // Stats extra (totalAttack, totalServes, ecc.)
+            const extras = ACTION_EXTRA[type] ?? [];
+            extras.forEach(s => {
+                match.addStatPlayer(player, s);
+                match.addStatSquad(squad, s);
+                match.addStatSet(player, s);
+            });
+            // Stat "tocco" su ace
+            if (type === 'ACE') {
+                match.addStatPlayer(player, STAT.TOUCHES);
+                match.addStatSet(player, STAT.TOUCHES);
+            }
+
+            match.scorePoint(player, action.value, action.stat);
+
+            flashMsg(ACTION_LABELS[type] ?? type, ACTION_COLORS[type] ?? '#e8eaf2');
+
+            // Dopo ogni punto seleziona automaticamente il nuovo battitore
+            autoSelectServer();
+            renderAll();
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        //  CONTROLLI UTILITY
+        // ══════════════════════════════════════════════════════════════
+        function undoPoint() {
+            if (!match.undoLastPoint()) { flashMsg('Nulla da annullare', '#64748b'); return; }
+            flashMsg('↩ Annullato', '#f5c542');
+            // Ripristina la selezione sul battitore dello stato precedente
+            autoSelectServer();
+            renderAll();
+        }
+
+        function swapServe() {
+            match.servingSquad = match.servingSquad === match.squadA ? match.squadB : match.squadA;
+            match.assignServe();
+            // Aggiorna la selezione al nuovo battitore
+            autoSelectServer();
+            renderAll();
+            flashMsg('Battuta cambiata', '#a78bfa');
+        }
+
+        function exportData() {
+            const data = {
+                matchId: JSON.parse(localStorage.getItem('openMatch') ?? '{}')?.id ?? null,
+                score: {
+                    setsA: match.squadA.setsWon, setsB: match.squadB.setsWon,
+                    ptsA: match.squadA.score, ptsB: match.squadB.score
+                },
+                sets: match.sets.map(s => ({ number: s.number, scoreA: s.scoreA, scoreB: s.scoreB, winner: s.winner })),
+                events: match.history,
+                players: {
+                    a: [...match.squadA.players, ...match.squadA.bench].map(p => p.toJSON()),
+                    b: [...match.squadB.players, ...match.squadB.bench].map(p => p.toJSON()),
+                },
+            };
+            localStorage.setItem('matchEvents', JSON.stringify(data));
+            console.log('[monitor] export:', data);
+            flashMsg('Dati salvati', '#3b8bff');
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        //  PANNELLO STATISTICHE
+        // ══════════════════════════════════════════════════════════════
+        const STAT_CATS = {
+            Generali: [STAT.TOUCHES, STAT.POINTS_PLAYED],
+            Attacco: [STAT.ATTACK_WIN, STAT.ATTACK_OUT, STAT.ATTACK_NOT_SUCCESSFUL, STAT.TOTAL_ATTACK],
+            Battuta: [STAT.ACE, STAT.SERVES, STAT.SERVES_ERR, STAT.TOTAL_SERVES],
+            Muro: [STAT.BLOCK_SUCCESSFUL, STAT.BLOCK_NOT_SUCCESSFUL, STAT.TOTAL_BLOCK],
+            Falli: [STAT.FOUL_DOUBLE, STAT.FOUL_FOUR_TOUCHES, STAT.FOUL_RAISED, STAT.FOUL_POSITION, STAT.FOUL_INVASION, STAT.TOTAL_FOUL],
+            Cartellini: [STAT.CARD_YELLOW, STAT.CARD_RED, STAT.TOTAL_CARD],
+        };
+        const STAT_SHORT = {
+            [STAT.TOUCHES]: 'Tocc', [STAT.POINTS_PLAYED]: 'PP',
+            [STAT.ATTACK_WIN]: 'ATT', [STAT.ATTACK_OUT]: 'Out', [STAT.ATTACK_NOT_SUCCESSFUL]: 'Nv', [STAT.TOTAL_ATTACK]: 'Tot',
+            [STAT.ACE]: 'Ace', [STAT.SERVES]: 'Ok', [STAT.SERVES_ERR]: 'Err', [STAT.TOTAL_SERVES]: 'Tot',
+            [STAT.BLOCK_SUCCESSFUL]: 'Vin', [STAT.BLOCK_NOT_SUCCESSFUL]: 'Nv', [STAT.TOTAL_BLOCK]: 'Tot',
+            [STAT.FOUL_DOUBLE]: 'Dop', [STAT.FOUL_FOUR_TOUCHES]: '4T', [STAT.FOUL_RAISED]: 'Alz',
+            [STAT.FOUL_POSITION]: 'Pos', [STAT.FOUL_INVASION]: 'Inv', [STAT.TOTAL_FOUL]: 'Tot',
+            [STAT.CARD_YELLOW]: 'Gial', [STAT.CARD_RED]: 'Ros', [STAT.TOTAL_CARD]: 'Tot',
+        };
+        const STAT_FULL = {
+            [STAT.TOUCHES]: 'Tocchi', [STAT.POINTS_PLAYED]: 'Punti giocati',
+            [STAT.ATTACK_WIN]: 'Attacchi vincenti', [STAT.ATTACK_OUT]: 'Attacchi out',
+            [STAT.ATTACK_NOT_SUCCESSFUL]: 'Non vincenti', [STAT.TOTAL_ATTACK]: 'Totale attacchi',
+            [STAT.ACE]: 'Ace', [STAT.SERVES]: 'Battute OK', [STAT.SERVES_ERR]: 'Errori battuta',
+            [STAT.TOTAL_SERVES]: 'Totale battute', [STAT.BLOCK_SUCCESSFUL]: 'Muri vincenti',
+            [STAT.BLOCK_NOT_SUCCESSFUL]: 'Muri non vincenti', [STAT.TOTAL_BLOCK]: 'Totale muri',
+            [STAT.FOUL_DOUBLE]: 'Doppio fallo', [STAT.FOUL_FOUR_TOUCHES]: '4 tocchi',
+            [STAT.FOUL_RAISED]: 'Alzata irregolare', [STAT.FOUL_POSITION]: 'Fallo posizione',
+            [STAT.FOUL_INVASION]: 'Invasione', [STAT.TOTAL_FOUL]: 'Totale falli',
+            [STAT.CARD_YELLOW]: 'Cartellini gialli', [STAT.CARD_RED]: 'Cartellini rossi', [STAT.TOTAL_CARD]: 'Totale cartellini',
+        };
+
+        function toggleStats() {
+            const panel = document.getElementById('stats-panel');
+            ui.statsOpen = !ui.statsOpen;
+            panel.classList.toggle('open', ui.statsOpen);
+            if (ui.statsOpen) {
+                _buildStatsCatPills();
+                _buildStatsTabs();
+                renderStatsBody();
+            }
+        }
+
+        function _buildStatsCatPills() {
+            const pills = document.getElementById('sp-pills');
+            if (pills.children.length) return; // già costruito
+            Object.keys(STAT_CATS).forEach(cat => {
+                const btn = document.createElement('button');
+                btn.className = `sp-cat-btn${cat === ui.statsCat ? ' active' : ''}`;
+                btn.textContent = cat;
+                btn.onclick = () => {
+                    ui.statsCat = cat;
+                    document.querySelectorAll('.sp-cat-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    renderStatsBody();
+                };
+                pills.appendChild(btn);
+            });
+        }
+
+        function _buildStatsTabs() {
+            const tabs = document.getElementById('sp-tabs');
+            tabs.innerHTML = '';
+            // Tab "Match"
+            const matchTab = document.createElement('button');
+            matchTab.className = `sp-tab${ui.statsSet === 'match' ? ' active' : ''}`;
+            matchTab.textContent = 'Match';
+            matchTab.onclick = () => { ui.statsSet = 'match'; _updateTabs(); renderStatsBody(); };
+            tabs.appendChild(matchTab);
+            // Tab per ogni set completato
+            match.sets.forEach((s, i) => {
+                if (i >= match.currentSetNumber - 1) return; // set non ancora completato
+                const tab = document.createElement('button');
+                tab.className = `sp-tab${ui.statsSet === i ? ' active' : ''}`;
+                tab.textContent = `Set ${i + 1}`;
+                tab.onclick = () => { ui.statsSet = i; _updateTabs(); renderStatsBody(); };
+                tabs.appendChild(tab);
+            });
+            // Tab set corrente
+            const curTab = document.createElement('button');
+            curTab.className = `sp-tab${ui.statsSet === 'current' ? ' active' : ''}`;
+            curTab.textContent = `Set ${match.currentSetNumber} (live)`;
+            curTab.onclick = () => { ui.statsSet = 'current'; _updateTabs(); renderStatsBody(); };
+            tabs.appendChild(curTab);
+        }
+
+        function _updateTabs() {
+            const tabs = document.getElementById('sp-tabs');
+            Array.from(tabs.children).forEach((t, i) => {
+                const isMatch = i === 0 && ui.statsSet === 'match';
+                const isCurrent = i === tabs.children.length - 1 && ui.statsSet === 'current';
+                const isSet = typeof ui.statsSet === 'number' && ui.statsSet === i - 1;
+                t.classList.toggle('active', isMatch || isCurrent || isSet);
+            });
+        }
+
+        function _getStatsForPlayer(player) {
+            if (ui.statsSet === 'match') return player.stats;
+            const setIdx = ui.statsSet === 'current' ? match.currentSetNumber - 1 : ui.statsSet;
+            const sset = match.sets[setIdx];
+            if (!sset) return player.stats;
+            return sset.stats.players.get(player.id) ?? player.stats;
+        }
+
+        function _getSquadStats(squad) {
+            if (ui.statsSet === 'match') return squad.stats;
+            const setIdx = ui.statsSet === 'current' ? match.currentSetNumber - 1 : ui.statsSet;
+            const sset = match.sets[setIdx];
+            if (!sset) return squad.stats;
+            return sset.stats.squads[squad.side] ?? squad.stats;
+        }
+
+        function renderStatsBody() {
+            _buildStatsTabs(); // ricostruisce tab se ci sono nuovi set
+            const body = document.getElementById('sp-body');
+            const keys = STAT_CATS[ui.statsCat] ?? [];
+
+            // ── Barra riassuntiva match ──
+            let html = `<div class="stats-two-col" style="margin-bottom:4px">`;
+
+            [match.squadA, match.squadB].forEach(squad => {
+                const ss = _getSquadStats(squad);
+                const allPlayers = [...squad.players, ...squad.bench];
+                html += `
+        <div class="stats-col">
+          <div class="stats-col-title" style="color:var(--${squad.side})">${squad.name}</div>
+          <div class="stats-col-meta">
+            Set vinti: <b>${squad.setsWon}</b> · 
+            Punteggio: <b>${squad.score}</b> · 
+            Timeout: <b>${squad.timeout}/2</b>
+          </div>
+          <div class="stats-squad-bar">
+            <div class="ssb-item"><div class="ssb-val" style="color:var(--green)">${ss[STAT.ATTACK_WIN] ?? 0}</div><div class="ssb-lbl">Att</div></div>
+            <div class="ssb-sep"></div>
+            <div class="ssb-item"><div class="ssb-val" style="color:var(--green)">${ss[STAT.ACE] ?? 0}</div><div class="ssb-lbl">Ace</div></div>
+            <div class="ssb-sep"></div>
+            <div class="ssb-item"><div class="ssb-val" style="color:var(--green)">${ss[STAT.BLOCK_SUCCESSFUL] ?? 0}</div><div class="ssb-lbl">Muro</div></div>
+            <div class="ssb-sep"></div>
+            <div class="ssb-item"><div class="ssb-val" style="color:var(--red)">${ss[STAT.TOTAL_FOUL] ?? 0}</div><div class="ssb-lbl">Falli</div></div>
+            <div class="ssb-sep"></div>
+            <div class="ssb-item"><div class="ssb-val" style="color:var(--amber)">${ss[STAT.TOTAL_CARD] ?? 0}</div><div class="ssb-lbl">Card</div></div>
+          </div>
+          <table class="stats-tbl">
+            <thead><tr>
+              <th>#</th><th>Giocatore</th>
+              ${keys.map(k => `<th title="${STAT_FULL[k]}">${STAT_SHORT[k]}</th>`).join('')}
+            </tr></thead>
+            <tbody>`;
+
+                allPlayers.forEach(p => {
+                    const ps = _getStatsForPlayer(p);
+                    const onC = p.onCourt;
+                    html += `<tr class="${onC ? '' : 'bench-row'}">
+              <td><span class="stat-num ${squad.side}">${p.shirtNumber}</span></td>
+              <td class="stat-name">${p.displayName}${p.libero ? ' <span class="lib-badge">L</span>' : ''}</td>
+              ${keys.map(k => {
+                        const v = ps[k] ?? 0;
+                        return `<td class="stat-val${v > 0 ? ' nz' : ''}">${v}</td>`;
+                    }).join('')}
+            </tr>`;
+                });
+
+                html += `</tbody></table></div>`;
+            });
+
+            html += `</div>`;
+            body.innerHTML = html;
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        //  FLASH / RIPPLE / FATAL ERROR
+        // ══════════════════════════════════════════════════════════════
+        let _flashTimer = null;
+        function flashMsg(msg, color = '#e8eaf2') {
+            const el = document.getElementById('flash');
+            el.textContent = msg; el.style.color = color; el.style.borderColor = color + '44';
+            el.classList.add('show');
+            clearTimeout(_flashTimer);
+            _flashTimer = setTimeout(() => el.classList.remove('show'), 1400);
+        }
+
+        function ripple(e, el) {
+            const r = document.createElement('div');
+            r.className = 'ripple-el';
+            const rect = el.getBoundingClientRect();
+            r.style.left = (e.clientX - rect.left) + 'px';
+            r.style.top = (e.clientY - rect.top) + 'px';
+            el.appendChild(r);
+            r.addEventListener('animationend', () => r.remove());
+        }
+
+        function showFatalError(msg) {
+            document.body.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+                  height:100vh;gap:14px;background:#0b0e17;color:#7a829a;font-family:'Barlow',sans-serif">
+        <div style="font-size:36px">⚠️</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:#e8eaf2">${msg}</div>
+        <button onclick="window.location.href='dashboard.html'"
+            style="margin-top:8px;padding:8px 20px;border-radius:6px;border:1px solid #3b8bff;
+                   background:rgba(59,139,255,.14);color:#3b8bff;cursor:pointer;
+                   font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700">
+            ← Torna alla Dashboard
+        </button>
+      </div>`;
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        //  INIT
+        // ══════════════════════════════════════════════════════════════
+        async function init() {
+            document.querySelector('.team-name.a').textContent = '…';
+            document.querySelector('.team-name.b').textContent = '…';
+            const ok = await loadLineup();
+            if (!ok) return;
+            renderAll();
+        }
+
+        init();
+    </script>
+</body>
+
+</html>
