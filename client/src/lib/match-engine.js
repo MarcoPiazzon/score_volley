@@ -127,7 +127,16 @@ export class Sset {
 //  Match
 // ──────────────────────────────────────────────────────────────────
 export class Match {
-  constructor(squadA, squadB) {
+  /**
+   * @param {Squad} squadA
+   * @param {Squad} squadB
+   * @param {object} [format]  - parametri caricati dal DB
+   * @param {number} [format.maxSet=5]         - max set della partita (es. 3 o 5)
+   * @param {number} [format.setsToWin=3]      - set necessari per vincere
+   * @param {number} [format.setPoints=25]     - punti set normale
+   * @param {number} [format.tieBreakPoints=15]- punti tiebreak (ultimo set)
+   */
+  constructor(squadA, squadB, format = {}) {
     this.squadA = squadA;
     this.squadB = squadB;
 
@@ -136,10 +145,11 @@ export class Match {
     this.currentSetNumber = 1;
     this.servingSquad     = null;
 
-    this.maxSet          = 5;
-    this.setsToWin       = 3;
-    this.setPoints       = 25;
-    this.tieBreakPoints  = 15;
+    // Parametri formato partita — caricati dal DB, con fallback ai default FIVB
+    this.maxSet         = format.maxSet         ?? 5;
+    this.setsToWin      = format.setsToWin      ?? 3;
+    this.setPoints      = format.setPoints      ?? 25;
+    this.tieBreakPoints = format.tieBreakPoints ?? 15;
     this.changeFieldDone = false;
 
     this.history     = [];
@@ -283,6 +293,7 @@ export class Match {
     const scoreA = winner === this.squadA ? scoreWinner : scoreLooser;
     const scoreB = winner === this.squadA ? scoreLooser : scoreWinner;
 
+    // Salva punteggio finale del set
     this.currentSet.winner = winner.side;
     this.currentSet.scoreA = scoreA;
     this.currentSet.scoreB = scoreB;
@@ -291,17 +302,17 @@ export class Match {
     this.currentSetNumber++;
     this.changeFieldDone = false;
 
-    // Check fine match
-    if (winner.setsWon === this.setsToWin) {
-      if (this._onMatchEnd) this._onMatchEnd(winner);
-      return;
-    }
-
-    // La squadra che ha perso il set batte per prima nel nuovo set
-    this.servingSquad = winner === this.squadA ? this.squadB : this.squadA;
-
+    // Notifica UI del set terminato PRIMA di controllare il match
     if (this._onSetEnd) this._onSetEnd(winner, scoreA, scoreB);
 
+    // Controlla fine match
+    if (winner.setsWon >= this.setsToWin) {
+      if (this._onMatchEnd) this._onMatchEnd(winner);
+      return; // non iniziare un nuovo set
+    }
+
+    // Il VINCITORE del set batte per primo nel set successivo (regola FIVB)
+    this.servingSquad = winner;
     this._startNewSet();
     this.assignServe();
     this._snapshot();
