@@ -5,6 +5,37 @@
 @layer base {
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
+  :root {
+    --bg:        #0b0e17;
+    --surf-1:    #121622;
+    --surf-2:    #1a1f30;
+    --surf-3:    #222840;
+    --border:    rgba(255,255,255,.07);
+    --border-m:  rgba(255,255,255,.13);
+    --a:         #3b8bff;
+    --a-dim:     rgba(59,139,255,.15);
+    --a-glow:    rgba(59,139,255,.35);
+    --b:         #ff6b35;
+    --b-dim:     rgba(255,107,53,.15);
+    --b-glow:    rgba(255,107,53,.35);
+    --green:     #22d47a;
+    --green-dim: rgba(34,212,122,.14);
+    --red:       #f04e4e;
+    --red-dim:   rgba(240,78,78,.14);
+    --amber:     #f5c542;
+    --amber-dim: rgba(245,197,66,.14);
+    --purple:    #a78bfa;
+    --purple-dim:rgba(167,139,250,.14);
+    --slate:     #64748b;
+    --slate-dim: rgba(100,116,139,.14);
+    --text:      #e8eaf2;
+    --muted:     #7a829a;
+    --subtle:    #3c4260;
+    --court:     #c8a55a;
+    --r:         10px;
+    --r-sm:      6px;
+  }
+
   body {
     background-color: #0b0e17;
     color: #e8eaf2;

@@ -2,11 +2,10 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiGet, apiPost } from '@/lib/api';
 import { Match, Squad, Player } from '@/lib/match-engine';
-import {
-  STAT, ACTION_MAP, ACTION_EXTRA, ACTION_LABELS, ACTION_COLORS,
-} from '@/lib/enums';
+import { STAT } from '@/lib/enums';
+import './Monitor.css';
 
-// ── Court position maps (2 colonne × 3 righe) ─────────────────────
+// ── Court position maps (fedeli all'originale) ────────────────────
 const COURT_POS_A = {
   1: [14, 80], 2: [37, 80], 3: [37, 50],
   4: [37, 20], 5: [14, 20], 6: [14, 50],
@@ -16,115 +15,118 @@ const COURT_POS_B = {
   4: [63, 80], 5: [86, 80], 6: [86, 50],
 };
 
-// ── Utility ───────────────────────────────────────────────────────
-function Flash({ msg, color }) {
-  if (!msg) return null;
-  return (
-    <div
-      key={msg + color}
-      className="flash-msg font-condensed font-semibold text-sm px-5 py-2.5 rounded-xl z-50"
-      style={{ background: color }}
-    >
-      {msg}
-    </div>
-  );
-}
+const ROLE_MAP = {
+  setter: 'Palleggiatore', outside_hitter: 'Schiacciatore', opposite: 'Opposto',
+  middle_blocker: 'Centrale', libero: 'Libero', defensive_specialist: 'Difensore',
+};
 
-// ── Court Player Bubble ────────────────────────────────────────────
-function CourtPlayer({ player, posMap, rotIdx, isSelected, isOutTarget, isServing, onClick }) {
-  const pos    = posMap[rotIdx + 1];
-  if (!pos) return null;
-  const [x, y] = pos;
+// ── Stats config ──────────────────────────────────────────────────
+const STAT_CATS = {
+  Generali:  [STAT.TOUCHES, STAT.POINTS_PLAYED],
+  Attacco:   [STAT.ATTACK_WIN, STAT.ATTACK_OUT, STAT.ATTACK_NOT_SUCCESSFUL, STAT.TOTAL_ATTACK],
+  Battuta:   [STAT.ACE, STAT.SERVES, STAT.SERVES_ERR, STAT.TOTAL_SERVES],
+  Difesa:    [STAT.DEF_POS, STAT.DEF_NEG, STAT.TOTAL_RECEIVE],
+  Muro:      [STAT.BLOCK_SUCCESSFUL, STAT.BLOCK_NOT_SUCCESSFUL, STAT.TOTAL_BLOCK],
+  Falli:     [STAT.FOUL_DOUBLE, STAT.FOUL_FOUR_TOUCHES, STAT.FOUL_RAISED, STAT.FOUL_POSITION, STAT.FOUL_INVASION, STAT.TOTAL_FOUL],
+  Cartellini:[STAT.CARD_YELLOW, STAT.CARD_RED, STAT.TOTAL_CARD],
+};
+const STAT_SHORT = {
+  [STAT.TOUCHES]: 'Toc', [STAT.POINTS_PLAYED]: 'Pts',
+  [STAT.ATTACK_WIN]: 'Kill', [STAT.ATTACK_OUT]: 'Out', [STAT.ATTACK_NOT_SUCCESSFUL]: 'NV', [STAT.TOTAL_ATTACK]: 'Tot',
+  [STAT.ACE]: 'Ace', [STAT.SERVES]: 'OK', [STAT.SERVES_ERR]: 'Err', [STAT.TOTAL_SERVES]: 'Tot',
+  [STAT.DEF_POS]: 'Pos', [STAT.DEF_NEG]: 'Neg', [STAT.TOTAL_RECEIVE]: 'Tot',
+  [STAT.BLOCK_SUCCESSFUL]: 'Muro', [STAT.BLOCK_NOT_SUCCESSFUL]: 'Ten', [STAT.TOTAL_BLOCK]: 'Tot',
+  [STAT.FOUL_DOUBLE]: 'Dop', [STAT.FOUL_FOUR_TOUCHES]: '4T', [STAT.FOUL_RAISED]: 'Alz',
+  [STAT.FOUL_POSITION]: 'Pos', [STAT.FOUL_INVASION]: 'Inv', [STAT.TOTAL_FOUL]: 'Tot',
+  [STAT.CARD_YELLOW]: 'Gial', [STAT.CARD_RED]: 'Ros', [STAT.TOTAL_CARD]: 'Tot',
+};
+const STAT_FULL = {
+  [STAT.TOUCHES]: 'Tocchi', [STAT.POINTS_PLAYED]: 'Punti giocati',
+  [STAT.ATTACK_WIN]: 'Attacchi vincenti', [STAT.ATTACK_OUT]: 'Attacchi out',
+  [STAT.ATTACK_NOT_SUCCESSFUL]: 'Non vincenti', [STAT.TOTAL_ATTACK]: 'Totale attacchi',
+  [STAT.ACE]: 'Ace', [STAT.SERVES]: 'Battute OK', [STAT.SERVES_ERR]: 'Errori battuta',
+  [STAT.TOTAL_SERVES]: 'Totale battute',
+  [STAT.DEF_POS]: 'Ricezione positiva', [STAT.DEF_NEG]: 'Ricezione negativa', [STAT.TOTAL_RECEIVE]: 'Totale ricezioni',
+  [STAT.BLOCK_SUCCESSFUL]: 'Muri vincenti', [STAT.BLOCK_NOT_SUCCESSFUL]: 'Muri non vincenti', [STAT.TOTAL_BLOCK]: 'Totale muri',
+  [STAT.FOUL_DOUBLE]: 'Doppio fallo', [STAT.FOUL_FOUR_TOUCHES]: '4 tocchi',
+  [STAT.FOUL_RAISED]: 'Alzata irregolare', [STAT.FOUL_POSITION]: 'Fallo posizione',
+  [STAT.FOUL_INVASION]: 'Invasione', [STAT.TOTAL_FOUL]: 'Totale falli',
+  [STAT.CARD_YELLOW]: 'Cartellini gialli', [STAT.CARD_RED]: 'Cartellini rossi', [STAT.TOTAL_CARD]: 'Totale cartellini',
+};
 
-  return (
-    <div
-      onClick={onClick}
-      className={[
-        'court-player',
-        `team-${player.team}`,
-        player.libero ? 'libero' : '',
-        isSelected  ? 'selected'   : '',
-        isOutTarget ? 'out-target' : '',
-      ].filter(Boolean).join(' ')}
-      style={{ left: `${x}%`, top: `${y}%` }}
-      title={`#${player.shirtNumber} ${player.fullName} · ${player.role}`}
-    >
-      {player.shirtNumber}
-      {isServing && <span className="serve-dot" />}
-    </div>
-  );
-}
+// ── Action config (identico all'originale) ────────────────────────
+const ACTION_MAP = {
+  POINT:       { stat: STAT.ATTACK_WIN,          value: true  },
+  ACE:         { stat: STAT.ACE,                 value: true  },
+  OUT:         { stat: STAT.ATTACK_OUT,           value: false },
+  LOST_BALL:   { stat: STAT.BALL_LOST,            value: false },
+  SERVE_ERROR: { stat: STAT.SERVES_ERR,           value: false },
+  BLOCKED:     { stat: STAT.BLOCK_NOT_SUCCESSFUL, value: false },
+  DOUBLE:      { stat: STAT.FOUL_DOUBLE,          value: false },
+  '4TOUCHES':  { stat: STAT.FOUL_FOUR_TOUCHES,    value: false },
+  RAISED:      { stat: STAT.FOUL_RAISED,          value: false },
+  POSITION:    { stat: STAT.FOUL_POSITION,        value: false },
+  INVASION:    { stat: STAT.FOUL_INVASION,        value: false },
+};
+const ACTION_EXTRA = {
+  POINT:       [STAT.TOTAL_ATTACK],
+  ACE:         [STAT.TOTAL_SERVES, STAT.SERVES],
+  OUT:         [STAT.TOTAL_ATTACK],
+  SERVE_ERROR: [STAT.TOTAL_SERVES],
+  BLOCKED:     [STAT.TOTAL_BLOCK],
+  DOUBLE:      [STAT.TOTAL_FOUL],
+  '4TOUCHES':  [STAT.TOTAL_FOUL],
+  RAISED:      [STAT.TOTAL_FOUL],
+  POSITION:    [STAT.TOTAL_FOUL],
+  INVASION:    [STAT.TOTAL_FOUL],
+};
 
-// ── Bench Player Row ──────────────────────────────────────────────
-function BenchRow({ player, isSelected, onClick }) {
-  return (
-    <div
-      onClick={onClick}
-      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer
-                  transition-all duration-100
-                  ${isSelected
-                    ? player.team === 'a'
-                      ? 'bg-teamA/20 border border-teamA/40'
-                      : 'bg-teamB/20 border border-teamB/40'
-                    : 'hover:bg-surf3 border border-transparent'
-                  }`}
-    >
-      <div className={`w-7 h-7 rounded-full flex items-center justify-center
-                       font-condensed font-bold text-sm flex-shrink-0 text-white
-                       ${player.team === 'a' ? 'bg-teamA' : 'bg-teamB'}
-                       ${player.libero ? 'opacity-70' : ''}`}>
-        {player.shirtNumber}
-      </div>
-      <div className="min-w-0">
-        <p className="text-text text-xs font-medium truncate">{player.displayName}</p>
-        <p className="text-subtle text-[10px] capitalize">{player.role}</p>
-      </div>
-    </div>
-  );
-}
-
-// ── Action Button ─────────────────────────────────────────────────
-const ACTION_GROUPS = [
-  { label: 'Azione',  actions: ['POINT', 'ACE', 'OUT', 'SERVE_ERROR', 'LOST_BALL', 'BLOCKED'] },
-  { label: 'Falli',   actions: ['DOUBLE', '4TOUCHES', 'RAISED', 'POSITION', 'INVASION'] },
-];
-
-// ── MAIN COMPONENT ────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════
+//  MONITOR COMPONENT
+// ════════════════════════════════════════════════════════════════
 export default function Monitor() {
   const { id: matchId } = useParams();
   const navigate = useNavigate();
 
-  // Il match engine vive in un ref (non React state) per evitare re-render inutili
-  const matchRef  = useRef(null);
-  const [tick, setTick]       = useState(0);      // forza re-render dopo ogni azione
+  const matchRef = useRef(null);
+  const flashRef = useRef(null);
+  const [tick, setTick] = useState(0);
   const rerender = useCallback(() => setTick(t => t + 1), []);
 
-  const [flash,   setFlash]   = useState({ msg: '', color: '' });
-  const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState('');
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState('');
+  const [saving,   setSaving]   = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
+  const [statsCat,  setStatsCat]  = useState('Generali');
+  const [statsSet,  setStatsSet]  = useState('match'); // 'match' | 'current' | number
 
-  // UI State
+  // UI state
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [subMode,   setSubMode]   = useState(false);
   const [outPlayer, setOutPlayer] = useState(null);
-  const [cardMode,  setCardMode]  = useState(null);  // 'yellow'|'red'|null
-  const [statsOpen, setStatsOpen] = useState(false);
-  const [statsCat,  setStatsCat]  = useState('Generali');
-  const [saving,    setSaving]    = useState(false);
+  const [cardMode,  setCardMode]  = useState(null); // 'yellow'|'red'|null
 
-  const showFlash = useCallback((msg, color = '#3b8bff') => {
-    setFlash({ msg, color });
-    setTimeout(() => setFlash({ msg: '', color: '' }), 2000);
+  // ── Flash (identico all'originale) ──────────────────────────
+  const flashMsg = useCallback((msg, color = '#e8eaf2') => {
+    const el = flashRef.current;
+    if (!el) return;
+    el.textContent = msg;
+    el.style.color = color;
+    el.style.borderColor = color + '44';
+    el.classList.add('show');
+    clearTimeout(el._timer);
+    el._timer = setTimeout(() => el.classList.remove('show'), 1400);
   }, []);
 
-  // ── Auto-select server ─────────────────────────────────────────
+  // ── Auto-select server ───────────────────────────────────────
   const autoSelectServer = useCallback(() => {
     const m = matchRef.current;
-    if (!m?.servingSquad) return;
-    setSelectedPlayer(m.servingSquad.players[0] ?? null);
+    if (m?.servingSquad?.players?.[0]) {
+      setSelectedPlayer(m.servingSquad.players[0]);
+    }
   }, []);
 
-  // ── Load lineup ────────────────────────────────────────────────
+  // ── Load lineup ──────────────────────────────────────────────
   useEffect(() => {
     async function load() {
       setLoading(true);
@@ -144,58 +146,43 @@ export default function Monitor() {
             shortName: teamData.team_name?.slice(0, 3).toUpperCase(),
             side,
           });
-
-          // Starters → ordinati per position_number
           const starters = [...teamData.starters].sort(
             (a, b) => a.position_number - b.position_number
           );
           squad.players = starters.map(p => {
-            const player = new Player({
-              id:          p.player_id,
-              shirtNumber: p.shirt_number,
-              name:        p.name,
-              surname:     p.surname,
-              role:        p.role,
-              team:        side,
-              libero:      !!p.is_libero,
+            const pl = new Player({
+              id: p.player_id, shirtNumber: p.shirt_number,
+              name: p.name, surname: p.surname,
+              role: p.role, team: side, libero: !!p.is_libero,
             });
-            player.onCourt = true;
-            return player;
+            pl.onCourt = true;
+            return pl;
           });
-
           squad.bench = teamData.bench.map(p => new Player({
-            id:          p.player_id,
-            shirtNumber: p.shirt_number,
-            name:        p.name,
-            surname:     p.surname,
-            role:        p.role,
-            team:        side,
-            libero:      !!p.is_libero,
+            id: p.player_id, shirtNumber: p.shirt_number,
+            name: p.name, surname: p.surname,
+            role: p.role, team: side, libero: !!p.is_libero,
           }));
-
           return squad;
         };
 
         const squadA = makeSquad(home, 'a');
         const squadB = makeSquad(away, 'b');
-
-        const match = new Match(squadA, squadB);
+        const match  = new Match(squadA, squadB);
 
         match._onSetEnd = (winner, sA, sB) => {
-          const setNum = match.currentSetNumber - 1;
-          showFlash(`Set ${setNum} → ${winner.shortName}! (${sA}-${sB})`,
-                    winner.side === 'a' ? '#3b8bff' : '#ff6b35');
+          const n = match.currentSetNumber - 1;
+          flashMsg(`Set ${n} → ${winner.shortName}! (${sA}-${sB})`,
+                   winner.side === 'a' ? '#3b8bff' : '#ff6b35');
           autoSelectServer();
           rerender();
         };
         match._onMatchEnd = (winner) => {
-          showFlash(`🏆 Vittoria ${winner.shortName}! (${winner.setsWon}-${
-            (winner === match.squadA ? match.squadB : match.squadA).setsWon})`, '#f5c542');
+          const other = winner === match.squadA ? match.squadB : match.squadA;
+          flashMsg(`🏆 Vittoria ${winner.shortName}! (${winner.setsWon}-${other.setsWon})`, '#f5c542');
           rerender();
         };
-        match._onFieldChange = () => {
-          showFlash('↕ Cambio campo (5° set)', '#f5c542');
-        };
+        match._onFieldChange = () => flashMsg('↕ Cambio campo (5° set)', '#f5c542');
 
         match.startMatch(squadA);
         matchRef.current = match;
@@ -214,541 +201,525 @@ export default function Monitor() {
 
   const match = matchRef.current;
 
-  // ── Handle court click ─────────────────────────────────────────
+  // ── Court click ──────────────────────────────────────────────
   const handleCourtClick = useCallback((player) => {
-    if (!matchRef.current) return;
-    const m = matchRef.current;
-
-    // Card mode
+    const m = matchRef.current; if (!m) return;
     if (cardMode) {
       m.assignCard(player, cardMode);
-      showFlash(`Cartellino ${cardMode === 'red' ? 'rosso 🟥' : 'giallo 🟨'} — #${player.shirtNumber}`,
-                cardMode === 'red' ? '#f04e4e' : '#f5c542');
-      setCardMode(null);
-      autoSelectServer();
-      rerender();
-      return;
+      flashMsg(`Cartellino ${cardMode === 'red' ? 'rosso 🟥' : 'giallo 🟨'} — #${player.shirtNumber}`,
+               cardMode === 'red' ? '#f04e4e' : '#f5c542');
+      setCardMode(null); autoSelectServer(); rerender(); return;
     }
-
-    // Sub mode — selezione chi esce (solo titolari in campo)
-    if (subMode) {
-      setOutPlayer(player);
-      return;
-    }
-
-    // Normal: toggle select
+    if (subMode) { setOutPlayer(player); return; }
     setSelectedPlayer(sp => sp?.id === player.id ? null : player);
-  }, [cardMode, subMode, showFlash, autoSelectServer, rerender]);
+  }, [cardMode, subMode, flashMsg, autoSelectServer, rerender]);
 
+  // ── Bench click ──────────────────────────────────────────────
   const handleBenchClick = useCallback((player) => {
-    if (!matchRef.current) return;
-    const m = matchRef.current;
-
-    // Card mode: puoi dare cartellino anche a chi è in panchina
+    const m = matchRef.current; if (!m) return;
     if (cardMode) {
       m.assignCard(player, cardMode);
-      showFlash(`Cartellino ${cardMode === 'red' ? 'rosso 🟥' : 'giallo 🟨'} — #${player.shirtNumber}`,
-                cardMode === 'red' ? '#f04e4e' : '#f5c542');
-      setCardMode(null);
-      autoSelectServer();
-      rerender();
-      return;
+      flashMsg(`Cartellino ${cardMode === 'red' ? 'rosso 🟥' : 'giallo 🟨'} — #${player.shirtNumber}`,
+               cardMode === 'red' ? '#f04e4e' : '#f5c542');
+      setCardMode(null); autoSelectServer(); rerender(); return;
     }
-
-    // Sub mode — selezione chi entra
     if (subMode && outPlayer) {
       try {
         const squad = player.team === 'a' ? m.squadA : m.squadB;
         m.makeSubstitute(squad, outPlayer, player);
-        showFlash(`↕ Cambio: #${outPlayer.shirtNumber} → #${player.shirtNumber}`, '#a78bfa');
-        setSubMode(false);
-        setOutPlayer(null);
-        autoSelectServer();
-        rerender();
-      } catch (err) {
-        showFlash(err.message, '#f04e4e');
-      }
+        flashMsg(`↕ Cambio: #${outPlayer.shirtNumber} → #${player.shirtNumber}`, '#a78bfa');
+        setSubMode(false); setOutPlayer(null); autoSelectServer(); rerender();
+      } catch (err) { flashMsg(err.message, '#f04e4e'); }
       return;
     }
-
     setSelectedPlayer(sp => sp?.id === player.id ? null : player);
-  }, [cardMode, subMode, outPlayer, showFlash, autoSelectServer, rerender]);
+  }, [cardMode, subMode, outPlayer, flashMsg, autoSelectServer, rerender]);
 
-  // ── Register event ─────────────────────────────────────────────
+  // ── Register event ───────────────────────────────────────────
   const registerEvent = useCallback((type) => {
-    if (!matchRef.current) return;
-    const m = matchRef.current;
+    const m = matchRef.current; if (!m) return;
 
     if (type === 'CHANGE') {
       if (subMode) { setSubMode(false); setOutPlayer(null); return; }
       setSubMode(true); setOutPlayer(null);
-      showFlash('Modalità cambio attiva', '#a78bfa');
-      return;
+      flashMsg('Cambio: seleziona chi esce dal campo', '#a78bfa'); return;
     }
     if (type === 'TIMEOUT_A' || type === 'TIMEOUT_B') {
       const squad = type === 'TIMEOUT_A' ? m.squadA : m.squadB;
-      if (!m.callTimeout(squad)) {
-        showFlash(`${squad.shortName}: timeout esauriti`, '#f04e4e'); return;
-      }
-      showFlash(`⏱ Timeout ${squad.shortName} (${squad.timeout}/2)`, '#3b8bff');
+      if (!m.callTimeout(squad)) { flashMsg(`${squad.shortName}: timeout esauriti`, '#f04e4e'); return; }
+      flashMsg(`⏱ Timeout ${squad.shortName} (${squad.timeout}/2)`, '#3b8bff');
       rerender(); return;
     }
     if (type === 'YELLOW_CARD') {
-      setCardMode(cm => cm === 'yellow' ? null : 'yellow');
-      showFlash('Seleziona giocatore per cartellino giallo 🟨', '#f5c542'); return;
+      setCardMode(c => c === 'yellow' ? null : 'yellow');
+      flashMsg('Seleziona giocatore — cartellino giallo 🟨', '#f5c542'); return;
     }
     if (type === 'RED_CARD') {
-      setCardMode(cm => cm === 'red' ? null : 'red');
-      showFlash('Seleziona giocatore per cartellino rosso 🟥', '#f04e4e'); return;
+      setCardMode(c => c === 'red' ? null : 'red');
+      flashMsg('Seleziona giocatore — cartellino rosso 🟥', '#f04e4e'); return;
     }
     if (type === 'UNDO') {
-      if (!m.undoLastPoint()) { showFlash('Nulla da annullare', '#64748b'); return; }
-      showFlash('↩ Annullato', '#f5c542');
-      autoSelectServer();
-      rerender(); return;
+      if (!m.undoLastPoint()) { flashMsg('Nulla da annullare', '#64748b'); return; }
+      flashMsg('↩ Punto annullato', '#f5c542');
+      autoSelectServer(); rerender(); return;
     }
     if (type === 'SWAP_SERVE') {
       m.servingSquad = m.servingSquad === m.squadA ? m.squadB : m.squadA;
-      m.assignServe();
-      autoSelectServer();
-      rerender();
-      showFlash('⇄ Battuta cambiata', '#a78bfa'); return;
+      m.assignServe(); autoSelectServer(); rerender();
+      flashMsg('⇄ Battuta cambiata', '#a78bfa'); return;
     }
+    if (type === 'SAVE') { saveMatch(); return; }
 
-    // Score actions
     const action = ACTION_MAP[type];
-    if (!action) { console.warn('Evento sconosciuto:', type); return; }
-    if (!selectedPlayer) { showFlash('Seleziona prima un giocatore!', '#f04e4e'); return; }
+    if (!action) return;
+    if (!selectedPlayer) { flashMsg('Seleziona prima un giocatore!', '#f04e4e'); return; }
 
-    const player = selectedPlayer;
-    const squad  = player.team === 'a' ? m.squadA : m.squadB;
     const extras = ACTION_EXTRA[type] ?? [];
-    extras.forEach(s => {
-      m.addStatPlayer(player, s);
-      m.addStatSet(player, s);
-    });
-    if (type === 'ACE') {
-      m.addStatPlayer(player, STAT.TOUCHES);
-      m.addStatSet(player, STAT.TOUCHES);
-    }
-    m.scorePoint(player, action.value, action.stat);
-    showFlash(ACTION_LABELS[type] ?? type, ACTION_COLORS[type] ?? '#e8eaf2');
-    autoSelectServer();
-    rerender();
-  }, [subMode, selectedPlayer, showFlash, autoSelectServer, rerender]);
+    extras.forEach(s => { m.addStatPlayer(selectedPlayer, s); m.addStatSet(selectedPlayer, s); });
+    if (type === 'ACE') { m.addStatPlayer(selectedPlayer, STAT.TOUCHES); m.addStatSet(selectedPlayer, STAT.TOUCHES); }
+    m.scorePoint(selectedPlayer, action.value, action.stat);
 
-  // ── Save match ────────────────────────────────────────────────
+    const labels = { POINT:'✦ Point!', ACE:'⚡ Ace!', OUT:'✕ Out', LOST_BALL:'○ Lost Ball',
+                     SERVE_ERROR:'✗ Serve Error', BLOCKED:'▣ Blocked', DOUBLE:'Double',
+                     '4TOUCHES':'4 Touches', RAISED:'Raised', POSITION:'Position', INVASION:'Invasion' };
+    const colors = { POINT:'#22d47a', ACE:'#22d47a', SERVE_ERROR:'#f04e4e', OUT:'#f04e4e',
+                     BLOCKED:'#64748b', DOUBLE:'#f5c542', '4TOUCHES':'#f5c542',
+                     RAISED:'#f5c542', POSITION:'#f5c542', INVASION:'#f5c542', LOST_BALL:'#64748b' };
+    flashMsg(labels[type] ?? type, colors[type]);
+    autoSelectServer(); rerender();
+  }, [subMode, selectedPlayer, flashMsg, autoSelectServer, rerender]);
+
+  // ── Save ─────────────────────────────────────────────────────
   const saveMatch = async () => {
     if (!match) return;
-    const matchMeta = JSON.parse(localStorage.getItem('openMatch') ?? '{}');
-    if (!matchMeta.id) { showFlash('ID partita mancante', '#f04e4e'); return; }
-
-    const confirmed = window.confirm(
-      `Salvare la partita?\n${match.squadA.name} ${match.squadA.setsWon}–${match.squadB.setsWon} ${match.squadB.name}`
-    );
-    if (!confirmed) return;
-
+    const meta = JSON.parse(localStorage.getItem('openMatch') ?? '{}');
+    if (!meta.id) { flashMsg('ID partita mancante', '#f04e4e'); return; }
+    if (!window.confirm(`Salvare la partita?\n${match.squadA.name} ${match.squadA.setsWon}–${match.squadB.setsWon} ${match.squadB.name}`)) return;
     setSaving(true);
     try {
-      const payload = match.toSavePayload(matchMeta);
-      const res = await apiPost(`/matches/${matchMeta.id}/save`, payload);
-      showFlash(`✓ Salvata (${res.sets} set, ${res.players} giocatori)`, '#22d47a');
+      const payload = match.toSavePayload(meta);
+      const res = await apiPost(`/matches/${meta.id}/save`, payload);
+      flashMsg(`✓ Salvata (${res.sets} set, ${res.players} giocatori)`, '#22d47a');
     } catch (err) {
-      showFlash(`Errore: ${err.message}`, '#f04e4e');
-    } finally {
-      setSaving(false);
-    }
+      flashMsg(`Errore: ${err.message}`, '#f04e4e');
+    } finally { setSaving(false); }
   };
 
-  // ── Loading / Error states ─────────────────────────────────────
+  // ── Loading / Error ──────────────────────────────────────────
   if (loading) return (
-    <div className="min-h-screen bg-bg flex items-center justify-center">
-      <div className="text-muted font-condensed text-lg">Caricamento formazione…</div>
+    <div style={{ minHeight:'100vh', background:'var(--bg)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <span style={{ fontFamily:'Barlow Condensed,sans-serif', color:'var(--muted)', fontSize:'18px' }}>
+        Caricamento formazione…
+      </span>
     </div>
   );
 
   if (error || !match) return (
-    <div className="min-h-screen bg-bg flex flex-col items-center justify-center gap-4">
-      <p className="text-red font-condensed text-lg">{error || 'Errore caricamento'}</p>
+    <div style={{ minHeight:'100vh', background:'var(--bg)', display:'flex', flexDirection:'column',
+                  alignItems:'center', justifyContent:'center', gap:'14px' }}>
+      <div style={{ fontSize:'36px' }}>⚠️</div>
+      <div style={{ fontFamily:'Barlow Condensed,sans-serif', fontSize:'20px', fontWeight:'800', color:'var(--text)' }}>
+        {error || 'Errore caricamento'}
+      </div>
       <button onClick={() => navigate('/dashboard')}
-              className="px-4 py-2 bg-surf2 border border-white/10 rounded-xl
-                         text-text font-condensed hover:bg-surf3 transition-colors">
+              style={{ padding:'8px 20px', borderRadius:'6px', border:'1px solid var(--a)',
+                       background:'var(--a-dim)', color:'var(--a)', cursor:'pointer',
+                       fontFamily:'Barlow Condensed,sans-serif', fontSize:'13px', fontWeight:'700' }}>
         ← Dashboard
       </button>
     </div>
   );
 
   const { squadA, squadB } = match;
-
-  // ── Computed state for render ──────────────────────────────────
   const servingSide = match.servingSquad?.side;
 
-  // ── RENDER ────────────────────────────────────────────────────
+  // Mode banner content
+  let modeBannerClass = '';
+  let modeBannerText  = '';
+  if (subMode && !outPlayer)  { modeBannerClass = 'sub';         modeBannerText = 'Cambio — seleziona chi ESCE'; }
+  if (subMode && outPlayer)   { modeBannerClass = 'sub';         modeBannerText = `Fuori: #${outPlayer.shirtNumber} — seleziona chi ENTRA`; }
+  if (cardMode === 'yellow')  { modeBannerClass = 'card-yellow'; modeBannerText = '🟨 Clicca un giocatore'; }
+  if (cardMode === 'red')     { modeBannerClass = 'card-red';    modeBannerText = '🟥 Clicca un giocatore'; }
+
+  // Selected bar
+  let selBarClass = 'mon-selected-bar';
+  if (!selectedPlayer && !subMode && !cardMode) selBarClass += ' none';
+  if (subMode)  selBarClass += ' sub-mode';
+  if (cardMode) selBarClass += ' card-mode';
+
   return (
-    <div className="min-h-screen bg-bg flex flex-col overflow-hidden"
-         style={{ height: '100dvh' }}>
-      <Flash msg={flash.msg} color={flash.color} />
+    <div style={{ height:'100dvh', background:'var(--bg)', color:'var(--text)',
+                  fontFamily:'Barlow,sans-serif', display:'flex', flexDirection:'column',
+                  overflow:'hidden', userSelect:'none' }}>
 
-      {/* ═══ TOP BAR ═════════════════════════════════════════════ */}
-      <header className="bg-surf1 border-b border-white/7 px-3 py-2 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          {/* Back */}
-          <button onClick={() => navigate('/dashboard')}
-                  className="w-8 h-8 rounded-lg bg-surf2 hover:bg-surf3 flex items-center justify-center
-                             text-muted hover:text-text transition-colors text-sm flex-shrink-0">
-            ←
-          </button>
+      {/* FLASH */}
+      <div className="mon-flash" ref={flashRef} />
 
-          {/* Team A Score */}
-          <div className="flex-1 flex items-center gap-2">
-            <div className="text-center">
-              <div className="font-condensed font-black text-3xl leading-none text-teamA">
-                {squadA.score}
+      {/* ═══ TOP BAR ═══════════════════════════════════════════ */}
+      <div className="mon-topbar">
+        {/* Team A name + set pips */}
+        <div className="mon-team-block a">
+          <span className="mon-team-name a">{squadA.shortName ?? squadA.name}</span>
+          <div className="mon-score-sets">
+            {[0,1,2].map(i => (
+              <div key={i} className={`mon-set-pip ${i < squadA.setsWon ? 'won-a' : ''}`}>
+                {match.sets[i]?.scoreA ?? 0}
               </div>
-              <div className="text-muted text-[10px] font-condensed truncate max-w-[80px]">
-                {squadA.shortName}
+            ))}
+          </div>
+        </div>
+
+        {/* Scoreboard (centered) */}
+        <div className="mon-scoreboard">
+          <div className="mon-pts a">{squadA.score}</div>
+          <div className="mon-pts-div">:</div>
+          <div className="mon-pts b">{squadB.score}</div>
+        </div>
+
+        {/* Team B name + set pips */}
+        <div className="mon-team-block b">
+          <span className="mon-team-name b">{squadB.shortName ?? squadB.name}</span>
+          <div className="mon-score-sets">
+            {[0,1,2].map(i => (
+              <div key={i} className={`mon-set-pip ${i < squadB.setsWon ? 'won-b' : ''}`}>
+                {match.sets[i]?.scoreB ?? 0}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right buttons */}
+        <div className="mon-topbar-right">
+          <button className="mon-ctrl-sm undo" onClick={() => registerEvent('UNDO')}>↩ Undo</button>
+          <button className="mon-ctrl-sm" onClick={() => registerEvent('SWAP_SERVE')}>⇄ Battuta</button>
+          <button className="mon-ctrl-sm save" onClick={saveMatch} disabled={saving}>
+            {saving ? '⏳' : '↑ Salva'}
+          </button>
+        </div>
+      </div>
+
+      {/* Set label badge */}
+      <div className="mon-set-label" id="set-label">Set {match.currentSetNumber}</div>
+
+      {/* ═══ MAIN ══════════════════════════════════════════════ */}
+      <div className="mon-main">
+
+        {/* Bench A */}
+        <div className="bench-panel a">
+          <div className="bench-header">
+            <div className="bench-title a">{squadA.name}</div>
+            <div className={`bench-timeout ${squadA.timeout > 0 ? 'has-to' : ''}`}>
+              Timeout: {squadA.timeout} / 2
+            </div>
+          </div>
+          {squadA.bench.map(p => (
+            <div key={p.id}
+                 className={[
+                   'bench-player',
+                   selectedPlayer?.id === p.id ? 'selected-a' : '',
+                   outPlayer?.id === p.id ? 'out-target' : '',
+                 ].join(' ')}
+                 onClick={() => handleBenchClick(p)}>
+              <div className="bp-num a">{p.shirtNumber}</div>
+              <div className="bp-name">
+                {p.displayName}<br />
+                <span style={{ fontSize:'9px', color:'var(--subtle)', textTransform:'capitalize' }}>
+                  {ROLE_MAP[p.role] ?? p.role}
+                  {p.libero ? ' · L' : ''}
+                </span>
               </div>
             </div>
+          ))}
+        </div>
 
-            {/* Set pips */}
-            <div className="flex-1 flex flex-col items-center gap-1">
-              <div className="bg-surf3/70 px-2 py-0.5 rounded-full text-[10px] font-condensed text-muted">
-                SET {match.currentSetNumber}
-              </div>
-              <div className="flex items-center gap-2">
-                {[0,1,2].map(i => (
-                  <div key={i} className="flex gap-0.5 items-center">
-                    <span className={`text-xs font-condensed font-bold
-                      ${i < squadA.setsWon ? 'text-teamA' : 'text-subtle'}`}>
-                      {i < squadA.setsWon ? '✓' : (match.sets[i]?.scoreA ?? 0)}
-                    </span>
-                    <span className="text-subtle text-[9px]">-</span>
-                    <span className={`text-xs font-condensed font-bold
-                      ${i < squadB.setsWon ? 'text-teamB' : 'text-subtle'}`}>
-                      {i < squadB.setsWon ? '✓' : (match.sets[i]?.scoreB ?? 0)}
-                    </span>
+        {/* Court + Actions */}
+        <div className="mon-court-area">
+
+          {/* Court */}
+          <div className="mon-court-wrap">
+            <div className="mon-court">
+              <div className="mon-net" />
+
+              {/* Team A players */}
+              {squadA.players.map((p, idx) => {
+                const pos = COURT_POS_A[idx + 1]; if (!pos) return null;
+                return (
+                  <div key={p.id}
+                       className={[
+                         'court-player a',
+                         p.libero ? 'libero' : '',
+                         selectedPlayer?.id === p.id ? 'selected' : '',
+                         outPlayer?.id === p.id ? 'out-selected' : '',
+                       ].join(' ')}
+                       style={{ left: `${pos[0]}%`, top: `${pos[1]}%` }}
+                       onClick={() => handleCourtClick(p)}
+                       title={`#${p.shirtNumber} ${p.fullName} · ${ROLE_MAP[p.role] ?? p.role}`}>
+                    {p.shirtNumber}
+                    {servingSide === 'a' && idx === 0 && <span className="serve-dot" />}
                   </div>
-                ))}
-              </div>
+                );
+              })}
+
+              {/* Team B players */}
+              {squadB.players.map((p, idx) => {
+                const pos = COURT_POS_B[idx + 1]; if (!pos) return null;
+                return (
+                  <div key={p.id}
+                       className={[
+                         'court-player b',
+                         p.libero ? 'libero' : '',
+                         selectedPlayer?.id === p.id ? 'selected' : '',
+                         outPlayer?.id === p.id ? 'out-selected' : '',
+                       ].join(' ')}
+                       style={{ left: `${pos[0]}%`, top: `${pos[1]}%` }}
+                       onClick={() => handleCourtClick(p)}
+                       title={`#${p.shirtNumber} ${p.fullName} · ${ROLE_MAP[p.role] ?? p.role}`}>
+                    {p.shirtNumber}
+                    {servingSide === 'b' && idx === 0 && <span className="serve-dot" />}
+                  </div>
+                );
+              })}
             </div>
 
-            {/* Team B Score */}
-            <div className="text-center">
-              <div className="font-condensed font-black text-3xl leading-none text-teamB">
-                {squadB.score}
+            {/* Mode banner */}
+            {modeBannerClass && (
+              <div className={`mon-mode-banner ${modeBannerClass}`}
+                   onClick={() => { setSubMode(false); setOutPlayer(null); setCardMode(null); autoSelectServer(); }}>
+                {modeBannerText} · [×] Annulla
               </div>
-              <div className="text-muted text-[10px] font-condensed truncate max-w-[80px]">
-                {squadB.shortName}
+            )}
+          </div>
+
+          {/* Selected player bar */}
+          <div className={selBarClass}>
+            <div className={`sel-badge ${selectedPlayer ? selectedPlayer.team : 'neutral'}`}>
+              {selectedPlayer ? selectedPlayer.shirtNumber : '–'}
+            </div>
+            <div className="sel-info">
+              <div className="sel-name">
+                {subMode && !outPlayer && 'Cambio — seleziona chi ESCE dal campo'}
+                {subMode && outPlayer  && `Fuori: #${outPlayer.shirtNumber} ${outPlayer.fullName} — seleziona dalla panchina`}
+                {cardMode && !subMode  && `Cartellino ${cardMode} — clicca un giocatore`}
+                {!subMode && !cardMode && (selectedPlayer ? selectedPlayer.fullName : 'Nessun giocatore selezionato')}
+              </div>
+              <div className="sel-role">
+                {!subMode && !cardMode && selectedPlayer
+                  ? (ROLE_MAP[selectedPlayer.role] ?? selectedPlayer.role)
+                  : 'Seleziona un giocatore sul campo o in panchina'}
               </div>
             </div>
           </div>
 
-          {/* Right controls */}
-          <div className="flex gap-1 flex-shrink-0">
-            <button onClick={() => registerEvent('SWAP_SERVE')}
-                    className="px-2 py-1.5 bg-surf2 hover:bg-surf3 rounded-lg
-                               text-muted hover:text-text font-condensed text-xs transition-colors">
-              ⇄
-            </button>
-            <button onClick={() => registerEvent('UNDO')}
-                    className="px-2 py-1.5 bg-surf2 hover:bg-amber/20 border border-transparent
-                               hover:border-amber/30 rounded-lg text-muted hover:text-amber
-                               font-condensed text-xs transition-colors">
-              ↩
-            </button>
-            <button onClick={saveMatch} disabled={saving}
-                    className="px-2 py-1.5 bg-surf2 hover:bg-green/20 border border-transparent
-                               hover:border-green/30 rounded-lg text-muted hover:text-green
-                               font-condensed text-xs transition-colors disabled:opacity-40">
-              {saving ? '⏳' : '💾'}
-            </button>
-            <button onClick={() => setStatsOpen(o => !o)}
-                    className={`px-2 py-1.5 rounded-lg font-condensed text-xs transition-colors
-                      ${statsOpen
-                        ? 'bg-purple/20 border border-purple/30 text-purple'
-                        : 'bg-surf2 hover:bg-surf3 text-muted hover:text-text border border-transparent'
-                      }`}>
-              ◉
-            </button>
+          {/* Action panel */}
+          <div className="mon-action-panel">
+
+            <div className="action-group-label">▸ PUNTO / ERRORE</div>
+            <div className="action-group">
+              <button className="act-btn green lg" onClick={() => registerEvent('POINT')} disabled={!selectedPlayer}>
+                <span className="act-icon">✦</span> Point
+              </button>
+              <button className="act-btn red" onClick={() => registerEvent('OUT')} disabled={!selectedPlayer}>
+                <span className="act-icon">✕</span> Out
+              </button>
+              <button className="act-btn red" onClick={() => registerEvent('LOST_BALL')} disabled={!selectedPlayer}>
+                <span className="act-icon">○</span> Lost Ball
+              </button>
+              <button className="act-btn slate" onClick={() => registerEvent('BLOCKED')} disabled={!selectedPlayer}>
+                <span className="act-icon">▣</span> Blocked
+              </button>
+            </div>
+
+            <div className="action-group-label">▸ BATTUTA</div>
+            <div className="action-group">
+              <button className="act-btn green lg" onClick={() => registerEvent('ACE')} disabled={!selectedPlayer}>
+                <span className="act-icon">⚡</span> Ace
+              </button>
+              <button className="act-btn red lg" onClick={() => registerEvent('SERVE_ERROR')} disabled={!selectedPlayer}>
+                <span className="act-icon">✗</span> Serve Error
+              </button>
+            </div>
+
+            <div className="action-group-label">▸ FALLI</div>
+            <div className="action-group">
+              <button className="act-btn amber" onClick={() => registerEvent('DOUBLE')} disabled={!selectedPlayer}>Double</button>
+              <button className="act-btn amber" onClick={() => registerEvent('4TOUCHES')} disabled={!selectedPlayer}>4 Touches</button>
+              <button className="act-btn amber" onClick={() => registerEvent('RAISED')} disabled={!selectedPlayer}>Raised</button>
+              <button className="act-btn amber" onClick={() => registerEvent('POSITION')} disabled={!selectedPlayer}>Position</button>
+              <button className="act-btn amber" onClick={() => registerEvent('INVASION')} disabled={!selectedPlayer}>Invasion</button>
+            </div>
+
+            <div className="action-group-label">▸ GESTIONE</div>
+            <div className="action-group">
+              <button className={`act-btn amber ${cardMode === 'yellow' ? 'active-mode' : ''}`}
+                      onClick={() => registerEvent('YELLOW_CARD')}>
+                <span className="act-icon">▪</span> Yellow
+              </button>
+              <button className={`act-btn red ${cardMode === 'red' ? 'active-mode' : ''}`}
+                      onClick={() => registerEvent('RED_CARD')}>
+                <span className="act-icon">▪</span> Red
+              </button>
+              <button className={`act-btn purple ${subMode ? 'active-mode' : ''}`}
+                      onClick={() => registerEvent('CHANGE')}>
+                <span className="act-icon">⇄</span> {subMode ? 'Annulla' : 'Change'}
+              </button>
+              <button className="act-btn a-col" onClick={() => registerEvent('TIMEOUT_A')}>
+                <span className="act-icon">◷</span> T/O A
+              </button>
+              <button className="act-btn b-col" onClick={() => registerEvent('TIMEOUT_B')}>
+                <span className="act-icon">◷</span> T/O B
+              </button>
+            </div>
+
+            <div className="util-controls">
+              <button className="ctrl-btn undo" onClick={() => registerEvent('UNDO')}>↩ Undo</button>
+              <button className="ctrl-btn" onClick={() => registerEvent('SWAP_SERVE')}>⇄ Battuta</button>
+              <button className="ctrl-btn" onClick={saveMatch} disabled={saving}>
+                {saving ? '⏳ Salvataggio…' : '↑ Salva'}
+              </button>
+            </div>
           </div>
         </div>
-      </header>
 
-      {/* ═══ SELECTED PLAYER BAR ═════════════════════════════════ */}
-      <div className={`flex-shrink-0 px-3 py-2 border-b border-white/5 text-sm font-condensed
-                        transition-colors duration-200
-                       ${subMode     ? 'bg-purple/10 text-purple' :
-                         cardMode    ? 'bg-amber/10 text-amber'   :
-                         selectedPlayer ? (selectedPlayer.team === 'a'
-                           ? 'bg-teamA/10 text-teamA'
-                           : 'bg-teamB/10 text-teamB')
-                         : 'bg-surf1 text-muted'}`}>
-        {subMode && !outPlayer && '⇄ Cambio — seleziona il giocatore che ESCE dal campo'}
-        {subMode && outPlayer  && `⇄ Fuori: #${outPlayer.shirtNumber} ${outPlayer.fullName} — seleziona dalla panchina chi ENTRA`}
-        {cardMode && !subMode  && `${cardMode === 'red' ? '🟥' : '🟨'} Cartellino ${cardMode} — clicca un giocatore`}
-        {!subMode && !cardMode && selectedPlayer &&
-          `#${selectedPlayer.shirtNumber} ${selectedPlayer.fullName} · ${selectedPlayer.role}`}
-        {!subMode && !cardMode && !selectedPlayer &&
-          'Seleziona un giocatore per registrare un evento'}
-      </div>
-
-      {/* ═══ MAIN AREA ═══════════════════════════════════════════ */}
-      <div className="flex-1 flex overflow-hidden">
-
-        {/* ── BENCH A ─────────────────────────────────────── */}
-        <div className="w-[100px] lg:w-[130px] flex flex-col bg-surf1 border-r border-white/7 flex-shrink-0">
-          <div className="px-2 py-1.5 border-b border-white/5">
-            <p className="text-[10px] font-condensed text-teamA font-semibold uppercase tracking-wide">
-              {squadA.shortName} · panchina
-            </p>
-            <p className="text-subtle text-[10px] font-condensed">T/O: {squadA.timeout}/2</p>
+        {/* Bench B */}
+        <div className="bench-panel b">
+          <div className="bench-header">
+            <div className="bench-title b">{squadB.name}</div>
+            <div className={`bench-timeout ${squadB.timeout > 0 ? 'has-to' : ''}`}>
+              Timeout: {squadB.timeout} / 2
+            </div>
           </div>
-          <div className="flex-1 overflow-y-auto py-1 px-1 space-y-0.5">
-            {squadA.bench.map(p => (
-              <BenchRow key={p.id} player={p}
-                        isSelected={selectedPlayer?.id === p.id}
-                        onClick={() => handleBenchClick(p)} />
-            ))}
-          </div>
-          {/* Timeout A */}
-          <button onClick={() => registerEvent('TIMEOUT_A')}
-                  className="mx-2 mb-2 py-1.5 bg-surf2 hover:bg-teamA/20 border border-transparent
-                             hover:border-teamA/30 rounded-lg text-muted hover:text-teamA
-                             font-condensed text-xs transition-colors">
-            T/O A
-          </button>
-        </div>
-
-        {/* ── COURT ──────────────────────────────────────── */}
-        <div className="flex-1 relative" style={{ background: '#c8a55a' }}>
-          {/* Court lines */}
-          <svg className="absolute inset-0 w-full h-full" style={{ opacity: 0.25 }}>
-            {/* Center line */}
-            <line x1="50%" y1="0" x2="50%" y2="100%" stroke="white" strokeWidth="2" />
-            {/* Net */}
-            <line x1="50%" y1="40%" x2="50%" y2="60%" stroke="white" strokeWidth="4"
-                  strokeLinecap="round" opacity="0.8" />
-            {/* Attack lines */}
-            <line x1="0" y1="37%" x2="50%" y2="37%" stroke="white" strokeWidth="1.5" strokeDasharray="4 4" />
-            <line x1="50%" y1="37%" x2="100%" y2="37%" stroke="white" strokeWidth="1.5" strokeDasharray="4 4" />
-            <line x1="0" y1="63%" x2="50%" y2="63%" stroke="white" strokeWidth="1.5" strokeDasharray="4 4" />
-            <line x1="50%" y1="63%" x2="100%" y2="63%" stroke="white" strokeWidth="1.5" strokeDasharray="4 4" />
-          </svg>
-
-          {/* Team A players */}
-          {squadA.players.map((p, idx) => (
-            <CourtPlayer key={p.id} player={p} posMap={COURT_POS_A} rotIdx={idx}
-                         isSelected={selectedPlayer?.id === p.id}
-                         isOutTarget={outPlayer?.id === p.id}
-                         isServing={servingSide === 'a' && idx === 0}
-                         onClick={() => handleCourtClick(p)} />
-          ))}
-
-          {/* Team B players */}
-          {squadB.players.map((p, idx) => (
-            <CourtPlayer key={p.id} player={p} posMap={COURT_POS_B} rotIdx={idx}
-                         isSelected={selectedPlayer?.id === p.id}
-                         isOutTarget={outPlayer?.id === p.id}
-                         isServing={servingSide === 'b' && idx === 0}
-                         onClick={() => handleCourtClick(p)} />
+          {squadB.bench.map(p => (
+            <div key={p.id}
+                 className={[
+                   'bench-player',
+                   selectedPlayer?.id === p.id ? 'selected-b' : '',
+                   outPlayer?.id === p.id ? 'out-target' : '',
+                 ].join(' ')}
+                 onClick={() => handleBenchClick(p)}>
+              <div className="bp-num b">{p.shirtNumber}</div>
+              <div className="bp-name">
+                {p.displayName}<br />
+                <span style={{ fontSize:'9px', color:'var(--subtle)', textTransform:'capitalize' }}>
+                  {ROLE_MAP[p.role] ?? p.role}
+                  {p.libero ? ' · L' : ''}
+                </span>
+              </div>
+            </div>
           ))}
         </div>
-
-        {/* ── BENCH B ─────────────────────────────────────── */}
-        <div className="w-[100px] lg:w-[130px] flex flex-col bg-surf1 border-l border-white/7 flex-shrink-0">
-          <div className="px-2 py-1.5 border-b border-white/5">
-            <p className="text-[10px] font-condensed text-teamB font-semibold uppercase tracking-wide">
-              {squadB.shortName} · panchina
-            </p>
-            <p className="text-subtle text-[10px] font-condensed">T/O: {squadB.timeout}/2</p>
-          </div>
-          <div className="flex-1 overflow-y-auto py-1 px-1 space-y-0.5">
-            {squadB.bench.map(p => (
-              <BenchRow key={p.id} player={p}
-                        isSelected={selectedPlayer?.id === p.id}
-                        onClick={() => handleBenchClick(p)} />
-            ))}
-          </div>
-          <button onClick={() => registerEvent('TIMEOUT_B')}
-                  className="mx-2 mb-2 py-1.5 bg-surf2 hover:bg-teamB/20 border border-transparent
-                             hover:border-teamB/30 rounded-lg text-muted hover:text-teamB
-                             font-condensed text-xs transition-colors">
-            T/O B
-          </button>
-        </div>
-
-        {/* ── STATS PANEL (slide-in) ────────────────────── */}
-        {statsOpen && (
-          <div className="w-72 lg:w-80 bg-surf1 border-l border-white/7 flex flex-col overflow-hidden flex-shrink-0">
-            <StatsPanel match={match} statsCat={statsCat} setStatsCat={setStatsCat} />
-          </div>
-        )}
       </div>
 
-      {/* ═══ ACTION BUTTONS ══════════════════════════════════════ */}
-      <div className="flex-shrink-0 bg-surf1 border-t border-white/7 px-2 py-2">
-        {/* Change + Card row */}
-        <div className="flex gap-1.5 mb-2">
-          <button
-            onClick={() => registerEvent('CHANGE')}
-            className={`flex-1 py-2 rounded-xl font-condensed text-sm font-semibold transition-all
-              ${subMode
-                ? 'bg-purple/20 border border-purple/40 text-purple'
-                : 'bg-surf2 hover:bg-surf3 border border-white/7 text-muted hover:text-text'
-              }`}
-          >
-            {subMode ? '✕ Annulla cambio' : '⇄ Cambio'}
-          </button>
-          <button
-            onClick={() => registerEvent('YELLOW_CARD')}
-            className={`px-3 py-2 rounded-xl font-condensed text-sm font-semibold transition-all
-              ${cardMode === 'yellow'
-                ? 'bg-amber/20 border border-amber/40 text-amber'
-                : 'bg-surf2 hover:bg-surf3 border border-white/7 text-muted hover:text-amber'
-              }`}
-          >
-            🟨
-          </button>
-          <button
-            onClick={() => registerEvent('RED_CARD')}
-            className={`px-3 py-2 rounded-xl font-condensed text-sm font-semibold transition-all
-              ${cardMode === 'red'
-                ? 'bg-red/20 border border-red/40 text-red'
-                : 'bg-surf2 hover:bg-surf3 border border-white/7 text-muted hover:text-red'
-              }`}
-          >
-            🟥
+      {/* ═══ STATS FIXED BUTTON ════════════════════════════════ */}
+      <button className="stats-fixed-btn" onClick={() => setStatsOpen(o => !o)}>
+        ◉ Stats
+      </button>
+
+      {/* ═══ STATS PANEL (slide-in from right) ════════════════ */}
+      <div className={`sp-panel ${statsOpen ? 'open' : ''}`}>
+        <div className="sp-header">
+          <span className="sp-title">◉ Statistiche</span>
+          <div className="sp-pills">
+            {Object.keys(STAT_CATS).map(cat => (
+              <button key={cat}
+                      className={`sp-cat-btn ${statsCat === cat ? 'active' : ''}`}
+                      onClick={() => setStatsCat(cat)}>
+                {cat}
+              </button>
+            ))}
+          </div>
+          <button className="sp-close" onClick={() => setStatsOpen(false)}>✕</button>
+        </div>
+
+        {/* Set tabs */}
+        <div className="sp-tabs">
+          <button className={`sp-tab ${statsSet === 'match' ? 'active' : ''}`}
+                  onClick={() => setStatsSet('match')}>Match</button>
+          {match.sets.slice(0, match.currentSetNumber - 1).map((_, i) => (
+            <button key={i} className={`sp-tab ${statsSet === i ? 'active' : ''}`}
+                    onClick={() => setStatsSet(i)}>Set {i+1}</button>
+          ))}
+          <button className={`sp-tab ${statsSet === 'current' ? 'active' : ''}`}
+                  onClick={() => setStatsSet('current')}>
+            Set {match.currentSetNumber} (live)
           </button>
         </div>
 
-        {/* Score actions */}
-        {ACTION_GROUPS.map(group => (
-          <div key={group.label} className="flex gap-1 mb-1.5">
-            {group.actions.map(type => {
-              const colors = {
-                POINT: 'hover:bg-green/20 hover:border-green/30 hover:text-green',
-                ACE:   'hover:bg-green/20 hover:border-green/30 hover:text-green',
-                OUT:   'hover:bg-red/20 hover:border-red/30 hover:text-red',
-                SERVE_ERROR: 'hover:bg-red/20 hover:border-red/30 hover:text-red',
+        {/* Stats body */}
+        <div className="sp-body">
+          <div className="stats-two-col">
+            {[squadA, squadB].map(squad => {
+              const allPlayers = [...squad.players, ...squad.bench];
+              const keys = STAT_CATS[statsCat] ?? [];
+              const getStats = (player) => {
+                if (statsSet === 'match') return player.stats;
+                const idx = statsSet === 'current' ? match.currentSetNumber - 1 : statsSet;
+                return match.sets[idx]?.stats?.players?.[player.id] ?? player.stats;
               };
               return (
-                <button
-                  key={type}
-                  onClick={() => registerEvent(type)}
-                  disabled={!selectedPlayer}
-                  className={`flex-1 py-2 rounded-xl font-condensed text-xs font-semibold
-                             transition-all border border-white/7 bg-surf2
-                             disabled:opacity-30 disabled:cursor-not-allowed
-                             ${colors[type] ?? 'hover:bg-surf3 hover:text-text text-muted'}`}
-                >
-                  {ACTION_LABELS[type]}
-                </button>
+                <div key={squad.side}>
+                  <div className="stats-col-title" style={{ color: `var(--${squad.side})` }}>
+                    {squad.name}
+                  </div>
+                  <div className="stats-col-meta">
+                    Set vinti: <b>{squad.setsWon}</b> ·
+                    Punteggio: <b>{squad.score}</b> ·
+                    Timeout: <b>{squad.timeout}/2</b>
+                  </div>
+                  <div className="stats-squad-bar">
+                    {[
+                      { key: STAT.ATTACK_WIN, lbl: 'Att', color: 'var(--green)' },
+                      { key: STAT.ACE, lbl: 'Ace', color: 'var(--green)' },
+                      { key: STAT.BLOCK_SUCCESSFUL, lbl: 'Muro', color: 'var(--green)' },
+                      { key: STAT.TOTAL_FOUL, lbl: 'Falli', color: 'var(--red)' },
+                      { key: STAT.TOTAL_CARD, lbl: 'Card', color: 'var(--amber)' },
+                    ].map((item, i, arr) => (
+                      <>
+                        <div key={item.key} className="ssb-item">
+                          <div className="ssb-val" style={{ color: item.color }}>
+                            {squad.players.reduce((s, p) => s + (p.stats[item.key] ?? 0), 0) +
+                             squad.bench.reduce((s, p) => s + (p.stats[item.key] ?? 0), 0)}
+                          </div>
+                          <div className="ssb-lbl">{item.lbl}</div>
+                        </div>
+                        {i < arr.length - 1 && <div className="ssb-sep" />}
+                      </>
+                    ))}
+                  </div>
+                  <table className="stats-tbl">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Giocatore</th>
+                        {keys.map(k => (
+                          <th key={k} title={STAT_FULL[k]}>{STAT_SHORT[k]}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allPlayers.map(p => {
+                        const ps = getStats(p);
+                        return (
+                          <tr key={p.id} className={p.onCourt ? '' : 'bench-row'}>
+                            <td><span className={`stat-num ${squad.side}`}>{p.shirtNumber}</span></td>
+                            <td className="stat-name">
+                              {p.displayName}
+                              {p.libero && <span className="lib-badge">L</span>}
+                            </td>
+                            {keys.map(k => {
+                              const v = ps?.[k] ?? 0;
+                              return <td key={k} className={`stat-val ${v > 0 ? 'nz' : ''}`}>{v}</td>;
+                            })}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               );
             })}
           </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ── Stats Panel ────────────────────────────────────────────────────
-const STAT_CATS = {
-  Generali:  [STAT.TOUCHES, STAT.POINTS_PLAYED],
-  Attacco:   [STAT.ATTACK_WIN, STAT.ATTACK_OUT, STAT.ATTACK_NOT_SUCCESSFUL, STAT.TOTAL_ATTACK],
-  Battuta:   [STAT.ACE, STAT.SERVES, STAT.SERVES_ERR, STAT.TOTAL_SERVES],
-  Muro:      [STAT.BLOCK_SUCCESSFUL, STAT.BLOCK_NOT_SUCCESSFUL, STAT.TOTAL_BLOCK],
-  Falli:     [STAT.FOUL_DOUBLE, STAT.FOUL_FOUR_TOUCHES, STAT.FOUL_RAISED, STAT.FOUL_POSITION, STAT.FOUL_INVASION, STAT.TOTAL_FOUL],
-  Cartellini:[STAT.CARD_YELLOW, STAT.CARD_RED],
-};
-
-const STAT_LABELS = {
-  [STAT.TOUCHES]:             'Tocchi',
-  [STAT.POINTS_PLAYED]:       'Punti giocati',
-  [STAT.ATTACK_WIN]:          'Kill',
-  [STAT.ATTACK_OUT]:          'Out',
-  [STAT.ATTACK_NOT_SUCCESSFUL]:'Murato',
-  [STAT.TOTAL_ATTACK]:        'Totale att.',
-  [STAT.ACE]:                 'Ace',
-  [STAT.SERVES]:              'Battute ok',
-  [STAT.SERVES_ERR]:          'Errori batt.',
-  [STAT.TOTAL_SERVES]:        'Totale batt.',
-  [STAT.BLOCK_SUCCESSFUL]:    'Muri',
-  [STAT.BLOCK_NOT_SUCCESSFUL]:'Tentati',
-  [STAT.TOTAL_BLOCK]:         'Totale muri',
-  [STAT.FOUL_DOUBLE]:         'Doppio',
-  [STAT.FOUL_FOUR_TOUCHES]:   '4 tocchi',
-  [STAT.FOUL_RAISED]:         'Sollevata',
-  [STAT.FOUL_POSITION]:       'Posizione',
-  [STAT.FOUL_INVASION]:       'Invasione',
-  [STAT.TOTAL_FOUL]:          'Totale falli',
-  [STAT.CARD_YELLOW]:         'Gialli',
-  [STAT.CARD_RED]:            'Rossi',
-};
-
-function StatsPanel({ match, statsCat, setStatsCat }) {
-  const keys = STAT_CATS[statsCat] ?? [];
-
-  const renderTeam = (squad) => {
-    const allPlayers = [...squad.players, ...squad.bench];
-    return (
-      <div>
-        <p className={`text-[10px] font-condensed font-bold uppercase tracking-wide mb-1
-                       ${squad.side === 'a' ? 'text-teamA' : 'text-teamB'}`}>
-          {squad.name}
-        </p>
-        <table className="w-full text-[10px] font-condensed">
-          <thead>
-            <tr className="text-subtle">
-              <th className="text-left pb-1 font-normal">#</th>
-              {keys.map(k => (
-                <th key={k} className="text-right pb-1 font-normal"
-                    title={STAT_LABELS[k]}>
-                  {STAT_LABELS[k]?.slice(0,4)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {allPlayers.map(p => (
-              <tr key={p.id}
-                  className={`border-t border-white/5 ${!p.onCourt ? 'opacity-50' : ''}`}>
-                <td className="py-0.5 text-text font-semibold">{p.shirtNumber}</td>
-                {keys.map(k => (
-                  <td key={k} className={`text-right py-0.5
-                    ${p.stats[k] > 0 ? 'text-text' : 'text-subtle'}`}>
-                    {p.stats[k] ?? 0}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
-  };
-
-  return (
-    <>
-      <div className="px-3 py-2 border-b border-white/7">
-        <p className="text-text text-xs font-condensed font-semibold mb-2">Statistiche</p>
-        <div className="flex flex-wrap gap-1">
-          {Object.keys(STAT_CATS).map(cat => (
-            <button key={cat} onClick={() => setStatsCat(cat)}
-                    className={`px-2 py-0.5 rounded-lg text-[11px] font-condensed transition-all
-                      ${statsCat === cat
-                        ? 'bg-purple/20 border border-purple/30 text-purple'
-                        : 'bg-surf2 text-muted hover:text-text border border-transparent'
-                      }`}>
-              {cat}
-            </button>
-          ))}
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto p-3 space-y-4">
-        {renderTeam(match.squadA)}
-        {renderTeam(match.squadB)}
-      </div>
-    </>
+    </div>
   );
 }

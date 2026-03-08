@@ -59,12 +59,10 @@ export class Squad {
     this.servingPlayer = this.players[0] ?? null;
   }
 
-  /** Rotazione: tutti avanzano di una posizione verso destra */
+  /** Rotazione pallavolo standard: scorrimento ciclico a sinistra (pos2→pos1, pos3→pos2 … pos1→pos6) */
   rotate() {
-    if (this.players.length === 6) {
-      const last = this.players.pop();
-      this.players.unshift(last);
-    }
+    if (this.players.length < 6) return;
+    this.players = [...this.players.slice(1), this.players[0]];
     this.setServingPlayer();
   }
 
