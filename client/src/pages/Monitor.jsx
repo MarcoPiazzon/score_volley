@@ -381,6 +381,8 @@ export default function Monitor() {
       setCardMode(null); autoSelectServer(); rerender(); return;
     }
     if (subMode) { setOutPlayer(player); return; }
+    // Selezione normale: aggiunge il tocco all'array del punto in corso
+    if (m) m.pushTouch(player);
     setSelectedPlayer(sp => sp?.id === player.id ? null : player);
   }, [cardMode, subMode, flashMsg, autoSelectServer, rerender]);
 
@@ -405,12 +407,15 @@ export default function Monitor() {
     if (subMode && !outPlayer) {
       flashMsg('Prima seleziona il giocatore in campo che esce!', '#f04e4e'); return;
     }
+    // Selezione normale: aggiunge il tocco all'array del punto in corso
+    if (m) m.pushTouch(player);
     setSelectedPlayer(sp => sp?.id === player.id ? null : player);
   }, [cardMode, subMode, outPlayer, flashMsg, autoSelectServer, rerender]);
 
   const registerEvent = useCallback((type) => {
     const m = matchRef.current; if (!m) return;
 
+    console.log(type);
     if (type === 'CHANGE') {
       if (subMode) { setSubMode(false); setOutPlayer(null); return; }
       setSubMode(true); setOutPlayer(null);
@@ -439,6 +444,11 @@ export default function Monitor() {
       m.servingSquad = m.servingSquad === m.squadA ? m.squadB : m.squadA;
       m.assignServe(); autoSelectServer(); rerender();
       flashMsg('⇄ Battuta cambiata', '#a78bfa'); return;
+    }
+    if(type === 'BLOCKED'){
+      match.removeLastTouch();
+      match.pushTouch(selectedPlayer, 'blocked');
+      flashMsg('Muro', '#a78bfa'); return;
     }
 
     const action = ACTION_MAP[type];
