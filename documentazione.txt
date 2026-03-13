@@ -33,3 +33,15 @@ per la squadra rossa/arancione:
  il giocatore 2 è in posizione 3
  il giocatore 3 è in posizione 2
  ricorda sempre di caricare i giocatori nel posto giusto in base al match_lineups
+
+
+ ALTER TABLE matches
+  ADD COLUMN max_set         smallint NOT NULL DEFAULT 5,
+  ADD COLUMN sets_to_win     smallint NOT NULL DEFAULT 3,
+  ADD COLUMN set_points      smallint NOT NULL DEFAULT 25,
+  ADD COLUMN tiebreak_points smallint NOT NULL DEFAULT 15;
+
+tabelle insert:
+
+match_sets
+ stats_player_match 

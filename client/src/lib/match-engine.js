@@ -22,7 +22,72 @@ export class Player {
     this.libero = libero;
     this.onCourt = false;
 
-    this.stats = Object.fromEntries(Object.values(STAT).map((k) => [k, 0]));
+    //this.stats = Object.fromEntries(Object.values(STAT).map((k) => [k, 0]));
+    this.stats = {
+      [STAT.TOUCHES]: 0, //palloni toccati durante la partita intera
+
+      //Attack
+      [STAT.ATTACK_WIN]: 0, //attacchi vinti
+      [STAT.ATTACK_OUT]: 0, //attacchi sbagliati (solo fuori)
+      [STAT.ATTACK_NOT_SUCCESSFUL]: 0,
+      [STAT.TOTAL_ATTACK]: 0, // attacchi totali fatti nella partita
+
+      //Serve
+      [STAT.ACE]: 0, //ace totali
+      [STAT.SERVES]: 0,
+      [STAT.SERVES_ERR]: 0, //errori totali in battuta
+      [STAT.SERVES_ERR_LINE]: 0, //da capire come fare mai gestita
+      [STAT.TOTAL_SERVES]: 0, //battute totali
+
+      //Ricezione
+      [STAT.DEF_POS]: 0, //ricezioni corrette mai gestita
+      [STAT.DEF_NEG]: 0, //ricezioni sbagliate mai gestita
+      [STAT.TOTAL_RECEIVE]: 0,
+
+      //Lost Ball
+      [STAT.BALL_LOST]: 0, //palle perse o passaggi sbagliati
+
+      [STAT.BLOCK_SUCCESSFUL]: 0,
+      [STAT.BLOCK_NOT_SUCCESSFUL]: 0,
+      [STAT.TOTAL_BLOCK]: 0,
+
+      //Foul WB
+      [STAT.FOUL_DOUBLE]: 0, //doppe
+      [STAT.FOUL_FOUR_TOUCHES]: 0, //4 tocchi
+      [STAT.FOUL_RAISED]: 0, //sollevata
+
+      //Foul WOB
+      [STAT.FOUL_POSITION]: 0, //fallo di posizione
+      [STAT.FOUL_INVASION]: 0, //fallo di invasione
+
+      [STAT.TOTAL_FOUL]: 0,
+
+      //Card
+      [STAT.CARD_YELLOW]: 0, //cartellini gialli
+      [STAT.CARD_RED]: 0, //cartelini rossi
+
+      [STAT.TOTAL_CARD]: 0,
+
+      //Set Point
+      [STAT.TOTAL_SET_POINTS]: 0,
+      [STAT.SET_POINTS_WIN]: 0,
+      [STAT.SET_POINTS_ERR]: 0,
+      [STAT.SET_POINTS_CANCELLED]: 0,
+
+      //Match Point
+      [STAT.TOTAL_MATCH_POINTS]: 0,
+      [STAT.MATCH_POINTS_WIN]: 0,
+      [STAT.MATCH_POINTS_ERR]: 0,
+      [STAT.MATCH_POINTS_CANCELLED]: 0,
+
+      [STAT.TOTAL_TIMEOUT]: 0,
+
+      //Change
+      [STAT.TOTAL_CHANGE]: 0,
+
+      [STAT.POINTS_PLAYED]: 0,
+      [STAT.TOTAL_POINTS]: 0,
+    };
   }
 
   addStat(type) {
@@ -59,6 +124,68 @@ export class Squad {
     this.setsWon = 0;
     this.timeout = 0;
     this.servingPlayer = null;
+    this.stats = {
+      [STAT.TOUCHES]: 0, //palloni toccati durante la partita intera
+
+      //Attack
+      [STAT.ATTACK_WIN]: 0, //attacchi vinti
+      [STAT.ATTACK_OUT]: 0, //attacchi sbagliati (solo fuori)
+      [STAT.ATTACK_NOT_SUCCESSFUL]: 0,
+      [STAT.TOTAL_ATTACK]: 0, // attacchi totali fatti nella partita
+
+      //Serve
+      [STAT.ACE]: 0, //ace totali
+      [STAT.SERVES]: 0,
+      [STAT.SERVES_ERR]: 0, //errori totali in battuta
+      [STAT.SERVES_ERR_LINE]: 0, //da capire come fare mai gestita
+      [STAT.TOTAL_SERVES]: 0, //battute totali
+
+      //Ricezione
+      [STAT.DEF_POS]: 0, //ricezioni corrette mai gestita
+      [STAT.DEF_NEG]: 0, //ricezioni sbagliate mai gestita
+      [STAT.TOTAL_RECEIVE]: 0,
+
+      //Lost Ball
+      [STAT.BALL_LOST]: 0, //palle perse o passaggi sbagliati
+
+      [STAT.BLOCK_SUCCESSFUL]: 0,
+      [STAT.BLOCK_NOT_SUCCESSFUL]: 0,
+      [STAT.TOTAL_BLOCK]: 0,
+
+      //Foul WB
+      [STAT.FOUL_DOUBLE]: 0, //doppe
+      [STAT.FOUL_FOUR_TOUCHES]: 0, //4 tocchi
+      [STAT.FOUL_RAISED]: 0, //sollevata
+
+      //Foul WOB
+      [STAT.FOUL_POSITION]: 0, //fallo di posizione
+      [STAT.FOUL_INVASION]: 0, //fallo di invasione
+
+      [STAT.TOTAL_FOUL]: 0,
+
+      //Card
+      [STAT.CARD_YELLOW]: 0, //cartellini gialli
+      [STAT.CARD_RED]: 0, //cartelini rossi
+
+      [STAT.TOTAL_CARD]: 0,
+
+      //Set Point
+      [STAT.TOTAL_SET_POINTS]: 0,
+      [STAT.SET_POINTS_WIN]: 0,
+      [STAT.SET_POINTS_ERR]: 0,
+      [STAT.SET_POINTS_CANCELLED]: 0,
+
+      //Match Point
+      [STAT.TOTAL_MATCH_POINTS]: 0,
+      [STAT.MATCH_POINTS_WIN]: 0,
+      [STAT.MATCH_POINTS_ERR]: 0,
+      [STAT.MATCH_POINTS_CANCELLED]: 0,
+
+      [STAT.TOTAL_TIMEOUT]: 0,
+
+      //Change
+      [STAT.TOTAL_CHANGE]: 0,
+    };
   }
 
   /** Imposta il battitore: sempre players[0] */
@@ -121,9 +248,76 @@ export class Sset {
     this.startingLineup = { a: [], b: [] };
     this.stats = {
       players: {}, // playerId → stats snapshot
-      squads: { a: {}, b: {} },
+      squads: { a: this.emptySquadStats(), b: this.emptySquadStats() },
     };
     this.events = [];
+  }
+
+  emptySquadStats() {
+    return {
+      [STAT.TOUCHES]: 0, //palloni toccati durante la partita intera
+
+      //Attack
+      [STAT.ATTACK_WIN]: 0, //attacchi vinti
+      [STAT.ATTACK_OUT]: 0, //attacchi sbagliati (solo fuori)
+      [STAT.ATTACK_NOT_SUCCESSFUL]: 0,
+      [STAT.TOTAL_ATTACK]: 0, // attacchi totali fatti nella partita
+
+      //Serve
+      [STAT.ACE]: 0, //ace totali
+      [STAT.SERVES]: 0,
+      [STAT.SERVES_ERR]: 0, //errori totali in battuta
+      [STAT.SERVES_ERR_LINE]: 0, //da capire come fare mai gestita
+      [STAT.TOTAL_SERVES]: 0, //battute totali
+
+      //Ricezione
+      [STAT.DEF_POS]: 0, //ricezioni corrette mai gestita
+      [STAT.DEF_NEG]: 0, //ricezioni sbagliate mai gestita
+      [STAT.TOTAL_RECEIVE]: 0,
+
+      //Lost Ball
+      [STAT.BALL_LOST]: 0, //palle perse o passaggi sbagliati
+
+      //Block
+      [STAT.BLOCK_SUCCESSFUL]: 0,
+      [STAT.BLOCK_NOT_SUCCESSFUL]: 0,
+      [STAT.TOTAL_BLOCK]: 0,
+
+      //Foul WB
+      [STAT.FOUL_DOUBLE]: 0, //doppe
+      [STAT.FOUL_FOUR_TOUCHES]: 0, //4 tocchi
+      [STAT.FOUL_RAISED]: 0, //sollevata
+
+      //Foul WOB
+      [STAT.FOUL_POSITION]: 0, //fallo di posizione
+      [STAT.FOUL_INVASION]: 0, //fallo di invasione
+
+      [STAT.TOTAL_FOUL]: 0,
+
+      //Card
+      [STAT.CARD_YELLOW]: 0, //cartellini gialli
+      [STAT.CARD_RED]: 0, //cartelini rossi
+
+      [STAT.TOTAL_CARD]: 0,
+
+      //Set Point
+      [STAT.TOTAL_SET_POINTS]: 0,
+      [STAT.SET_POINTS_WIN]: 0,
+      [STAT.SET_POINTS_ERR]: 0,
+      [STAT.SET_POINTS_CANCELLED]: 0,
+
+      //Match Point
+      [STAT.TOTAL_MATCH_POINTS]: 0,
+      [STAT.MATCH_POINTS_WIN]: 0,
+      [STAT.MATCH_POINTS_ERR]: 0,
+      [STAT.MATCH_POINTS_CANCELLED]: 0,
+
+      //Timeout
+      [STAT.TOTAL_TIMEOUT]: 0,
+
+      //Change
+      [STAT.TOTAL_CHANGE]: 0,
+    };
   }
 
   recordPlayerStat(player, key) {

@@ -457,8 +457,11 @@ export default function Monitor() {
 
     const extras = ACTION_EXTRA[type] ?? [];
     extras.forEach(s => { m.addStatPlayer(selectedPlayer, s); m.addStatSet(selectedPlayer, s); });
+    
     if (type === 'ACE') { m.addStatPlayer(selectedPlayer, STAT.TOUCHES); m.addStatSet(selectedPlayer, STAT.TOUCHES); }
-    m.scorePoint(selectedPlayer, action.value, action.stat);
+    
+    const isAce = type === 'ACE' ? true : false;
+    m.scorePoint(selectedPlayer, action.value, action.stat, isAce);
 
     flashMsg(ACTION_LABELS[type] ?? type, ACTION_COLORS[type] ?? '#e8eaf2');
     autoSelectServer(); rerender();
