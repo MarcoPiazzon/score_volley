@@ -11,13 +11,12 @@ const app = express();
 // ── Security headers ──────────────────────────────────────────────
 app.use(
   helmet({
-    contentSecurityPolicy: false, // Disabilitato per CSP custom (React inline scripts)
+    contentSecurityPolicy: false,
     crossOriginEmbedderPolicy: false,
   }),
 );
 
 // ── CORS ──────────────────────────────────────────────────────────
-// In sviluppo: accetta tutto. In produzione: solo l'origin del dominio.
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
   : ["http://localhost:5173"];
@@ -25,7 +24,6 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
 app.use(
   cors({
     origin: (origin, cb) => {
-      // Permetti richieste senza origin (es. curl, Postman) + origins consentiti
       if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
       cb(new Error(`CORS: origin non consentito — ${origin}`));
     },
@@ -39,7 +37,7 @@ app.use(
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: false }));
 
-// ── Request logger (solo sviluppo) ───────────────────────────────
+// ── Request logger (solo sviluppo) ────────────────────────────────
 if (process.env.NODE_ENV !== "production") {
   app.use((req, _res, next) => {
     console.log(
@@ -49,8 +47,8 @@ if (process.env.NODE_ENV !== "production") {
   });
 }
 
+// ── Health check ─────────────────────────────────────────────────
 app.get("/health", (req, res) => res.json({ status: "ok" }));
-// ── Health check (Railway lo usa per verificare che il server sia up)
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, uptime: process.uptime() });
 });
@@ -69,38 +67,17 @@ app.use("/api", (req, res) => {
     .json({ error: `Rotta non trovata: ${req.method} ${req.path}` });
 });
 
-// ── Serve React build in produzione ───────────────────────────────
-// In produzione Express serve i file buildati da Vite.
-// In sviluppo Vite dev server gira su porta 5173 separatamente.
-if (process.env.NODE_ENV === "production") {
-  const CLIENT_BUILD = path.join(__dirname, "..", "client", "dist");
-  app.use(express.static(CLIENT_BUILD));
-  // SPA fallback: qualsiasi rotta non-API ritorna index.html
-  app.get("*", (_req, res) => {
-    res.sendFile(path.join(CLIENT_BUILD, "index.html"));
-  });
-}
+// ── Serve React build in produzione ──────────────────────────────
+const CLIENT_BUILD = path.join(__dirname, "..", "client", "dist");
+app.use(express.static(CLIENT_BUILD));
+app.get("*", (_req, res) => {
+  res.sendFile(path.join(CLIENT_BUILD, "index.html"));
+});
 
 // ── Error handler ────────────────────────────────────────────────
 app.use((err, _req, res, _next) => {
   console.error("[server] Errore non gestito:", err.message);
   res.status(500).json({ error: "Errore interno del server" });
-});
-
-// ESM (import/export)
-import { fileURLToPath } from "url";
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-app.use(express.static(path.join(__dirname, "../client/dist")));
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../client/dist", "index.html"));
-});
-
-// CommonJS (require)
-
-app.use(express.static(path.join(__dirname, "../client/dist")));
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../client/dist", "index.html"));
 });
 
 // ── Start ─────────────────────────────────────────────────────────
