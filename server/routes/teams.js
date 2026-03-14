@@ -1,7 +1,7 @@
-const express = require('express');
-const router  = express.Router();
-const pool    = require('../db');
-const { authenticate } = require('../middleware/auth');
+const express = require("express");
+const router = express.Router();
+const pool = require("../db");
+const { authenticate } = require("../middleware/auth");
 
 router.use(authenticate);
 
@@ -9,8 +9,8 @@ router.use(authenticate);
 //  HELPER: query semplice
 // ================================================================
 async function q(text, params = []) {
-    const { rows } = await pool.query(text, params);
-    return rows;
+  const { rows } = await pool.query(text, params);
+  return rows;
 }
 
 // ================================================================
@@ -23,54 +23,58 @@ async function q(text, params = []) {
 //    WHERE stm.team_id = $1          ← offset=1
 //    buildCompetitionFilter(..., 1)  → "AND md.season_id = $2"
 // ================================================================
-function buildCompetitionFilter(competitionType, competitionId, offset = 0, tableAlias = 'md') {
-    if (!competitionId || !competitionType) {
-        return { whereClause: '', params: [] };
-    }
-    const col = competitionType === 'season' ? 'season_id' : 'tournament_id';
-    return {
-        whereClause: ` AND ${tableAlias}.${col} = $${offset + 1}`,
-        params:      [parseInt(competitionId)],
-    };
+function buildCompetitionFilter(
+  competitionType,
+  competitionId,
+  offset = 0,
+  tableAlias = "md",
+) {
+  if (!competitionId || !competitionType) {
+    return { whereClause: "", params: [] };
+  }
+  const col = competitionType === "season" ? "season_id" : "tournament_id";
+  return {
+    whereClause: ` AND ${tableAlias}.${col} = $${offset + 1}`,
+    params: [parseInt(competitionId)],
+  };
 }
-
 
 // ================================================================
 //  GET /api/teams
 // ================================================================
-router.get('/', async (_req, res) => {
-    try {
-        const rows = await q(`
+router.get("/", async (_req, res) => {
+  try {
+    const rows = await q(`
             SELECT id, name, short_name, city, logo_url, created_at
             FROM   teams
             ORDER  BY name
         `);
-        res.json(rows);
-    } catch (err) {
-        console.error('[teams] GET /', err);
-        res.status(500).json({ error: 'Errore interno del server' });
-    }
+    res.json(rows);
+  } catch (err) {
+    console.error("[teams] GET /", err);
+    res.status(500).json({ error: "Errore interno del server" });
+  }
 });
-
 
 // ================================================================
 //  GET /api/teams/me
 // ================================================================
-router.get('/me', async (req, res) => {
-    try {
-        if (req.user.role === 'collaborator') {
-            if (!req.user.team_id) {
-                return res.status(404).json({ error: 'Nessuna squadra associata' });
-            }
-            const rows = await q(
-                'SELECT id, name, short_name, city, logo_url FROM teams WHERE id = $1',
-                [req.user.team_id]
-            );
-            return res.json(rows[0] ?? null);
-        }
+router.get("/me", async (req, res) => {
+  try {
+    if (req.user.role === "collaborator") {
+      if (!req.user.team_id) {
+        return res.status(404).json({ error: "Nessuna squadra associata" });
+      }
+      const rows = await q(
+        "SELECT id, name, short_name, city, logo_url FROM teams WHERE id = $1",
+        [req.user.team_id],
+      );
+      return res.json(rows[0] ?? null);
+    }
 
-        // Coach: tutte le squadre che allena attualmente
-        const rows = await q(`
+    // Coach: tutte le squadre che allena attualmente
+    const rows = await q(
+      `
             SELECT DISTINCT t.id, t.name, t.short_name, t.city, t.logo_url
             FROM   coach_assignments ca
             JOIN   coaches c ON c.id = ca.coach_id
@@ -78,61 +82,63 @@ router.get('/me', async (req, res) => {
             JOIN   teams   t ON t.id = ca.team_id
             WHERE  u.id = $1 AND ca.is_current = 1
             ORDER  BY t.name
-        `, [req.user.id]);
-        return res.json(rows);
-
-    } catch (err) {
-        console.error('[teams] GET /me', err);
-        res.status(500).json({ error: 'Errore interno del server' });
-    }
+        `,
+      [req.user.id],
+    );
+    return res.json(rows);
+  } catch (err) {
+    console.error("[teams] GET /me", err);
+    res.status(500).json({ error: "Errore interno del server" });
+  }
 });
-
 
 // ================================================================
 //  GET /api/teams/:id
 // ================================================================
-router.get('/:id', async (req, res) => {
-    try {
-        const rows = await q(
-            'SELECT id, name, short_name, city, logo_url, created_at FROM teams WHERE id = $1',
-            [req.params.id]
-        );
-        if (!rows[0]) return res.status(404).json({ error: 'Squadra non trovata' });
-        res.json(rows[0]);
-    } catch (err) {
-        console.error('[teams] GET /:id', err);
-        res.status(500).json({ error: 'Errore interno del server' });
-    }
+router.get("/:id", async (req, res) => {
+  try {
+    const rows = await q(
+      "SELECT id, name, short_name, city, logo_url, created_at FROM teams WHERE id = $1",
+      [req.params.id],
+    );
+    if (!rows[0]) return res.status(404).json({ error: "Squadra non trovata" });
+    res.json(rows[0]);
+  } catch (err) {
+    console.error("[teams] GET /:id", err);
+    res.status(500).json({ error: "Errore interno del server" });
+  }
 });
-
 
 // ================================================================
 //  GET /api/teams/:id/players
 // ================================================================
-router.get('/:id/players', async (req, res) => {
-    try {
-        const rows = await q(`
+router.get("/:id/players", async (req, res) => {
+  try {
+    const rows = await q(
+      `
             SELECT p.id, p.name, p.surname, p.shirt_number, p.role,
                    p.is_active, p.created_at
             FROM   players p
             WHERE  p.team_id = $1
             ORDER  BY p.shirt_number
-        `, [req.params.id]);
-        res.json(rows);
-    } catch (err) {
-        console.error('[teams] GET /:id/players', err);
-        res.status(500).json({ error: 'Errore interno del server' });
-    }
+        `,
+      [req.params.id],
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("[teams] GET /:id/players", err);
+    res.status(500).json({ error: "Errore interno del server" });
+  }
 });
-
 
 // ================================================================
 //  GET /api/teams/:id/competitions
 // ================================================================
-router.get('/:id/competitions', async (req, res) => {
-    try {
-        // $1 viene usato in entrambe le sotto-query UNION
-        const rows = await q(`
+router.get("/:id/competitions", async (req, res) => {
+  try {
+    // $1 viene usato in entrambe le sotto-query UNION
+    const rows = await q(
+      `
             SELECT
                 'season'                                AS competition_type,
                 s.id                                    AS competition_id,
@@ -160,31 +166,35 @@ router.get('/:id/competitions', async (req, res) => {
             WHERE tt.team_id = $1
 
             ORDER BY is_active DESC, year DESC
-        `, [req.params.id]);
+        `,
+      [req.params.id],
+    );
 
-        res.json(rows);
-    } catch (err) {
-        console.error('[teams] GET /:id/competitions', err);
-        res.status(500).json({ error: 'Errore interno del server' });
-    }
+    res.json(rows);
+  } catch (err) {
+    console.error("[teams] GET /:id/competitions", err);
+    res.status(500).json({ error: "Errore interno del server" });
+  }
 });
-
 
 // ================================================================
 //  GET /api/teams/:id/stats
 // ================================================================
-router.get('/:id/stats', async (req, res) => {
-    const teamId = parseInt(req.params.id);
-    const { competition_type, competition_id } = req.query;
+router.get("/:id/stats", async (req, res) => {
+  const teamId = parseInt(req.params.id);
+  const { competition_type, competition_id } = req.query;
 
-    // $1 = teamId → offset 1 per il filtro competizione
-    const { whereClause, params: fp } = buildCompetitionFilter(
-        competition_type, competition_id, 1
-    );
-    const mdJoin = fp.length ? 'JOIN matchdays md ON md.id = m.matchday_id' : '';
+  // $1 = teamId → offset 1 per il filtro competizione
+  const { whereClause, params: fp } = buildCompetitionFilter(
+    competition_type,
+    competition_id,
+    1,
+  );
+  const mdJoin = fp.length ? "JOIN matchdays md ON md.id = m.matchday_id" : "";
 
-    try {
-        const rows = await q(`
+  try {
+    const rows = await q(
+      `
             SELECT
                 COUNT(DISTINCT m.id)                                        AS matches,
 
@@ -203,17 +213,17 @@ router.get('/:id/stats', async (req, res) => {
                 SUM(CASE WHEN stm.is_home = 1 THEN m.home_sets_won ELSE m.away_sets_won END) AS sets_won,
                 SUM(CASE WHEN stm.is_home = 1 THEN m.away_sets_won ELSE m.home_sets_won END) AS sets_lost,
 
-                COALESCE(SUM(stm.aces), 0)                                  AS aces,
-                COALESCE(SUM(stm.block_kills), 0)                           AS blocks,
+                COALESCE(SUM(stm.ace), 0)                                  AS aces,
+                COALESCE(SUM(stm.total_block), 0)                           AS blocks,
 
                 ROUND(
-                    SUM(stm.reception_positive)::NUMERIC /
-                    NULLIF(SUM(stm.receptions_total), 0) * 100, 1
+                    SUM(stm.def_pos)::NUMERIC /
+                    NULLIF(SUM(stm.total_receive), 0) * 100, 1
                 )                                                           AS recv_pct,
 
                 ROUND(
-                    SUM(stm.attack_kills)::NUMERIC /
-                    NULLIF(SUM(stm.attacks_total), 0) * 100, 1
+                    SUM(stm.attack_win)::NUMERIC /
+                    NULLIF(SUM(stm.total_attack), 0) * 100, 1
                 )                                                           AS kill_pct
 
             FROM  stats_team_match stm
@@ -221,52 +231,65 @@ router.get('/:id/stats', async (req, res) => {
             ${mdJoin}
             WHERE stm.team_id = $1
             ${whereClause}
-        `, [teamId, ...fp]);
+        `,
+      [teamId, ...fp],
+    );
 
-        const s = rows[0] ?? {};
-        res.json({
-            matches:   Number(s.matches)   || 0,
-            wins:      Number(s.wins)      || 0,
-            losses:    Number(s.losses)    || 0,
-            sets_won:  Number(s.sets_won)  || 0,
-            sets_lost: Number(s.sets_lost) || 0,
-            aces:      Number(s.aces)      || 0,
-            blocks:    Number(s.blocks)    || 0,
-            recv_pct:  Number(s.recv_pct)  || 0,
-            kill_pct:  Number(s.kill_pct)  || 0,
-        });
-    } catch (err) {
-        console.error('[teams] GET /:id/stats', err);
-        res.status(500).json({ error: 'Errore interno del server' });
-    }
+    const s = rows[0] ?? {};
+    res.json({
+      matches: Number(s.matches) || 0,
+      wins: Number(s.wins) || 0,
+      losses: Number(s.losses) || 0,
+      sets_won: Number(s.sets_won) || 0,
+      sets_lost: Number(s.sets_lost) || 0,
+      aces: Number(s.aces) || 0,
+      blocks: Number(s.blocks) || 0,
+      recv_pct: Number(s.recv_pct) || 0,
+      kill_pct: Number(s.kill_pct) || 0,
+    });
+  } catch (err) {
+    console.error("[teams] GET /:id/stats", err);
+    res.status(500).json({ error: "Errore interno del server" });
+  }
 });
-
 
 // ================================================================
 //  GET /api/teams/:id/players/stats
 // ================================================================
-router.get('/:id/players/stats', async (req, res) => {
-    const teamId = parseInt(req.params.id);
-    const { competition_type, competition_id, stat = 'pts', limit = 50 } = req.query;
+router.get("/:id/players/stats", async (req, res) => {
+  const teamId = parseInt(req.params.id);
+  const {
+    competition_type,
+    competition_id,
+    stat = "pts",
+    limit = 50,
+  } = req.query;
 
-    // $1 = teamId → offset 1 per il filtro competizione
-    const { whereClause, params: fp } = buildCompetitionFilter(
-        competition_type, competition_id, 1
-    );
-    const mdJoin = fp.length ? 'JOIN matchdays md ON md.id = m.matchday_id' : '';
+  // $1 = teamId → offset 1 per il filtro competizione
+  const { whereClause, params: fp } = buildCompetitionFilter(
+    competition_type,
+    competition_id,
+    1,
+  );
+  const mdJoin = fp.length ? "JOIN matchdays md ON md.id = m.matchday_id" : "";
 
-    // LIMIT è l'ultimo parametro → $1 + fp.length + 1
-    const limitIdx = 1 + fp.length + 1;
+  // LIMIT è l'ultimo parametro → $1 + fp.length + 1
+  const limitIdx = 1 + fp.length + 1;
 
-    const ORDER_MAP = {
-        pts: 'pts DESC', ace: 'ace DESC', atk: 'atk DESC',
-        kills: 'kills DESC', kill_pct: 'kill_pct DESC',
-        recv_pct: 'recv_pct DESC', blk: 'blk DESC',
-    };
-    const orderBy = ORDER_MAP[stat] || 'pts DESC';
+  const ORDER_MAP = {
+    pts: "pts DESC",
+    ace: "ace DESC",
+    atk: "atk DESC",
+    kills: "kills DESC",
+    kill_pct: "kill_pct DESC",
+    recv_pct: "recv_pct DESC",
+    blk: "blk DESC",
+  };
+  const orderBy = ORDER_MAP[stat] || "pts DESC";
 
-    try {
-        const rows = await q(`
+  try {
+    const rows = await q(
+      `
             SELECT
                 p.id, p.name, p.surname, p.shirt_number, p.role,
 
@@ -300,24 +323,26 @@ router.get('/:id/players/stats', async (req, res) => {
             GROUP BY p.id, p.name, p.surname, p.shirt_number, p.role
             ORDER BY ${orderBy}
             LIMIT $${limitIdx}
-        `, [teamId, ...fp, parseInt(limit)]);
+        `,
+      [teamId, ...fp, parseInt(limit)],
+    );
 
-        res.json(rows);
-    } catch (err) {
-        console.error('[teams] GET /:id/players/stats', err);
-        res.status(500).json({ error: 'Errore interno del server' });
-    }
+    res.json(rows);
+  } catch (err) {
+    console.error("[teams] GET /:id/players/stats", err);
+    res.status(500).json({ error: "Errore interno del server" });
+  }
 });
-
 
 // ================================================================
 //  GET /api/teams/:id/trophies
 // ================================================================
-router.get('/:id/trophies', async (req, res) => {
-    const teamId = parseInt(req.params.id);
-    try {
-        // teamId compare 4 volte → $1 $2 $3 $4 (tutti lo stesso valore)
-        const rows = await q(`
+router.get("/:id/trophies", async (req, res) => {
+  const teamId = parseInt(req.params.id);
+  try {
+    // teamId compare 4 volte → $1 $2 $3 $4 (tutti lo stesso valore)
+    const rows = await q(
+      `
             SELECT
                 'season'        AS competition_type,
                 s.id            AS competition_id,
@@ -367,14 +392,15 @@ router.get('/:id/trophies', async (req, res) => {
               )
 
             ORDER BY year DESC
-        `, [teamId, teamId, teamId, teamId]);
+        `,
+      [teamId, teamId, teamId, teamId],
+    );
 
-        res.json(rows);
-    } catch (err) {
-        console.error('[teams] GET /:id/trophies', err);
-        res.status(500).json({ error: 'Errore interno del server' });
-    }
+    res.json(rows);
+  } catch (err) {
+    console.error("[teams] GET /:id/trophies", err);
+    res.status(500).json({ error: "Errore interno del server" });
+  }
 });
-
 
 module.exports = router;

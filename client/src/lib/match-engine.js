@@ -450,7 +450,7 @@ export class Match {
   }
 
   // ── Score a point ───────────────────────────────────────────────
-  scorePoint(player, isWin, statType) {
+  scorePoint(player, isWin, statType, isAce) {
     this._snapshot();
 
     const scoringSquad = player.team === "a" ? this.squadA : this.squadB;
@@ -459,6 +459,7 @@ export class Match {
     // Salva il server attuale PRIMA di modificare lo stato (serve per il log)
     const serverAtPointStart = this.servingSquad?.servingPlayer ?? null;
 
+    const squadWhoWinPoint = isWin ? scoringSquad : otherSquad;
     // Aggiorna stat sul giocatore
     player.addStat(statType);
     player.addStat(STAT.POINTS_PLAYED);
@@ -495,10 +496,11 @@ export class Match {
       type: "point",
       playerId: player.id,
       team: player.team,
-      isWin,
+      squadWhoWinPoint: squadWhoWinPoint.teamId,
       statType,
       serverPlayerId: serverAtPointStart?.id ?? null,
       serverTeam: serverAtPointStart?.team ?? null,
+      isAce: isAce,
       teamA: this.squadA.toJSON(),
       teamB: this.squadB.toJSON(),
       touchOfPlayers,
