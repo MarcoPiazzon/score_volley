@@ -45,3 +45,16 @@ tabelle insert:
 
 match_sets
  stats_player_match 
+ stats_team_match
+      match_set_event
+      stats_player_set
+da fare:
+
+
+
+stats_team_set
+
+ per ora non gestite:
+
+ match_set_event_touches
+ match_set_substitutions

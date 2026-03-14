@@ -456,13 +456,14 @@ export default function Monitor() {
     if (!selectedPlayer) { flashMsg('Seleziona prima un giocatore!', '#f04e4e'); return; }
 
     const extras = ACTION_EXTRA[type] ?? [];
-    extras.forEach(s => { m.addStatPlayer(selectedPlayer, s); m.addStatSet(selectedPlayer, s); });
+    extras.forEach(s => { m.addStatPlayer(selectedPlayer, s); m.addStatSet(selectedPlayer, s); m.addStatSquad(selectedPlayer, s)});
     
-    if (type === 'ACE') { m.addStatPlayer(selectedPlayer, STAT.TOUCHES); m.addStatSet(selectedPlayer, STAT.TOUCHES); }
+    if (type === 'ACE') { m.addStatPlayer(selectedPlayer, STAT.TOUCHES); m.addStatSet(selectedPlayer, STAT.TOUCHES); m.addStatSquad(selectedPlayer, STAT.ACE), m.addStatSquad(selectedPlayer, STAT.TOUCHES)}
     
     const isAce = type === 'ACE' ? true : false;
     m.scorePoint(selectedPlayer, action.value, action.stat, isAce);
 
+    console.log(m);
     flashMsg(ACTION_LABELS[type] ?? type, ACTION_COLORS[type] ?? '#e8eaf2');
     autoSelectServer(); rerender();
   }, [subMode, selectedPlayer, flashMsg, autoSelectServer, rerender]);

@@ -213,7 +213,12 @@ export class Squad {
   }
 
   addStat(type) {
-    /* squad-level stats opzionali, reserved */
+    console.log(type);
+    if (type in this.stats) {
+      this.stats[type]++;
+      console.log("aggiunto in squad");
+      console.log(this.stats);
+    }
   }
 
   takeTimeout() {
@@ -328,6 +333,16 @@ export class Sset {
     }
     this.stats.players[player.id][key] =
       (this.stats.players[player.id][key] ?? 0) + 1;
+  }
+
+  recordSquadStat(squad, key) {
+    if (key in this.stats.squads[squad.side]) {
+      this.stats.squads[squad.side][key]++;
+    }
+  }
+
+  addStat(type) {
+    if (type in this.stats) this.stats[type]++;
   }
 
   toJSON() {
@@ -465,6 +480,10 @@ export class Match {
     player.addStat(STAT.POINTS_PLAYED);
     this.currentSet.recordPlayerStat(player, statType);
 
+    const squad = player.team === "a" ? this.squadA : this.squadB;
+    this.currentSet.recordSquadStat(squad, statType);
+    this.currentSet.recordSquadStat(squad, STAT.POINTS_PLAYED);
+
     if (isWin) {
       scoringSquad.score++;
       this.currentSet[scoringSquad === this.squadA ? "scoreA" : "scoreB"]++;
@@ -530,6 +549,9 @@ export class Match {
     player.addStat(cardStat);
     player.addStat(STAT.TOTAL_CARD);
     this.currentSet.recordPlayerStat(player, cardStat);
+
+    const squad = player.team === "a" ? this.squadA : this.squadB;
+    this.currentSet.recordSquadStat(squad, cardStat);
 
     if (type === "red") {
       // Cartellino rosso → punto avversario + rotazione
@@ -724,6 +746,15 @@ export class Match {
   addStatPlayer(player, type) {
     player.addStat(type);
   }
+
+  //
+  addStatSquad(player, type) {
+    console.log("addStatSquad");
+    const squad = player.team === "a" ? this.squadA : this.squadB;
+    console.log(player);
+    squad.addStat(type);
+  }
+
   addStatSet(player, type) {
     this.currentSet?.recordPlayerStat(player, type);
   }
@@ -733,6 +764,8 @@ export class Match {
     const homeTeamId = matchMeta?.home_team_id ?? this.squadA.teamId;
     const awayTeamId = matchMeta?.away_team_id ?? this.squadB.teamId;
 
+    console.log(this);
+
     const completedSets = this.sets
       .filter((s) => s.winner !== null)
       .map((s) => ({
@@ -740,6 +773,8 @@ export class Match {
         scoreA: s.scoreA,
         scoreB: s.scoreB,
         winnerTeamId: s.winner === "a" ? homeTeamId : awayTeamId,
+        stats: s.stats,
+        events: s.events,
       }));
 
     // Includi il set corrente se ha punti (salvataggio parziale)
@@ -754,6 +789,8 @@ export class Match {
         scoreA: this.squadA.score,
         scoreB: this.squadB.score,
         winnerTeamId: null,
+        stats: cur.stats,
+        events: cur.events,
       });
     }
 

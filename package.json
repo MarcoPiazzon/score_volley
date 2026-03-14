@@ -12,6 +12,7 @@
     "concurrently": "^8.2.2"
   },
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "vite": "^7.3.1"
   }
 }

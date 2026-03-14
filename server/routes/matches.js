@@ -429,16 +429,16 @@ const STAT_TO_COL = {
 // Colonne DB con valore 0 di default (tutte le colonne numeriche delle tabelle stats)
 const STATS_PLAYER_COLS = [
   "touches",
-  "attackWin",
-  "attackOut",
-  "attackNotSuccessful",
-  "totalAttack",
+  "attack_win",
+  "attack_out",
+  "attack_not_successful",
+  "total_attack",
   "ace",
   "serves",
-  "servesErr",
-  "serverErrLine",
+  "serves_err",
+  "serves_err_line",
   "total_serves",
-  "totalRicezione",
+  "total_receive",
   "foul_double",
   "foul_four_touches",
   "foul_raised",
@@ -446,14 +446,14 @@ const STATS_PLAYER_COLS = [
   "foul_invasion",
   "total_foul",
   "ball_lost",
-  "defensePos",
-  "defenseNeg",
-  "blockSuccessful",
-  "blockNotSuccessful",
-  "totalBlock",
+  "def_pos",
+  "def_neg",
+  "block_successful",
+  "block_not_successful",
+  "total_block",
   "card_yellow",
   "card_red",
-  "totalCard",
+  "total_card",
   "total_set_points",
   "set_points_win",
   "set_points_err",
@@ -470,16 +470,16 @@ const STATS_PLAYER_COLS = [
 
 const STATS_TEAM_COLS = [
   "touches",
-  "attackWin",
-  "attackOut",
-  "attackNotSuccessful",
-  "totalAttack",
+  "attack_win",
+  "attack_out",
+  "attack_not_successful",
+  "total_attack",
   "ace",
   "serves",
-  "servesErr",
-  "serverErrLine",
+  "serves_err",
+  "serves_err_line",
   "total_serves",
-  "totalRicezione",
+  "total_receive",
   "foul_double",
   "foul_four_touches",
   "foul_raised",
@@ -487,14 +487,14 @@ const STATS_TEAM_COLS = [
   "foul_invasion",
   "total_foul",
   "ball_lost",
-  "defensePos",
-  "defenseNeg",
-  "blockSuccessful",
-  "blockNotSuccessful",
-  "totalBlock",
+  "def_pos",
+  "def_neg",
+  "block_successful",
+  "block_not_successful",
+  "total_block",
   "card_yellow",
   "card_red",
-  "totalCard",
+  "total_card",
   "total_set_points",
   "set_points_win",
   "set_points_err",
@@ -505,14 +505,12 @@ const STATS_TEAM_COLS = [
   "match_points_cancelled",
   "total_change",
   "total_timeout",
-  "points_played",
-  "total_points",
 ];
 
 // Converte l'oggetto stats del frontend in un oggetto { col: valore }
-function mapStats(rawStats) {
+function mapStats(rawStats, stats_col) {
   const out = {};
-  STATS_COLS.forEach((col) => (out[col] = 0));
+  stats_col.forEach((col) => (out[col] = 0));
 
   Object.entries(rawStats).forEach(([key, val]) => {
     const col = STAT_TO_COL[key];
@@ -526,11 +524,11 @@ function mapStats(rawStats) {
 }
 
 // Somma stats di più giocatori in un unico oggetto (per stats_team_match)
-function sumStats(playerStatsList) {
+function sumStats(playerStatsList, stats_col) {
   const total = {};
-  STATS_COLS.forEach((col) => (total[col] = 0));
+  stats_col.forEach((col) => (total[col] = 0));
   playerStatsList.forEach((ps) => {
-    STATS_COLS.forEach((col) => {
+    stats_col.forEach((col) => {
       total[col] += ps[col] ?? 0;
     });
   });
@@ -585,11 +583,15 @@ router.post("/:id/save", async (req, res) => {
                 away_sets_won   = $3,
                 home_points     = $4,
                 away_points     = $5,
+                raw_json = $6,
                 played_at       = NOW()
             WHERE id = $1
         `,
-      [matchId, setsWonHome, setsWonAway, homeTotalPts, awayTotalPts],
+      [matchId, setsWonHome, setsWonAway, homeTotalPts, awayTotalPts, req.body],
     );
+
+    // Raggruppa le stats mappate per squadra (servirà per stats_team_match)
+    const teamStatsMap = { [homeTeamId]: [], [awayTeamId]: [] };
 
     // ── 3. match_sets ──────────────────────────────────────────────
     // Elimina eventuali set già salvati per questa partita
@@ -597,22 +599,158 @@ router.post("/:id/save", async (req, res) => {
 
     for (const s of sets) {
       if (s.number == null) continue;
-      await client.query(
+      const result = await client.query(
         `
-                INSERT INTO match_sets
-                    (match_id, set_number, home_score, away_score, winner_team_id, duration_min, started_at, ended_at)
-                VALUES ($1, $2, $3, $4, $5)
-            `,
+    INSERT INTO match_sets
+      (match_id, set_number, home_score, away_score, winner_team_id, duration_min, started_at, ended_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    RETURNING id
+  `,
         [
           matchId,
           s.number,
           s.scoreA ?? 0,
           s.scoreB ?? 0,
           s.winnerTeamId ?? null,
-          null, //non ancora supportato
+          null,
           null,
           null,
         ],
+      );
+
+      const setId = result.rows[0].id;
+
+      // ── 6. match_set_events ────────────────────────────────────────
+
+      await client.query(
+        "DELETE FROM match_set_events WHERE match_set_id = $1",
+        [setId],
+      );
+
+      console.log(setId);
+
+      for (const e of s.events) {
+        //console.log(e);
+        await client.query(
+          `
+                INSERT INTO match_set_events
+                    (match_set_id, event_order, event_type, team_side, server_player_id, point_won_by_team, point_mode, is_ace, card_player_id, card_type, score_home, score_away)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            `,
+          [
+            setId,
+            //e.touchOfPlayers ?? null, da capire come inserire il touchof player
+            null,
+            e.type ?? null,
+            //e.team ?? null, da convertire stringa in teamId
+            null,
+            e.serverPlayerId ?? null,
+            e.squadWhoWinPoint ?? null,
+            null, // point_mode per ora null
+            e.isAce,
+            null,
+            null,
+            e.teamA.score ?? 0,
+            e.teamB.score ?? 0,
+          ],
+        );
+      }
+
+      // ── 7. stats_player_set ────────────────────────────────────────
+
+      await client.query(
+        "DELETE FROM stats_player_set WHERE match_set_id = $1",
+        [setId],
+      );
+
+      //console.log(s.stats.players);
+      for (const [playerId, stats] of Object.entries(s.stats.players)) {
+        if (!playerId) continue;
+        const mapped = mapStats(stats ?? {}, STATS_PLAYER_COLS);
+
+        const playerObj = players.find((p) => p.id === parseInt(playerId));
+        const teamId = playerObj?.team === "a" ? homeTeamId : awayTeamId;
+
+        // Accumula per stats_team_match
+        if (teamStatsMap[teamId]) teamStatsMap[teamId].push(mapped);
+
+        const cols = [
+          "match_set_id",
+          "player_id",
+          "team_id",
+          ...STATS_PLAYER_COLS,
+        ];
+        const vals = [
+          setId,
+          playerId, // ← era p.playerId
+          teamId, // ← questo non ce l'hai più, vedi nota sotto
+          ...STATS_PLAYER_COLS.map((c) => mapped[c] ?? 0),
+        ];
+        const placeholders = vals.map((_, i) => `$${i + 1}`).join(", ");
+
+        await client.query(
+          `INSERT INTO stats_player_set (${cols.join(", ")}) VALUES (${placeholders})
+                 ON CONFLICT (match_set_id, player_id) DO UPDATE SET
+                 ${STATS_PLAYER_COLS.map((c) => `${c} = EXCLUDED.${c}`).join(", ")}`,
+          vals,
+        );
+      }
+
+      // ── 8. stats_team_set ────────────────────────────────────────
+
+      await client.query("DELETE FROM stats_team_set WHERE match_set_id = $1", [
+        setId,
+      ]);
+
+      //console.log(s);
+      //Home
+      const mapped_home = mapStats(s.stats.squads.a ?? {}, STATS_PLAYER_COLS);
+      //homeTeamId
+      // Accumula per stats_team_match
+      if (teamStatsMap[homeTeamId]) teamStatsMap[homeTeamId].push(mapped_home);
+
+      const cols = ["match_set_id", "team_id", "is_home", ...STATS_TEAM_COLS];
+      const vals = [
+        setId,
+        homeTeamId,
+        0, //per ora di default
+        ...STATS_TEAM_COLS.map((c) => mapped_home[c] ?? 0),
+      ];
+
+      console.log(cols);
+      const placeholders = vals.map((_, i) => `$${i + 1}`).join(", ");
+
+      await client.query(
+        `INSERT INTO stats_team_set (${cols.join(", ")}) VALUES (${placeholders})
+                 ON CONFLICT (match_set_id, team_id) DO UPDATE SET
+                 ${STATS_TEAM_COLS.map((c) => `${c} = EXCLUDED.${c}`).join(", ")}`,
+        vals,
+      );
+
+      //awayTeamId
+      // Accumula per stats_team_match
+      const mapped_away = mapStats(s.stats.squads.b ?? {}, STATS_PLAYER_COLS);
+      if (teamStatsMap[awayTeamId]) teamStatsMap[awayTeamId].push(mapped_away);
+
+      const cols_away = [
+        "match_set_id",
+        "team_id",
+        "is_home",
+        ...STATS_TEAM_COLS,
+      ];
+      const vals_away = [
+        setId,
+        awayTeamId,
+        0, //per ora di default
+        ...STATS_TEAM_COLS.map((c) => mapped_away[c] ?? 0),
+      ];
+      const placeholders_away = vals.map((_, i) => `$${i + 1}`).join(", ");
+
+      await client.query(
+        `INSERT INTO stats_team_set (${cols_away.join(", ")}) VALUES (${placeholders_away})
+                 ON CONFLICT (match_set_id, team_id) DO UPDATE SET
+                 ${STATS_TEAM_COLS.map((c) => `${c} = EXCLUDED.${c}`).join(", ")}`,
+        vals_away,
       );
     }
 
@@ -622,17 +760,14 @@ router.post("/:id/save", async (req, res) => {
       matchId,
     ]);
 
-    // Raggruppa le stats mappate per squadra (servirà per stats_team_match)
-    const teamStatsMap = { [homeTeamId]: [], [awayTeamId]: [] };
-
     for (const p of players) {
       if (!p.playerId || !p.teamId) continue;
-      const mapped = mapStats(p.stats ?? {});
+      const mapped = mapStats(p.stats ?? {}, STATS_PLAYER_COLS);
 
       // Accumula per stats_team_match
       if (teamStatsMap[p.teamId]) teamStatsMap[p.teamId].push(mapped);
 
-      const cols = ["match_id", "player_id", "team_id", ...STATS_COLS];
+      const cols = ["match_id", "player_id", "team_id", ...STATS_PLAYER_COLS];
       const vals = [
         matchId,
         p.playerId,
@@ -656,12 +791,13 @@ router.post("/:id/save", async (req, res) => {
 
     for (const [teamId, statsList] of Object.entries(teamStatsMap)) {
       const isHome = parseInt(teamId) === homeTeamId ? 1 : 0;
-      const totals = sumStats(statsList);
+      const totals = sumStats(statsList, STATS_TEAM_COLS);
 
-      const cols = ["match_id", "team_id", "is_home", ...STATS_COLS];
+      const cols = ["match_id", "team_id", "is_home", ...STATS_TEAM_COLS];
       const vals = [
         matchId,
         parseInt(teamId),
+        0, //per ora di default
         ...STATS_TEAM_COLS.map((c) => totals[c] ?? 0),
       ];
       const placeholders = vals.map((_, i) => `$${i + 1}`).join(", ");
@@ -673,105 +809,6 @@ router.post("/:id/save", async (req, res) => {
         vals,
       );
     }
-
-    // ── 6. match_set_events ────────────────────────────────────────
-
-    await client.query("DELETE FROM match_set_events WHERE match_set_id = $1", [
-      matchId,
-    ]);
-
-    for (const s of sets) {
-      if (s.number == null) continue;
-
-      for (const e of s.events) {
-        await client.query(
-          `
-                INSERT INTO match_set_events
-                    (match_set_id, event_order, event_type, team_side, server_player_id, point_won_by_team, point_mode, is_ace, card_player_id, card_type, score_home, score_away, created_at)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-            `,
-          [
-            matchId,
-            e.touchOfPlayers ?? null,
-            e.type ?? null,
-            e.team ?? null,
-            e.serverPlayerId ?? null,
-            e.squadWhoWinPoint ?? null,
-            null, // point_mode per ora null
-            e.isAce,
-            null,
-            null,
-            e.teamA.score ?? 0,
-            e.teamB.score ?? 0,
-            NOW(),
-          ],
-        );
-      }
-    }
-
-    // ── 7. stats_player_set ────────────────────────────────────────
-
-    await client.query("DELETE FROM stats_player_set WHERE match_set_id = $1", [
-      matchId,
-    ]);
-
-    for (const s of sets) {
-      for (const p of s.stats.players) {
-        if (!p.playerId || !p.teamId) continue;
-        const mapped = mapStats(p.stats ?? {});
-
-        // Accumula per stats_team_match
-        if (teamStatsMap[p.teamId]) teamStatsMap[p.teamId].push(mapped);
-
-        const cols = ["match_set_id", "player_id", "team_id", ...STATS_COLS];
-        const vals = [
-          matchId,
-          p.playerId,
-          p.teamId,
-          ...STATS_PLAYER_COLS.map((c) => mapped[c] ?? 0),
-        ];
-        const placeholders = vals.map((_, i) => `$${i + 1}`).join(", ");
-
-        await client.query(
-          `INSERT INTO stats_player_match (${cols.join(", ")}) VALUES (${placeholders})
-                 ON CONFLICT (match_id, player_id) DO UPDATE SET
-                 ${STATS_PLAYER_COLS.map((c) => `${c} = EXCLUDED.${c}`).join(", ")}`,
-          vals,
-        );
-      }
-    }
-
-    // ── 8. stats_team_set ────────────────────────────────────────
-
-    await client.query("DELETE FROM stats_team_set WHERE match_set_id = $1", [
-      matchId,
-    ]);
-
-    for (const s of sets) {
-      if (!p.playerId || !p.teamId) continue;
-      const mapped = mapStats(p.stats ?? {});
-
-      // Accumula per stats_team_match
-      if (teamStatsMap[p.teamId]) teamStatsMap[p.teamId].push(mapped);
-
-      const cols = ["match_id", "player_id", "team_id", ...STATS_COLS];
-      const vals = [
-        matchId,
-        p.playerId,
-        p.teamId,
-        ...STATS_PLAYER_COLS.map((c) => mapped[c] ?? 0),
-      ];
-      const placeholders = vals.map((_, i) => `$${i + 1}`).join(", ");
-
-      await client.query(
-        `INSERT INTO stats_player_match (${cols.join(", ")}) VALUES (${placeholders})
-                 ON CONFLICT (match_id, player_id) DO UPDATE SET
-                 ${STATS_PLAYER_COLS.map((c) => `${c} = EXCLUDED.${c}`).join(", ")}`,
-        vals,
-      );
-    }
-
-    stats_team_set;
 
     await client.query("COMMIT");
 
