@@ -15,6 +15,25 @@ const COURT_POS_B = {
   4: [63, 80], 5: [86, 80], 6: [86, 50],
 };
 
+// ── Zone map: ogni posizione occupa 1/6 della metà campo ──────────
+// Formato: { left%, top%, width%, height% } — coordinate assolute sul campo
+const ZONE_MAP_A = {
+  1: { left:  0, top: 67, width: 25, height: 33 }, // back-right
+  2: { left: 25, top: 67, width: 25, height: 33 }, // back-center
+  3: { left: 25, top: 33, width: 25, height: 34 }, // mid-center
+  4: { left: 25, top:  0, width: 25, height: 33 }, // front-center
+  5: { left:  0, top:  0, width: 25, height: 33 }, // front-right
+  6: { left:  0, top: 33, width: 25, height: 34 }, // mid-right
+};
+const ZONE_MAP_B = {
+  1: { left: 75, top:  0, width: 25, height: 33 }, // back-left (mirror)
+  2: { left: 50, top:  0, width: 25, height: 33 },
+  3: { left: 50, top: 33, width: 25, height: 34 },
+  4: { left: 50, top: 67, width: 25, height: 33 },
+  5: { left: 75, top: 67, width: 25, height: 33 },
+  6: { left: 75, top: 33, width: 25, height: 34 },
+};
+
 const ROLE_MAP = {
   setter: 'Palleggiatore', outside_hitter: 'Schiacciatore', opposite: 'Opposto',
   middle_blocker: 'Centrale', libero: 'Libero', defensive_specialist: 'Difensore',
@@ -93,7 +112,6 @@ const ACTION_COLORS = {
 function SaveDialog({ match, matchMeta, onConfirm, onCancel, saving, isMatchEnd = false }) {
   if (!match || !matchMeta) return null;
   const { squadA, squadB } = match;
-  const loser = squadA.setsWon > squadB.setsWon ? squadB : squadA;
   const winner = squadA.setsWon > squadB.setsWon ? squadA : squadB;
 
   return (
@@ -229,6 +247,66 @@ function SaveDialog({ match, matchMeta, onConfirm, onCancel, saving, isMatchEnd 
 }
 
 // ════════════════════════════════════════════════════════════════════
+//  FineTurnoModal — selettore tipo punto (sale dal basso)
+// ════════════════════════════════════════════════════════════════════
+const FINE_TURNO_SERVE = [
+  { type: 'ACE',         icon: '⚡', label: 'Ace',         cls: 'green' },
+  { type: 'SERVE_ERROR', icon: '✗',  label: 'Serve Error', cls: 'red'   },
+];
+const FINE_TURNO_POINT = [
+  { type: 'POINT',     icon: '✦', label: 'Point',     cls: 'green' },
+  { type: 'OUT',       icon: '↗', label: 'Out',       cls: 'red'   },
+  { type: 'LOST_BALL', icon: '○', label: 'Lost Ball', cls: 'slate' },
+];
+const FINE_TURNO_FALLI = [
+  { type: 'DOUBLE',   icon: '!', label: 'Double',    cls: 'amber' },
+  { type: '4TOUCHES', icon: '!', label: '4 Touches', cls: 'amber' },
+  { type: 'RAISED',   icon: '!', label: 'Raised',    cls: 'amber' },
+  { type: 'POSITION', icon: '!', label: 'Position',  cls: 'amber' },
+  { type: 'INVASION', icon: '!', label: 'Invasion',  cls: 'amber' },
+];
+
+function FineTurnoModal({ servePhase, onSelect, onClose }) {
+  const pointBtns = servePhase ? FINE_TURNO_SERVE : FINE_TURNO_POINT;
+  return (
+    <div className="ft-overlay" onClick={onClose}>
+      <div className="ft-card" onClick={e => e.stopPropagation()}>
+        <div className="ft-title">
+          {servePhase ? '⚡ Esito Battuta' : '🏐 Fine Turno'}
+        </div>
+
+        <div className="ft-section-label">
+          {servePhase ? 'Battuta' : 'Punto'}
+        </div>
+        <div className="ft-group">
+          {pointBtns.map(b => (
+            <button key={b.type}
+                    className={`ft-btn ${b.cls} lg`}
+                    onClick={() => onSelect(b.type)}>
+              <span className="ft-icon">{b.icon}</span>
+              {b.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="ft-section-label">Fallo</div>
+        <div className="ft-group wrap">
+          {FINE_TURNO_FALLI.map(b => (
+            <button key={b.type}
+                    className={`ft-btn ${b.cls}`}
+                    onClick={() => onSelect(b.type)}>
+              {b.label}
+            </button>
+          ))}
+        </div>
+
+        <button className="ft-cancel" onClick={onClose}>Annulla</button>
+      </div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════
 //  Monitor
 // ════════════════════════════════════════════════════════════════════
 export default function Monitor() {
@@ -236,7 +314,7 @@ export default function Monitor() {
   const navigate = useNavigate();
 
   const matchRef   = useRef(null);
-  const matchMeta  = useRef(null);  // dati raw dal DB (inclusi format params)
+  const matchMeta  = useRef(null);
   const flashRef   = useRef(null);
   const [tick, setTick]           = useState(0);
   const rerender = useCallback(() => setTick(t => t + 1), []);
@@ -244,15 +322,12 @@ export default function Monitor() {
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState('');
   const [saving,       setSaving]       = useState(false);
-  const [showSave,     setShowSave]     = useState(false);   // popup manuale
-  const [isMatchEnd,   setIsMatchEnd]   = useState(false);   // popup da fine partita
+  const [showSave,     setShowSave]     = useState(false);
+  const [isMatchEnd,   setIsMatchEnd]   = useState(false);
   const [statsOpen,    setStatsOpen]    = useState(false);
   const [statsCat,     setStatsCat]     = useState('Generali');
   const [statsSet,     setStatsSet]     = useState('match');
 
-  // Cambio campo visivo:
-  // - between sets: courtSwapped = (totalSetsPlayed % 2 === 1) — derivato dallo stato, undo-safe
-  // - tiebreak midpoint: tiebreakSwapped togglato UNA volta da _onFieldChange
   const [tiebreakSwapped, setTiebreakSwapped] = useState(false);
 
   // UI interaction state
@@ -260,6 +335,16 @@ export default function Monitor() {
   const [subMode,   setSubMode]   = useState(false);
   const [outPlayer, setOutPlayer] = useState(null);
   const [cardMode,  setCardMode]  = useState(null);
+
+  // servePhase: true = inizio punto, solo battuta disponibile
+  //             false = battuta registrata, altre azioni disponibili
+  const [servePhase,  setServePhase]  = useState(true);
+
+  // Modalità arbitro: fullscreen, no zoom, no distrazioni
+  const [refMode,     setRefMode]     = useState(false);
+
+  // Modal fine turno
+  const [showEndTurn, setShowEndTurn] = useState(false);
 
   // ── Flash ──────────────────────────────────────────────────────
   const flashMsg = useCallback((msg, color = '#e8eaf2') => {
@@ -278,6 +363,29 @@ export default function Monitor() {
     if (m?.servingSquad?.players?.[0]) {
       setSelectedPlayer(m.servingSquad.players[0]);
     }
+    setServePhase(true);
+  }, []);
+
+  // ── Toggle modalità arbitro ────────────────────────────────────
+  const toggleRefMode = useCallback(() => {
+    setRefMode(on => {
+      const next = !on;
+      if (next) {
+        document.documentElement.requestFullscreen?.().catch(() => {});
+        let vp = document.querySelector('meta[name="viewport"]');
+        if (!vp) {
+          vp = document.createElement('meta');
+          vp.name = 'viewport';
+          document.head.appendChild(vp);
+        }
+        vp.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no';
+      } else {
+        document.exitFullscreen?.().catch(() => {});
+        const vp = document.querySelector('meta[name="viewport"]');
+        if (vp) vp.content = 'width=device-width, initial-scale=1';
+      }
+      return next;
+    });
   }, []);
 
   // ── Load ───────────────────────────────────────────────────────
@@ -291,7 +399,6 @@ export default function Monitor() {
         ]);
         matchMeta.current = matchData;
 
-        // Parametri formato partita dal DB (con fallback ai default FIVB)
         const format = {
           maxSet:         matchData.max_set          ?? 5,
           setsToWin:      matchData.sets_to_win      ?? 3,
@@ -330,18 +437,15 @@ export default function Monitor() {
           const n = match.currentSetNumber - 1;
           flashMsg(`Set ${n} → ${winner.shortName}! (${sA}-${sB})`,
                    winner.side === 'a' ? '#3b8bff' : '#ff6b35');
-          // Reset il toggle tiebreak: ogni nuovo set inizia "pulito"
           setTiebreakSwapped(false);
           autoSelectServer();
           rerender();
         };
 
-        // Alla fine del match: mostra automaticamente il popup di salvataggio
         match._onMatchEnd = (winner) => {
           const other = winner === match.squadA ? match.squadB : match.squadA;
           flashMsg(`🏆 Vittoria ${winner.shortName}! (${winner.setsWon}-${other.setsWon})`, '#f5c542');
           rerender();
-          // Piccolo delay per far vedere il flash prima del dialog
           setTimeout(() => {
             setIsMatchEnd(true);
             setShowSave(true);
@@ -349,7 +453,6 @@ export default function Monitor() {
         };
 
         match._onFieldChange = () => {
-          // Cambio campo tiebreak: toggle UNA volta (match-engine garantisce max 1 call per set)
           setTiebreakSwapped(s => !s);
           flashMsg(`↕ Cambio campo (set ${match.currentSetNumber})`, '#f5c542');
         };
@@ -381,9 +484,10 @@ export default function Monitor() {
       setCardMode(null); autoSelectServer(); rerender(); return;
     }
     if (subMode) { setOutPlayer(player); return; }
-    // Selezione normale: aggiunge il tocco all'array del punto in corso
     if (m) m.pushTouch(player);
     setSelectedPlayer(sp => sp?.id === player.id ? null : player);
+    setServePhase(false);
+    //console.log(m);
   }, [cardMode, subMode, flashMsg, autoSelectServer, rerender]);
 
   const handleBenchClick = useCallback((player) => {
@@ -407,7 +511,6 @@ export default function Monitor() {
     if (subMode && !outPlayer) {
       flashMsg('Prima seleziona il giocatore in campo che esce!', '#f04e4e'); return;
     }
-    // Selezione normale: aggiunge il tocco all'array del punto in corso
     if (m) m.pushTouch(player);
     setSelectedPlayer(sp => sp?.id === player.id ? null : player);
   }, [cardMode, subMode, outPlayer, flashMsg, autoSelectServer, rerender]);
@@ -445,7 +548,7 @@ export default function Monitor() {
       m.assignServe(); autoSelectServer(); rerender();
       flashMsg('⇄ Battuta cambiata', '#a78bfa'); return;
     }
-    if(type === 'BLOCKED'){
+    if (type === 'BLOCKED') {
       match.removeLastTouch();
       match.pushTouch(selectedPlayer, 'blocked');
       flashMsg('Muro', '#a78bfa'); return;
@@ -455,12 +558,20 @@ export default function Monitor() {
     if (!action) return;
     if (!selectedPlayer) { flashMsg('Seleziona prima un giocatore!', '#f04e4e'); return; }
 
+    // ACE e SERVE_ERROR consumano la fase battuta
+    if (type === 'ACE' || type === 'SERVE_ERROR') setServePhase(false);
+
     const extras = ACTION_EXTRA[type] ?? [];
-    extras.forEach(s => { m.addStatPlayer(selectedPlayer, s); m.addStatSet(selectedPlayer, s); m.addStatSquad(selectedPlayer, s)});
-    
-    if (type === 'ACE') { m.addStatPlayer(selectedPlayer, STAT.TOUCHES); m.addStatSet(selectedPlayer, STAT.TOUCHES); m.addStatSquad(selectedPlayer, STAT.ACE), m.addStatSquad(selectedPlayer, STAT.TOUCHES)}
-    
-    const isAce = type === 'ACE' ? true : false;
+    extras.forEach(s => { m.addStatPlayer(selectedPlayer, s); m.addStatSet(selectedPlayer, s); m.addStatSquad(selectedPlayer, s); });
+
+    if (type === 'ACE') {
+      m.addStatPlayer(selectedPlayer, STAT.TOUCHES);
+      m.addStatSet(selectedPlayer, STAT.TOUCHES);
+      m.addStatSquad(selectedPlayer, STAT.ACE);
+      m.addStatSquad(selectedPlayer, STAT.TOUCHES);
+    }
+
+    const isAce = type === 'ACE';
     m.scorePoint(selectedPlayer, action.value, action.stat, isAce);
 
     console.log(m);
@@ -513,12 +624,8 @@ export default function Monitor() {
   );
 
   const { squadA, squadB } = match;
-  const servingSide  = match.servingSquad?.side;
-  const maxSet       = match.maxSet;
+  const maxSet = match.maxSet;
 
-  // Cambio campo visivo:
-  // ogni set completato inverte i lati (pari2192normale, dispari2192invertito)
-  // il tiebreak aggiunge un toggle extra a meta set (una sola volta)
   const totalSetsPlayed = squadA.setsWon + squadB.setsWon;
   const courtSwapped = (totalSetsPlayed % 2 === 1) !== tiebreakSwapped;
   const posMapA = courtSwapped ? COURT_POS_B : COURT_POS_A;
@@ -539,7 +646,8 @@ export default function Monitor() {
   if (cardMode) selBarClass += ' card-mode';
 
   return (
-    <div style={{ height:'100dvh', background:'var(--bg)', color:'var(--text)',
+    <div className={refMode ? 'ref-mode' : ''}
+         style={{ height:'100dvh', background:'var(--bg)', color:'var(--text)',
                   fontFamily:'Barlow,sans-serif', display:'flex', flexDirection:'column',
                   overflow:'hidden', userSelect:'none' }}>
 
@@ -555,6 +663,19 @@ export default function Monitor() {
           onCancel={() => { setShowSave(false); setIsMatchEnd(false); }}
           saving={saving}
           isMatchEnd={isMatchEnd}
+        />
+      )}
+
+      {/* FINE TURNO MODAL */}
+      {showEndTurn && (
+        <FineTurnoModal
+          servePhase={servePhase}
+          onSelect={(type) => {
+            setShowEndTurn(false);
+            if (type === 'ACE' || type === 'SERVE_ERROR') setServePhase(false);
+            registerEvent(type);
+          }}
+          onClose={() => setShowEndTurn(false)}
         />
       )}
 
@@ -602,12 +723,10 @@ export default function Monitor() {
 
         {/* Tasti destra */}
         <div className="mon-topbar-right">
-          <button className="mon-ctrl-sm undo" onClick={() => registerEvent('UNDO')}>↩ Undo</button>
-          <button className="mon-ctrl-sm" onClick={() => registerEvent('SWAP_SERVE')}>⇄ Battuta</button>
-          <button className="mon-ctrl-sm save"
-                  onClick={() => { setIsMatchEnd(false); setShowSave(true); }}
-                  disabled={saving}>
-            ↑ Salva
+          <button className={`mon-ctrl-sm ref-mode-btn ${refMode ? 'active-ref' : ''}`}
+                  onClick={toggleRefMode}
+                  title="Modalità arbitro">
+            ⚖ {refMode ? 'Esci' : 'Arbitro'}
           </button>
         </div>
       </div>
@@ -651,60 +770,99 @@ export default function Monitor() {
           <div className="mon-court-wrap">
             <div className="mon-court">
               <div className="mon-net" />
-
+{/* Zone invisibili — coprono l'intera metà campo per ogni giocatore */}
+{squadA.players.map((p, idx) => {
+  const zone = (courtSwapped ? ZONE_MAP_B : ZONE_MAP_A)[idx + 1];
+  if (!zone) return null;
+  return (
+    <div key={`zone-a-${p.id}`}
+         style={{
+           position: 'absolute',
+           left: `${zone.left}%`, top: `${zone.top}%`,
+           width: `${zone.width}%`, height: `${zone.height}%`,
+           zIndex: 8,
+           cursor: 'pointer',
+         }}
+         onPointerDown={(e) => { e.preventDefault(); handleCourtClick(p); }} />
+  );
+})}
+{squadB.players.map((p, idx) => {
+  const zone = (courtSwapped ? ZONE_MAP_A : ZONE_MAP_B)[idx + 1];
+  if (!zone) return null;
+  return (
+    <div key={`zone-b-${p.id}`}
+         style={{
+           position: 'absolute',
+           left: `${zone.left}%`, top: `${zone.top}%`,
+           width: `${zone.width}%`, height: `${zone.height}%`,
+           zIndex: 8,
+           cursor: 'pointer',
+         }}
+         onPointerDown={(e) => { e.preventDefault(); handleCourtClick(p); }} />
+  );
+})}
               {/*
-                Serve dot — elemento standalone, NON figlio di nessun cerchio giocatore.
-                Posizione fissa: sempre su COURT_POS_A[1] (lato sinistro, inizio partita),
-                indipendentemente dal cambio campo e dalla squadra che batte.
-              */}
+                Serve dot — standalone, NON figlio di nessun cerchio giocatore.
+                Posizione fissa: sempre su COURT_POS_A[1] (lato sinistro, inizio partita).
+                
+              */
+              
+              }
+
               <span style={{
                 position: 'absolute',
                 width: '9px', height: '9px',
                 background: 'var(--amber)',
                 borderRadius: '50%',
                 border: '1.5px solid #fff',
-                animation: 'pulse-dot 1.5s infinite',
+                animation: refMode ? 'none' : 'pulse-dot 1.5s infinite',
                 zIndex: 20,
                 pointerEvents: 'none',
                 left:  `calc(${COURT_POS_A[1][0]}% + 11px)`,
                 top:   `calc(${COURT_POS_A[1][1]}% - 20px)`,
               }} />
 
-              {/* Giocatori A */}
-              {squadA.players.map((p, idx) => {
-                const pos = posMapA[idx + 1]; if (!pos) return null;
-                return (
-                  <div key={p.id}
-                       className={['court-player a',
-                         p.libero ? 'libero' : '',
-                         selectedPlayer?.id === p.id ? 'selected' : '',
-                         outPlayer?.id === p.id ? 'out-selected' : '',
-                       ].join(' ')}
-                       style={{ left:`${pos[0]}%`, top:`${pos[1]}%` }}
-                       onClick={() => handleCourtClick(p)}
-                       title={`#${p.shirtNumber} ${p.fullName} · ${ROLE_MAP[p.role] ?? p.role}`}>
-                    {p.shirtNumber}
-                  </div>
-                );
-              })}
+              {/* Giocatori A — solo visivi, le zone gestiscono i tocchi */}
+{squadA.players.map((p, idx) => {
+  const pos = posMapA[idx + 1]; if (!pos) return null;
+  return (
+    <div key={p.id}
+         className="court-player-hit"
+         style={{ left:`${pos[0]}%`, top:`${pos[1]}%` }}>
+      <div className={[
+        'court-player a',
+        p.libero ? 'libero' : '',
+        selectedPlayer?.id === p.id ? 'selected' : '',
+        outPlayer?.id === p.id ? 'out-selected' : '',
+        refMode ? 'ref-size' : '',
+      ].join(' ')}
+           title={`#${p.shirtNumber} ${p.fullName} · ${ROLE_MAP[p.role] ?? p.role}`}>
+        {p.shirtNumber}
+      </div>
+    </div>
+  );
+})}
 
-              {/* Giocatori B */}
-              {squadB.players.map((p, idx) => {
-                const pos = posMapB[idx + 1]; if (!pos) return null;
-                return (
-                  <div key={p.id}
-                       className={['court-player b',
-                         p.libero ? 'libero' : '',
-                         selectedPlayer?.id === p.id ? 'selected' : '',
-                         outPlayer?.id === p.id ? 'out-selected' : '',
-                       ].join(' ')}
-                       style={{ left:`${pos[0]}%`, top:`${pos[1]}%` }}
-                       onClick={() => handleCourtClick(p)}
-                       title={`#${p.shirtNumber} ${p.fullName} · ${ROLE_MAP[p.role] ?? p.role}`}>
-                    {p.shirtNumber}
-                  </div>
-                );
-              })}
+{/* Giocatori B — solo visivi */}
+{squadB.players.map((p, idx) => {
+  const pos = posMapB[idx + 1]; if (!pos) return null;
+  return (
+    <div key={p.id}
+         className="court-player-hit"
+         style={{ left:`${pos[0]}%`, top:`${pos[1]}%` }}>
+      <div className={[
+        'court-player b',
+        p.libero ? 'libero' : '',
+        selectedPlayer?.id === p.id ? 'selected' : '',
+        outPlayer?.id === p.id ? 'out-selected' : '',
+        refMode ? 'ref-size' : '',
+      ].join(' ')}
+           title={`#${p.shirtNumber} ${p.fullName} · ${ROLE_MAP[p.role] ?? p.role}`}>
+        {p.shirtNumber}
+      </div>
+    </div>
+  );
+})}
             </div>
 
             {/* Mode banner */}
@@ -739,41 +897,21 @@ export default function Monitor() {
           {/* Action panel */}
           <div className="mon-action-panel">
 
-            <div className="action-group-label">▸ PUNTO / ERRORE</div>
-            <div className="action-group">
-              <button className="act-btn green lg" onClick={() => registerEvent('POINT')} disabled={!selectedPlayer}>
-                <span className="act-icon">✦</span> Point
-              </button>
-              <button className="act-btn red" onClick={() => registerEvent('OUT')} disabled={!selectedPlayer}>
-                <span className="act-icon">✕</span> Out
-              </button>
-              <button className="act-btn red" onClick={() => registerEvent('LOST_BALL')} disabled={!selectedPlayer}>
-                <span className="act-icon">○</span> Lost Ball
-              </button>
-              <button className="act-btn slate" onClick={() => registerEvent('BLOCKED')} disabled={!selectedPlayer}>
+            {/* Riga 1: Blocked + Fine Turno */}
+            <div className="action-group" style={{ gap: 6 }}>
+              <button className="act-btn slate"
+                      onClick={() => registerEvent('BLOCKED')}
+                      disabled={!selectedPlayer}>
                 <span className="act-icon">▣</span> Blocked
               </button>
-            </div>
-
-            <div className="action-group-label">▸ BATTUTA</div>
-            <div className="action-group">
-              <button className="act-btn green lg" onClick={() => registerEvent('ACE')} disabled={!selectedPlayer}>
-                <span className="act-icon">⚡</span> Ace
-              </button>
-              <button className="act-btn red lg" onClick={() => registerEvent('SERVE_ERROR')} disabled={!selectedPlayer}>
-                <span className="act-icon">✗</span> Serve Error
+              <button className={`act-btn fine-turno ${selectedPlayer ? 'ready' : ''}`}
+                      onClick={() => { if (selectedPlayer) setShowEndTurn(true); }}
+                      disabled={!selectedPlayer}>
+                🏐 Fine Turno
               </button>
             </div>
 
-            <div className="action-group-label">▸ FALLI</div>
-            <div className="action-group">
-              <button className="act-btn amber" onClick={() => registerEvent('DOUBLE')} disabled={!selectedPlayer}>Double</button>
-              <button className="act-btn amber" onClick={() => registerEvent('4TOUCHES')} disabled={!selectedPlayer}>4 Touches</button>
-              <button className="act-btn amber" onClick={() => registerEvent('RAISED')} disabled={!selectedPlayer}>Raised</button>
-              <button className="act-btn amber" onClick={() => registerEvent('POSITION')} disabled={!selectedPlayer}>Position</button>
-              <button className="act-btn amber" onClick={() => registerEvent('INVASION')} disabled={!selectedPlayer}>Invasion</button>
-            </div>
-
+            {/* Gestione */}
             <div className="action-group-label">▸ GESTIONE</div>
             <div className="action-group">
               <button className={`act-btn amber ${cardMode === 'yellow' ? 'active-mode' : ''}`}
@@ -796,6 +934,7 @@ export default function Monitor() {
               </button>
             </div>
 
+            {/* Utility */}
             <div className="util-controls">
               <button className="ctrl-btn undo" onClick={() => registerEvent('UNDO')}>↩ Undo</button>
               <button className="ctrl-btn" onClick={() => registerEvent('SWAP_SERVE')}>⇄ Battuta</button>

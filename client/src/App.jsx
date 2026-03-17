@@ -5,6 +5,7 @@ import ProtectedRoute from '@/components/layout/ProtectedRoute';
 import Login     from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
 import Monitor   from '@/pages/Monitor';
+import Timeline  from '@/pages/Timeline';
 
 export default function App() {
   return (
@@ -19,6 +20,9 @@ export default function App() {
         } />
         <Route path="/monitor/:id" element={
           <ProtectedRoute><Monitor /></ProtectedRoute>
+        } />
+        <Route path="/timeline/:id" element={
+          <ProtectedRoute><Timeline /></ProtectedRoute>
         } />
 
         {/* Fallback */}

@@ -830,4 +830,61 @@ router.post("/:id/save", async (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────
+// GET /api/matches/:id/timeline
+// Restituisce tutti i set con i relativi eventi per la Timeline.
+// ─────────────────────────────────────────────────────────────────
+router.get("/:id/timeline", async (req, res) => {
+  const { id } = req.params;
+  try {
+    // 1. Carica tutti i set della partita
+    const setsResult = await db.query(
+      `SELECT id, set_number, home_score, away_score, winner_team_id
+       FROM match_sets
+       WHERE match_id = $1
+       ORDER BY set_number ASC`,
+      [id],
+    );
+
+    if (setsResult.rows.length === 0) {
+      return res.json({ sets: [] });
+    }
+
+    // 2. Per ogni set, carica i relativi eventi in ordine di inserimento
+    const sets = await Promise.all(
+      setsResult.rows.map(async (set) => {
+        const eventsResult = await db.query(
+          `SELECT
+             id,
+             event_type,
+             team_side,
+             server_player_id,
+             point_won_by_team,
+             point_mode,
+             is_ace,
+             card_player_id,
+             card_type,
+             score_home,
+             score_away,
+             event_order,
+             created_at
+           FROM match_set_events
+           WHERE match_set_id = $1
+           ORDER BY id ASC`,
+          [set.id],
+        );
+        return {
+          ...set,
+          events: eventsResult.rows,
+        };
+      }),
+    );
+
+    res.json({ sets });
+  } catch (err) {
+    console.error("[timeline] Errore:", err.message);
+    res.status(500).json({ error: "Errore caricamento timeline" });
+  }
+});
+
 module.exports = router;
