@@ -2,10 +2,12 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/context/AuthContext';
 import ProtectedRoute from '@/components/layout/ProtectedRoute';
 
-import Login     from '@/pages/Login';
-import Dashboard from '@/pages/Dashboard';
-import Monitor   from '@/pages/Monitor';
-import Timeline  from '@/pages/Timeline';
+import Login        from '@/pages/Login';
+import Dashboard   from '@/pages/Dashboard';
+import Monitor     from '@/pages/Monitor';
+import Timeline    from '@/pages/Timeline';
+import Players     from '@/pages/Players';
+import PlayerDetail from '@/pages/PlayerDetail';
 
 export default function App() {
   return (
@@ -23,6 +25,12 @@ export default function App() {
         } />
         <Route path="/timeline/:id" element={
           <ProtectedRoute><Timeline /></ProtectedRoute>
+        } />
+        <Route path="/players" element={
+          <ProtectedRoute><Players /></ProtectedRoute>
+        } />
+        <Route path="/players/:id" element={
+          <ProtectedRoute><PlayerDetail /></ProtectedRoute>
         } />
 
         {/* Fallback */}

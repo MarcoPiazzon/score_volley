@@ -41,7 +41,7 @@ const ROLE_MAP = {
 
 // ── Stats config ──────────────────────────────────────────────────
 const STAT_CATS = {
-  Generali:  [STAT.TOUCHES, STAT.POINTS_PLAYED],
+  Generali:  [STAT.TOUCHES, STAT.POINTS_PLAYED, STAT.TOTAL_POINTS],
   Attacco:   [STAT.ATTACK_WIN, STAT.ATTACK_OUT, STAT.ATTACK_NOT_SUCCESSFUL, STAT.TOTAL_ATTACK],
   Battuta:   [STAT.ACE, STAT.SERVES, STAT.SERVES_ERR, STAT.TOTAL_SERVES],
   Muro:      [STAT.BLOCK_SUCCESSFUL, STAT.BLOCK_NOT_SUCCESSFUL, STAT.TOTAL_BLOCK],
@@ -49,7 +49,7 @@ const STAT_CATS = {
   Cartellini:[STAT.CARD_YELLOW, STAT.CARD_RED, STAT.TOTAL_CARD],
 };
 const STAT_SHORT = {
-  [STAT.TOUCHES]: 'Tocc', [STAT.POINTS_PLAYED]: 'PP',
+  [STAT.TOUCHES]: 'Tocc', [STAT.POINTS_PLAYED]: 'PP', [STAT.TOTAL_POINTS]: 'TP',
   [STAT.ATTACK_WIN]: 'ATT', [STAT.ATTACK_OUT]: 'Out', [STAT.ATTACK_NOT_SUCCESSFUL]: 'Nv', [STAT.TOTAL_ATTACK]: 'Tot',
   [STAT.ACE]: 'Ace', [STAT.SERVES]: 'Ok', [STAT.SERVES_ERR]: 'Err', [STAT.TOTAL_SERVES]: 'Tot',
   [STAT.BLOCK_SUCCESSFUL]: 'Vin', [STAT.BLOCK_NOT_SUCCESSFUL]: 'Nv', [STAT.TOTAL_BLOCK]: 'Tot',
@@ -58,7 +58,7 @@ const STAT_SHORT = {
   [STAT.CARD_YELLOW]: 'Gial', [STAT.CARD_RED]: 'Ros', [STAT.TOTAL_CARD]: 'Tot',
 };
 const STAT_FULL = {
-  [STAT.TOUCHES]: 'Tocchi', [STAT.POINTS_PLAYED]: 'Punti giocati',
+  [STAT.TOUCHES]: 'Tocchi', [STAT.POINTS_PLAYED]: 'Punti giocati', [STAT.TOTAL_POINTS]: 'Punti realizzati',
   [STAT.ATTACK_WIN]: 'Attacchi vincenti', [STAT.ATTACK_OUT]: 'Attacchi out',
   [STAT.ATTACK_NOT_SUCCESSFUL]: 'Non vincenti', [STAT.TOTAL_ATTACK]: 'Totale attacchi',
   [STAT.ACE]: 'Ace', [STAT.SERVES]: 'Battute OK', [STAT.SERVES_ERR]: 'Errori battuta',
@@ -85,9 +85,9 @@ const ACTION_MAP = {
 };
 const ACTION_EXTRA = {
   POINT:       [STAT.TOTAL_ATTACK],
-  ACE:         [STAT.TOTAL_SERVES, STAT.SERVES],
+  ACE:         [STAT.SERVES],
   OUT:         [STAT.TOTAL_ATTACK],
-  SERVE_ERROR: [STAT.TOTAL_SERVES],
+  SERVE_ERROR: [],
   BLOCKED:     [STAT.TOTAL_BLOCK],
   DOUBLE:      [STAT.TOTAL_FOUL],
   '4TOUCHES':  [STAT.TOTAL_FOUL],
@@ -267,6 +267,7 @@ const FINE_TURNO_FALLI = [
 ];
 
 function FineTurnoModal({ servePhase, onSelect, onClose }) {
+  //console.log(servePhase);
   const pointBtns = servePhase ? FINE_TURNO_SERVE : FINE_TURNO_POINT;
   return (
     <div className="ft-overlay" onClick={onClose}>
@@ -363,7 +364,15 @@ export default function Monitor() {
     if (m?.servingSquad?.players?.[0]) {
       setSelectedPlayer(m.servingSquad.players[0]);
     }
-    setServePhase(true);
+
+    //Match
+    m.addStatPlayer(m.servingSquad.players[0], STAT.TOTAL_SERVES);
+    m.addStatSquad(m.servingSquad.players[0], STAT.TOTAL_SERVES);
+    
+    //Set
+    m.addStatSetPlayer(m.servingSquad.players[0], STAT.TOTAL_SERVES);
+    m.addStatSetSquad(m.servingSquad.players[0], STAT.TOTAL_SERVES);
+    
   }, []);
 
   // ── Toggle modalità arbitro ────────────────────────────────────
@@ -518,7 +527,8 @@ export default function Monitor() {
   const registerEvent = useCallback((type) => {
     const m = matchRef.current; if (!m) return;
 
-    console.log(type);
+    //console.log(type);
+    //console.log(m);
     if (type === 'CHANGE') {
       if (subMode) { setSubMode(false); setOutPlayer(null); return; }
       setSubMode(true); setOutPlayer(null);
@@ -554,6 +564,35 @@ export default function Monitor() {
       flashMsg('Muro', '#a78bfa'); return;
     }
 
+    // ── ACE esteso ────────────────────────────────────────────────────
+// Se LOST_BALL e la palla non è mai tornata nel campo di chi ha battuto
+// (tutti i tocchi dopo la battuta sono della squadra ricevente)
+// → registra ACE anche al battitore
+if (type === 'LOST_BALL' && !servePhase) {
+  const serverSide   = m.servingSquad?.side;
+  const receiverSide = serverSide === 'a' ? 'b' : 'a';
+
+  // Il giocatore che perde la palla deve essere il ricevente
+  if (selectedPlayer.team === receiverSide) {
+    // Salta il primo tocco (che è la battuta, type:'serve')
+    const touchesAfterServe = m.currentSelectedPlayers.slice(1);
+    const ballNeverReturned = touchesAfterServe.every(t => t.team === receiverSide);
+
+    if (ballNeverReturned) {
+      const server = m.servingSquad?.servingPlayer;
+      if (server) {
+        m.addStatPlayer(server, STAT.ACE);        
+        m.addStatSquad(server, STAT.ACE);
+
+        m.addStatSetPlayer(server, STAT.ACE);
+        m.addStatSetSquad(server, STAT.ACE);
+        //console.log("ACEEEEEEEEEEEEE");
+        flashMsg('⚡ Ace esteso!', '#22d47a');
+      }
+    }
+  }
+}
+
     const action = ACTION_MAP[type];
     if (!action) return;
     if (!selectedPlayer) { flashMsg('Seleziona prima un giocatore!', '#f04e4e'); return; }
@@ -562,20 +601,23 @@ export default function Monitor() {
     if (type === 'ACE' || type === 'SERVE_ERROR') setServePhase(false);
 
     const extras = ACTION_EXTRA[type] ?? [];
-    extras.forEach(s => { m.addStatPlayer(selectedPlayer, s); m.addStatSet(selectedPlayer, s); m.addStatSquad(selectedPlayer, s); });
+    extras.forEach(s => { 
+      //Match
 
-    if (type === 'ACE') {
-      m.addStatPlayer(selectedPlayer, STAT.TOUCHES);
-      m.addStatSet(selectedPlayer, STAT.TOUCHES);
-      m.addStatSquad(selectedPlayer, STAT.ACE);
-      m.addStatSquad(selectedPlayer, STAT.TOUCHES);
-    }
+      m.addStatPlayer(selectedPlayer, s);  
+      m.addStatSquad(selectedPlayer, s); 
+    
+      //Set
+      m.addStatSetPlayer(selectedPlayer, s);
+      m.addStatSetSquad(selectedPlayer, s);
+    });
 
     const isAce = type === 'ACE';
     m.scorePoint(selectedPlayer, action.value, action.stat, isAce);
 
     console.log(m);
     flashMsg(ACTION_LABELS[type] ?? type, ACTION_COLORS[type] ?? '#e8eaf2');
+    setServePhase(true);
     autoSelectServer(); rerender();
   }, [subMode, selectedPlayer, flashMsg, autoSelectServer, rerender]);
 

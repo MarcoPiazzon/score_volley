@@ -1,7 +1,7 @@
-const express = require('express');
-const router  = express.Router();
-const pool    = require('../db');
-const { authenticate } = require('../middleware/auth');
+const express = require("express");
+const router = express.Router();
+const pool = require("../db");
+const { authenticate } = require("../middleware/auth");
 
 router.use(authenticate);
 
@@ -9,8 +9,8 @@ router.use(authenticate);
 //  HELPER: query semplice
 // ================================================================
 async function q(text, params = []) {
-    const { rows } = await pool.query(text, params);
-    return rows;
+  const { rows } = await pool.query(text, params);
+  return rows;
 }
 
 // ================================================================
@@ -18,23 +18,24 @@ async function q(text, params = []) {
 //  offset = numero di $N già usati prima di questo filtro
 // ================================================================
 function buildCompetitionFilter(competitionType, competitionId, offset = 0) {
-    if (!competitionId || !competitionType) {
-        return { clause: '', params: [] };
-    }
-    const col = competitionType === 'season' ? 'md.season_id' : 'md.tournament_id';
-    return {
-        clause: ` AND ${col} = $${offset + 1}`,
-        params: [parseInt(competitionId)],
-    };
+  if (!competitionId || !competitionType) {
+    return { clause: "", params: [] };
+  }
+  const col =
+    competitionType === "season" ? "md.season_id" : "md.tournament_id";
+  return {
+    clause: ` AND ${col} = $${offset + 1}`,
+    params: [parseInt(competitionId)],
+  };
 }
-
 
 // ================================================================
 //  GET /api/players/:id
 // ================================================================
-router.get('/:id', async (req, res) => {
-    try {
-        const rows = await q(`
+router.get("/:id", async (req, res) => {
+  try {
+    const rows = await q(
+      `
             SELECT
                 p.id, p.name, p.surname, p.shirt_number, p.role,
                 p.is_active, p.created_at,
@@ -44,91 +45,100 @@ router.get('/:id', async (req, res) => {
             FROM  players p
             JOIN  teams t ON t.id = p.team_id
             WHERE p.id = $1
-        `, [req.params.id]);
+        `,
+      [req.params.id],
+    );
 
-        if (!rows[0]) return res.status(404).json({ error: 'Giocatore non trovato' });
-        res.json(rows[0]);
-    } catch (err) {
-        console.error('[players] GET /:id', err);
-        res.status(500).json({ error: 'Errore interno del server' });
-    }
+    if (!rows[0])
+      return res.status(404).json({ error: "Giocatore non trovato" });
+    res.json(rows[0]);
+  } catch (err) {
+    console.error("[players] GET /:id", err);
+    res.status(500).json({ error: "Errore interno del server" });
+  }
 });
-
 
 // ================================================================
 //  GET /api/players/:id/stats
 // ================================================================
-router.get('/:id/stats', async (req, res) => {
-    const playerId = req.params.id;
-    const { competition_type, competition_id } = req.query;
+router.get("/:id/stats", async (req, res) => {
+  const playerId = req.params.id;
+  const { competition_type, competition_id } = req.query;
 
-    // $1 = playerId → offset 1 per il filtro competizione
-    const { clause, params: fp } = buildCompetitionFilter(competition_type, competition_id, 1);
-    const mdJoin = fp.length ? 'JOIN matchdays md ON md.id = m.matchday_id' : '';
+  // $1 = playerId → offset 1 per il filtro competizione
+  const { clause, params: fp } = buildCompetitionFilter(
+    competition_type,
+    competition_id,
+    1,
+  );
+  const mdJoin = fp.length ? "JOIN matchdays md ON md.id = m.matchday_id" : "";
 
-    try {
-        const rows = await q(`
+  try {
+    const rows = await q(
+      `
             SELECT
                 COUNT(DISTINCT spm.match_id)                        AS matches,
-                COALESCE(SUM(spm.points_scored), 0)                 AS pts,
+                COALESCE(SUM(spm.total_points), 0)                 AS pts,
 
                 -- Battuta
-                COALESCE(SUM(spm.serves_total), 0)                  AS serves_total,
-                COALESCE(SUM(spm.aces), 0)                          AS aces,
-                COALESCE(SUM(spm.serve_errors), 0)                  AS serve_errors,
-                COALESCE(SUM(spm.serve_positive), 0)                AS serve_positive,
-                ROUND(SUM(spm.aces)::NUMERIC / NULLIF(SUM(spm.serves_total), 0) * 100, 1)              AS ace_pct,
+                COALESCE(SUM(spm.total_serves), 0)                  AS serves_total,
+                COALESCE(SUM(spm.ace), 0)                          AS aces,
+                COALESCE(SUM(spm.serves_err), 0)                  AS serve_errors,
+                COALESCE(SUM(spm.serves), 0)                AS serve_positive,
+                ROUND(SUM(spm.ace)::NUMERIC / NULLIF(SUM(spm.total_serves), 0) * 100, 1)              AS ace_pct,
 
                 -- Ricezione
-                COALESCE(SUM(spm.receptions_total), 0)              AS receptions_total,
-                COALESCE(SUM(spm.reception_errors), 0)              AS reception_errors,
-                COALESCE(SUM(spm.reception_positive), 0)            AS reception_positive,
-                COALESCE(SUM(spm.reception_negative), 0)            AS reception_negative,
-                ROUND(SUM(spm.reception_positive)::NUMERIC / NULLIF(SUM(spm.receptions_total), 0) * 100, 1) AS recv_pct,
+                COALESCE(SUM(spm.total_receive), 0)              AS receptions_total,
+                COALESCE(SUM(spm.def_neg), 0)              AS reception_errors,
+                COALESCE(SUM(spm.def_pos), 0)            AS reception_positive,
+                COALESCE(SUM(spm.def_neg), 0)            AS reception_negative,
+                ROUND(SUM(spm.def_pos)::NUMERIC / NULLIF(SUM(spm.total_receive), 0) * 100, 1) AS recv_pct,
 
                 -- Attacco
-                COALESCE(SUM(spm.attacks_total), 0)                 AS attacks_total,
-                COALESCE(SUM(spm.attack_kills), 0)                  AS attack_kills,
-                COALESCE(SUM(spm.attack_errors), 0)                 AS attack_errors,
-                COALESCE(SUM(spm.attack_blocked), 0)                AS attack_blocked,
-                ROUND(SUM(spm.attack_kills)::NUMERIC / NULLIF(SUM(spm.attacks_total), 0) * 100, 1)     AS kill_pct,
+                COALESCE(SUM(spm.total_attack), 0)                 AS attacks_total,
+                COALESCE(SUM(spm.attack_win), 0)                  AS attack_kills,
+                COALESCE(SUM(spm.attack_out), 0)                 AS attack_errors,
+                COALESCE(SUM(spm.block_successful), 0)                AS attack_blocked,
+                ROUND(SUM(spm.attack_win)::NUMERIC / NULLIF(SUM(spm.total_attack), 0) * 100, 1)     AS kill_pct,
 
                 -- Muro
-                COALESCE(SUM(spm.blocks_total), 0)                  AS blocks_total,
-                COALESCE(SUM(spm.block_kills), 0)                   AS block_kills,
-                COALESCE(SUM(spm.block_errors), 0)                  AS block_errors,
+                COALESCE(SUM(spm.total_block), 0)                  AS blocks_total,
+                COALESCE(SUM(spm.block_successful), 0)                   AS block_kills,
+                COALESCE(SUM(spm.block_not_successful), 0)                  AS block_errors,
 
                 -- Difesa
-                COALESCE(SUM(spm.digs_total), 0)                    AS digs_total,
-                COALESCE(SUM(spm.dig_errors), 0)                    AS dig_errors,
+                COALESCE(SUM(spm.total_receive), 0)                    AS digs_total,
+                COALESCE(SUM(spm.def_pos), 0)                    AS dig_errors,
 
                 -- Disciplina
-                COALESCE(SUM(spm.cards_yellow), 0)                  AS cards_yellow,
-                COALESCE(SUM(spm.cards_red), 0)                     AS cards_red
+                COALESCE(SUM(spm.card_yellow), 0)                  AS cards_yellow,
+                COALESCE(SUM(spm.card_red), 0)                     AS cards_red
 
             FROM  stats_player_match spm
             JOIN  matches m ON m.id = spm.match_id AND m.status = 'completed'
             ${mdJoin}
             WHERE spm.player_id = $1
             ${clause}
-        `, [playerId, ...fp]);
+        `,
+      [playerId, ...fp],
+    );
 
-        res.json(rows[0] ?? {});
-    } catch (err) {
-        console.error('[players] GET /:id/stats', err);
-        res.status(500).json({ error: 'Errore interno del server' });
-    }
+    res.json(rows[0] ?? {});
+  } catch (err) {
+    console.error("[players] GET /:id/stats", err);
+    res.status(500).json({ error: "Errore interno del server" });
+  }
 });
-
 
 // ================================================================
 //  GET /api/players/:id/competitions
 // ================================================================
-router.get('/:id/competitions', async (req, res) => {
-    const playerId = req.params.id;
-    try {
-        // $1 viene usato in entrambe le sotto-query della UNION
-        const rows = await q(`
+router.get("/:id/competitions", async (req, res) => {
+  const playerId = req.params.id;
+  try {
+    // $1 viene usato in entrambe le sotto-query della UNION
+    const rows = await q(
+      `
             SELECT
                 'season'                                AS competition_type,
                 s.id                                    AS competition_id,
@@ -160,36 +170,45 @@ router.get('/:id/competitions', async (req, res) => {
             GROUP BY t.id, t.name, t.edition, t.year
 
             ORDER BY year DESC
-        `, [playerId]);
+        `,
+      [playerId],
+    );
 
-        res.json(rows);
-    } catch (err) {
-        console.error('[players] GET /:id/competitions', err);
-        res.status(500).json({ error: 'Errore interno del server' });
-    }
+    res.json(rows);
+  } catch (err) {
+    console.error("[players] GET /:id/competitions", err);
+    res.status(500).json({ error: "Errore interno del server" });
+  }
 });
-
 
 // ================================================================
 //  GET /api/players/:id/matches
 // ================================================================
-router.get('/:id/matches', async (req, res) => {
-    const playerId = req.params.id;
-    const { limit = 10, competition_type, competition_id } = req.query;
+router.get("/:id/matches", async (req, res) => {
+  const playerId = req.params.id;
+  const { limit = 10, competition_type, competition_id } = req.query;
 
-    // $1 = playerId → offset 1 per il filtro competizione
-    const { clause, params: fp } = buildCompetitionFilter(competition_type, competition_id, 1);
-    const mdJoin = fp.length ? 'JOIN matchdays md ON md.id = m.matchday_id' : '';
+  // $1 = playerId → offset 1 per il filtro competizione
+  const { clause, params: fp } = buildCompetitionFilter(
+    competition_type,
+    competition_id,
+    1,
+  );
+  const mdJoin = fp.length ? "JOIN matchdays md ON md.id = m.matchday_id" : "";
 
-    // LIMIT è l'ultimo parametro → $1 + fp.length + 1
-    const limitIdx = 1 + fp.length + 1;
+  // LIMIT è l'ultimo parametro → $1 + fp.length + 1
+  const limitIdx = 1 + fp.length + 1;
 
-    try {
-        // Verifica che il giocatore esista
-        const playerRows = await q('SELECT team_id FROM players WHERE id = $1', [playerId]);
-        if (!playerRows[0]) return res.status(404).json({ error: 'Giocatore non trovato' });
+  try {
+    // Verifica che il giocatore esista
+    const playerRows = await q("SELECT team_id FROM players WHERE id = $1", [
+      playerId,
+    ]);
+    if (!playerRows[0])
+      return res.status(404).json({ error: "Giocatore non trovato" });
 
-        const rows = await q(`
+    const rows = await q(
+      `
             SELECT
                 m.id                                            AS match_id,
                 COALESCE(m.played_at, m.scheduled_at)          AS date,
@@ -199,13 +218,13 @@ router.get('/:id/matches', async (req, res) => {
                 m.away_sets_won,
                 (spm.team_id = m.home_team_id)                  AS is_home,
 
-                spm.points_scored                               AS pts,
-                spm.aces                                        AS ace,
-                spm.attacks_total                               AS atk,
-                spm.attack_kills                                AS kills,
-                ROUND(spm.attack_kills::NUMERIC / NULLIF(spm.attacks_total, 0) * 100, 1)         AS kill_pct,
-                ROUND(spm.reception_positive::NUMERIC / NULLIF(spm.receptions_total, 0) * 100, 1) AS recv_pct,
-                spm.block_kills                                 AS blk,
+                spm.total_points                               AS pts,
+                spm.ace                                        AS ace,
+                spm.total_attack                               AS atk,
+                spm.attack_win                                AS kills,
+                ROUND(spm.attack_win::NUMERIC / NULLIF(spm.total_attack, 0) * 100, 1)         AS kill_pct,
+                ROUND(spm.def_pos::NUMERIC / NULLIF(spm.total_receive, 0) * 100, 1) AS recv_pct,
+                spm.total_block                                 AS blk,
 
                 CASE
                     WHEN (spm.team_id = m.home_team_id AND m.home_sets_won > m.away_sets_won)
@@ -223,24 +242,26 @@ router.get('/:id/matches', async (req, res) => {
             ${clause}
             ORDER BY COALESCE(m.played_at, m.scheduled_at) DESC
             LIMIT $${limitIdx}
-        `, [playerId, ...fp, parseInt(limit)]);
+        `,
+      [playerId, ...fp, parseInt(limit)],
+    );
 
-        res.json(rows);
-    } catch (err) {
-        console.error('[players] GET /:id/matches', err);
-        res.status(500).json({ error: 'Errore interno del server' });
-    }
+    res.json(rows);
+  } catch (err) {
+    console.error("[players] GET /:id/matches", err);
+    res.status(500).json({ error: "Errore interno del server" });
+  }
 });
-
 
 // ================================================================
 //  GET /api/players/:id/trophies
 // ================================================================
-router.get('/:id/trophies', async (req, res) => {
-    const playerId = req.params.id;
-    try {
-        // $1 e $2 sono entrambi playerId (due sotto-query separate nella UNION)
-        const rows = await q(`
+router.get("/:id/trophies", async (req, res) => {
+  const playerId = req.params.id;
+  try {
+    // $1 e $2 sono entrambi playerId (due sotto-query separate nella UNION)
+    const rows = await q(
+      `
             SELECT
                 'season'        AS competition_type,
                 s.id            AS competition_id,
@@ -299,14 +320,15 @@ router.get('/:id/trophies', async (req, res) => {
               )
 
             ORDER BY year DESC
-        `, [playerId, playerId]);
+        `,
+      [playerId, playerId],
+    );
 
-        res.json(rows);
-    } catch (err) {
-        console.error('[players] GET /:id/trophies', err);
-        res.status(500).json({ error: 'Errore interno del server' });
-    }
+    res.json(rows);
+  } catch (err) {
+    console.error("[players] GET /:id/trophies", err);
+    res.status(500).json({ error: "Errore interno del server" });
+  }
 });
-
 
 module.exports = router;

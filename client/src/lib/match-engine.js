@@ -213,11 +213,11 @@ export class Squad {
   }
 
   addStat(type) {
-    console.log(type);
+    //console.log(type);
     if (type in this.stats) {
       this.stats[type]++;
       console.log("aggiunto in squad");
-      console.log(this.stats);
+      //console.log(this.stats);
     }
   }
 
@@ -326,6 +326,8 @@ export class Sset {
   }
 
   recordPlayerStat(player, key) {
+    console.log(player.id);
+    console.log(key);
     if (!this.stats.players[player.id]) {
       this.stats.players[player.id] = Object.fromEntries(
         Object.values(STAT).map((k) => [k, 0]),
@@ -417,6 +419,14 @@ export class Match {
       team: player.team,
       type,
     });
+
+    //Match
+    this.addStatPlayer(player, STAT.TOUCHES);
+    this.addStatSquad(player, STAT.TOUCHES);
+
+    //Set
+    this.addStatSetPlayer(player, STAT.TOUCHES);
+    this.addStatSetSquad(player, STAT.TOUCHES);
   }
 
   /**
@@ -461,6 +471,16 @@ export class Match {
           type: "serve",
         },
       ];
+
+      /*
+      //Match
+      this.addStatPlayer(server, STAT.TOTAL_SERVES);
+      this.addStatSquad(server, STAT.TOTAL_SERVES);
+
+      //Set
+      this.addStatSetPlayer(server, STAT.TOTAL_SERVES);
+      this.addStatSetSquad(server, STAT.TOTAL_SERVES);
+      */
     }
   }
 
@@ -476,13 +496,32 @@ export class Match {
 
     const squadWhoWinPoint = isWin ? scoringSquad : otherSquad;
     // Aggiorna stat sul giocatore
-    player.addStat(statType);
-    player.addStat(STAT.POINTS_PLAYED);
-    this.currentSet.recordPlayerStat(player, statType);
+
+    console.log(player);
+    this.addStatPlayer(player, statType);
+    this.addStatSetPlayer(player, statType);
+
+    this.addStatPlayer(player, STAT.TOTAL_POINTS);
+    this.addStatSetPlayer(player, STAT.TOTAL_POINTS);
 
     const squad = player.team === "a" ? this.squadA : this.squadB;
-    this.currentSet.recordSquadStat(squad, statType);
-    this.currentSet.recordSquadStat(squad, STAT.POINTS_PLAYED);
+
+    this.addStatSquad(squad, statType);
+    this.addStatSetSquad(squad, statType);
+
+    if (statType === "LOST_BALL") {
+    }
+
+    //console.log(this.currentSelectedPlayers.length);
+    if (this.currentSelectedPlayers.length > 0 && !isAce) {
+      //Match
+      this.addStatPlayer(serverAtPointStart, STAT.SERVES);
+      this.addStatSetSquad(serverAtPointStart, STAT.SERVES);
+
+      //Set
+      this.addStatSetPlayer(serverAtPointStart, STAT.SERVES);
+      this.addStatSetSquad(serverAtPointStart, STAT.SERVES);
+    }
 
     if (isWin) {
       scoringSquad.score++;
@@ -506,8 +545,18 @@ export class Match {
       }
     }
 
+    this.squadA.players.forEach((p) => {
+      this.addStatPlayer(p, STAT.POINTS_PLAYED);
+      this.addStatSetPlayer(p, STAT.POINTS_PLAYED);
+    });
+
+    this.squadB.players.forEach((p) => {
+      this.addStatPlayer(p, STAT.POINTS_PLAYED);
+      this.addStatSetPlayer(p, STAT.POINTS_PLAYED);
+    });
+
     // Snapshot touchOfPlayers per il log, poi reset per il prossimo punto
-    console.log(this.currentSelectedPlayers);
+    //console.log(this.currentSelectedPlayers);
     const touchOfPlayers = [...this.currentSelectedPlayers];
     this.currentSelectedPlayers = [];
 
@@ -525,7 +574,7 @@ export class Match {
       touchOfPlayers,
     });
 
-    console.log(this.currentSet.events);
+    //console.log(this.currentSet.events);
 
     this._logEvent({
       type: "point",
@@ -680,7 +729,7 @@ export class Match {
     this.squadB.timeout = snap.timeoutB;
     this.currentSetNumber = snap.setNumber;
 
-    console.log(snap);
+    //console.log(snap);
 
     this.servingSquad = snap.servingSide === "a" ? this.squadA : this.squadB;
 
@@ -749,14 +798,19 @@ export class Match {
 
   //
   addStatSquad(player, type) {
-    console.log("addStatSquad");
+    //console.log("addStatSquad");
     const squad = player.team === "a" ? this.squadA : this.squadB;
-    console.log(player);
+    //console.log(player);
     squad.addStat(type);
   }
 
-  addStatSet(player, type) {
+  addStatSetPlayer(player, type) {
     this.currentSet?.recordPlayerStat(player, type);
+  }
+
+  addStatSetSquad(player, type) {
+    const squad = player.team === "a" ? this.squadA : this.squadB;
+    this.currentSet?.recordSquadStat(squad, type);
   }
 
   // ── Export per il DB ─────────────────────────────────────────────

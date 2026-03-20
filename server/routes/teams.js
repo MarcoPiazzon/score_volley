@@ -294,24 +294,24 @@ router.get("/:id/players/stats", async (req, res) => {
                 p.id, p.name, p.surname, p.shirt_number, p.role,
 
                 COUNT(DISTINCT spm.match_id)                        AS matches,
-                COALESCE(SUM(spm.points_scored), 0)                 AS pts,
-                COALESCE(SUM(spm.aces), 0)                          AS ace,
-                COALESCE(SUM(spm.attacks_total), 0)                 AS atk,
-                COALESCE(SUM(spm.attack_kills), 0)                  AS kills,
-                COALESCE(SUM(spm.block_kills), 0)                   AS blk,
-                COALESCE(SUM(spm.serves_total), 0)                  AS serve_total,
-                COALESCE(SUM(spm.serve_errors), 0)                  AS serve_errors,
-                COALESCE(SUM(spm.receptions_total), 0)              AS recv_total,
-                COALESCE(SUM(spm.reception_positive), 0)            AS recv_pos,
+                COALESCE(SUM(spm.total_points), 0)                 AS pts,
+                COALESCE(SUM(spm.ace), 0)                          AS ace,
+                COALESCE(SUM(spm.total_attack), 0)                 AS atk,
+                COALESCE(SUM(spm.attack_win), 0)                  AS kills,
+                COALESCE(SUM(spm.block_successful), 0)                   AS blk,
+                COALESCE(SUM(spm.total_serves), 0)                  AS serve_total,
+                COALESCE(SUM(spm.serves_err), 0)                  AS serve_errors,
+                COALESCE(SUM(spm.def_pos), 0)              AS recv_total,
+                COALESCE(SUM(spm.def_neg), 0)            AS recv_pos,
 
                 ROUND(
-                    SUM(spm.attack_kills)::NUMERIC /
-                    NULLIF(SUM(spm.attacks_total), 0) * 100, 1
+                    SUM(spm.attack_win)::NUMERIC /
+                    NULLIF(SUM(spm.total_attack), 0) * 100, 1
                 )                                                   AS kill_pct,
 
                 ROUND(
-                    SUM(spm.reception_positive)::NUMERIC /
-                    NULLIF(SUM(spm.receptions_total), 0) * 100, 1
+                    SUM(spm.def_pos)::NUMERIC /
+                    NULLIF(SUM(spm.total_receive), 0) * 100, 1
                 )                                                   AS recv_pct
 
             FROM  stats_player_match spm

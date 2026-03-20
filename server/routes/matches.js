@@ -365,7 +365,7 @@ router.get("/:id/stats", async (req, res) => {
             JOIN  players p ON p.id = spm.player_id
             JOIN  teams   t ON t.id = spm.team_id
             WHERE spm.match_id = $1
-            ORDER BY spm.team_id, spm.points_scored DESC
+            ORDER BY spm.team_id, spm.total_points DESC
         `,
       [matchId],
     );
@@ -404,6 +404,21 @@ router.get("/:id/stats", async (req, res) => {
 //  3. DELETE + INSERT stats_player_match  (UPSERT via ON CONFLICT)
 //  4. DELETE + INSERT stats_team_match    (UPSERT via ON CONFLICT)
 // ================================================================
+
+// Mappa statType (dall'engine) → event_type salvato nel DB
+const STAT_TYPE_TO_EVENT_TYPE = {
+  attackWin: "point",
+  ace: "ace",
+  servesErr: "serve_error",
+  attackOut: "out",
+  ball_lost: "lost_ball",
+  blockNotSuccessful: "blocked",
+  foul_double: "double",
+  foul_four_touches: "4touches",
+  foul_raised: "raised",
+  foul_position: "position",
+  foul_invasion: "invasion",
+};
 
 // Mappa chiave STAT (dal frontend JS) → colonna DB
 const STAT_TO_COL = {
@@ -639,14 +654,12 @@ router.post("/:id/save", async (req, res) => {
             `,
           [
             setId,
-            //e.touchOfPlayers ?? null, da capire come inserire il touchof player
-            null,
+            e.touchOfPlayers?.map((t) => t.playerId) ?? null,
             e.type ?? null,
-            //e.team ?? null, da convertire stringa in teamId
-            null,
+            e.team === "a" ? homeTeamId : e.team === "b" ? awayTeamId : null,
             e.serverPlayerId ?? null,
             e.squadWhoWinPoint ?? null,
-            null, // point_mode per ora null
+            null, //per ora di defauòt
             e.isAce,
             null,
             null,
@@ -668,11 +681,16 @@ router.post("/:id/save", async (req, res) => {
         if (!playerId) continue;
         const mapped = mapStats(stats ?? {}, STATS_PLAYER_COLS);
 
+        //console.log(playerId);
         const playerObj = players.find((p) => p.id === parseInt(playerId));
         const teamId = playerObj?.team === "a" ? homeTeamId : awayTeamId;
 
         // Accumula per stats_team_match
         if (teamStatsMap[teamId]) teamStatsMap[teamId].push(mapped);
+
+        //console.log(teamId);
+
+        //console.log(mapped);
 
         const cols = [
           "match_set_id",
@@ -686,8 +704,12 @@ router.post("/:id/save", async (req, res) => {
           teamId, // ← questo non ce l'hai più, vedi nota sotto
           ...STATS_PLAYER_COLS.map((c) => mapped[c] ?? 0),
         ];
+
+        //console.log(vals);
+
         const placeholders = vals.map((_, i) => `$${i + 1}`).join(", ");
 
+        //console.log(placeholders);
         await client.query(
           `INSERT INTO stats_player_set (${cols.join(", ")}) VALUES (${placeholders})
                  ON CONFLICT (match_set_id, player_id) DO UPDATE SET
@@ -836,9 +858,10 @@ router.post("/:id/save", async (req, res) => {
 // ─────────────────────────────────────────────────────────────────
 router.get("/:id/timeline", async (req, res) => {
   const { id } = req.params;
+  const client = await pool.connect();
   try {
     // 1. Carica tutti i set della partita
-    const setsResult = await db.query(
+    const setsResult = await client.query(
       `SELECT id, set_number, home_score, away_score, winner_team_id
        FROM match_sets
        WHERE match_id = $1
@@ -853,7 +876,7 @@ router.get("/:id/timeline", async (req, res) => {
     // 2. Per ogni set, carica i relativi eventi in ordine di inserimento
     const sets = await Promise.all(
       setsResult.rows.map(async (set) => {
-        const eventsResult = await db.query(
+        const eventsResult = await client.query(
           `SELECT
              id,
              event_type,

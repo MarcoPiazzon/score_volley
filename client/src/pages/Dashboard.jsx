@@ -157,6 +157,7 @@ export default function Dashboard() {
   });
 
   const handleOpenMatch = async (match) => {
+    console.log(match.status);
     if (match.status === 'scheduled') {
       // Avvia la partita → imposta in_progress + apri monitor
       try {
@@ -177,7 +178,9 @@ export default function Dashboard() {
     } else if (match.status === 'in_progress') {
       localStorage.setItem('openMatch', JSON.stringify(match));
       navigate(`/monitor/${match.id}`);
-    } else {
+    } else if(match.status === 'completed'){
+      navigate(`/timeline/${match.id}`);
+    }else{
       navigate(`/monitor/${match.id}`);
     }
   };
