@@ -754,14 +754,7 @@ if (type === 'LOST_BALL' && !servePhase) {
           </div>
         </div>
 
-        {/* Tasti destra */}
-        <div className="mon-topbar-right">
-          <button className={`mon-ctrl-sm ref-mode-btn ${refMode ? 'active-ref' : ''}`}
-                  onClick={toggleRefMode}
-                  title="Modalità arbitro">
-            ⚖ {refMode ? 'Esci' : 'Arbitro'}
-          </button>
-        </div>
+        <div className="mon-topbar-right" />
       </div>
 
       {/* Set label */}
@@ -1004,6 +997,13 @@ if (type === 'LOST_BALL' && !servePhase) {
           ))}
         </div>
       </div>
+
+      {/* Arbitro fixed button */}
+      <button className={`ref-fixed-btn ${refMode ? 'active-ref' : ''}`}
+              onClick={toggleRefMode}
+              title="Modalità arbitro">
+        ⚖ {refMode ? 'Esci' : 'Arbitro'}
+      </button>
 
       {/* Stats fixed button */}
       <button className="stats-fixed-btn" onClick={() => setStatsOpen(o => !o)}>

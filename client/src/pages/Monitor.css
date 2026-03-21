@@ -1141,6 +1141,28 @@
 }
 
 /* ── STATS FIXED BTN ── */
+.ref-fixed-btn {
+  position: fixed;
+  bottom: 14px;
+  left: 14px;
+  z-index: 499;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 8px 16px;
+  border-radius: 7px;
+  border: 1px solid var(--subtle);
+  background: var(--surf-2);
+  color: var(--fg);
+  cursor: pointer;
+  transition: all .15s;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .4);
+}
+.ref-fixed-btn:hover { background: var(--surf-3); border-color: var(--fg); }
+.ref-fixed-btn.active-ref { background: var(--amber-dim, #3a2e00); border-color: var(--amber, #f59e0b); color: var(--amber, #f59e0b); }
+
 .stats-fixed-btn {
   position: fixed;
   bottom: 14px;
