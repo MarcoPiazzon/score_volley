@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
 import { apiGet } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 
 const ROLE_MAP = {
   setter: 'Palleggiatore', outside_hitter: 'Schiacciatore', opposite: 'Opposto',
@@ -12,6 +13,7 @@ const ROLES = Object.entries(ROLE_MAP).map(([value, label]) => ({ value, label }
 
 export default function Players() {
   const navigate = useNavigate();
+  const { selectedTeam } = useAuth();
   const [players,    setPlayers]    = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState('');
@@ -19,13 +21,11 @@ export default function Players() {
   const [roleFilter, setRoleFilter] = useState('all');
 
   useEffect(() => {
+    if (!selectedTeam) return;
     async function load() {
       setLoading(true);
       try {
-        const teamsData = await apiGet('/teams/me');
-        const teamList  = Array.isArray(teamsData) ? teamsData : [teamsData].filter(Boolean);
-        if (teamList.length === 0) { setLoading(false); return; }
-        const data = await apiGet(`/teams/${teamList[0].id}/players/stats`);
+        const data = await apiGet(`/teams/${selectedTeam.id}/players/stats`);
         setPlayers(data ?? []);
       } catch (err) {
         setError(err.message);
@@ -34,7 +34,7 @@ export default function Players() {
       }
     }
     load();
-  }, []);
+  }, [selectedTeam]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();

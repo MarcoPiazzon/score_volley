@@ -28,7 +28,6 @@ function StatusBadge({ status }) {
 }
 
 function MatchCard({ match, onOpen }) {
-  const isHome = true; // nel contesto del coach, la squadra è sempre "casa" in vista
   return (
     <div
       onClick={() => onOpen(match)}
@@ -111,35 +110,40 @@ function StatCard({ label, value, sub, color = 'text-text' }) {
 
 // ── Main Component ────────────────────────────────────────────────
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, selectedTeam } = useAuth();
   const navigate = useNavigate();
 
-  const [matches, setMatches]   = useState([]);
-  const [stats,   setStats]     = useState(null);
-  const [teams,   setTeams]     = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [error,   setError]     = useState('');
-  const [filter,  setFilter]    = useState('all');  // all | scheduled | completed
+  const [matches,      setMatches]      = useState([]);
+  const [competitions, setCompetitions] = useState([]);
+  const [stats,        setStats]        = useState(null);
+  const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [compFilter,   setCompFilter]   = useState(null);  // null = tutte le competizioni
 
+  const teamId = selectedTeam?.id ?? null;
+
+  // Carica competizioni (una volta sola)
   useEffect(() => {
+    if (!teamId) return;
+    apiGet(`/teams/${teamId}/competitions`)
+      .then(data => setCompetitions(data ?? []))
+      .catch(() => {});
+  }, [teamId]);
+
+  // Carica partite e stats al cambio di filtro competizione
+  useEffect(() => {
+    if (!teamId) return;
     async function load() {
       setLoading(true);
       try {
-        // Team/s del coach
-        const teamsData = await apiGet('/teams/me');
-        const teamList  = Array.isArray(teamsData) ? teamsData : [teamsData].filter(Boolean);
-        setTeams(teamList);
-
-        if (teamList.length === 0) { setLoading(false); return; }
-
-        const primaryTeam = teamList[0];
-
-        // Partite del team principale
+        const qs = compFilter
+          ? `?competition_type=${compFilter.competition_type}&competition_id=${compFilter.competition_id}`
+          : '';
         const [matchesData, statsData] = await Promise.all([
-          apiGet(`/matches/team/${primaryTeam.id}`),
-          apiGet(`/teams/${primaryTeam.id}/stats`),
+          apiGet(`/matches/team/${teamId}${qs}`),
+          apiGet(`/teams/${teamId}/stats${qs}`),
         ]);
-
         setMatches(matchesData ?? []);
         setStats(statsData ?? null);
       } catch (err) {
@@ -149,12 +153,11 @@ export default function Dashboard() {
       }
     }
     load();
-  }, []);
+  }, [teamId, compFilter]);
 
-  const filteredMatches = matches.filter(m => {
-    if (filter === 'all') return true;
-    return m.status === filter;
-  });
+  const filteredMatches = matches.filter(m =>
+    statusFilter === 'all' || m.status === statusFilter
+  );
 
   const handleOpenMatch = async (match) => {
     console.log(match.status);
@@ -203,9 +206,7 @@ export default function Dashboard() {
             Ciao, {user?.name ?? user?.username} 👋
           </h2>
           <p className="text-muted text-sm mt-1">
-            {teams.length > 0
-              ? teams.map(t => t.name).join(' · ')
-              : 'Nessuna squadra associata'}
+            {selectedTeam?.name ?? 'Nessuna squadra associata'}
           </p>
         </div>
 
@@ -233,23 +234,56 @@ export default function Dashboard() {
 
         {/* Matches section */}
         <div>
-          <div className="flex items-center gap-3 mb-4">
-            <h3 className="font-condensed font-bold text-lg text-text">Partite</h3>
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <h3 className="font-condensed font-bold text-lg text-text mr-1">Partite</h3>
+
+            {/* Filtro competizione */}
+            {competitions.length > 0 && (
+              <div className="flex gap-1 flex-wrap">
+                <button
+                  onClick={() => setCompFilter(null)}
+                  className={`px-3 py-1 rounded-lg text-xs font-condensed font-semibold transition-all
+                    ${!compFilter
+                      ? 'bg-teamA/20 text-teamA border border-teamA/30'
+                      : 'text-muted hover:text-text hover:bg-surf2 border border-transparent'}`}
+                >
+                  Tutte
+                </button>
+                {competitions.map(c => {
+                  const key = `${c.competition_type}-${c.competition_id}`;
+                  const isActive = compFilter?.competition_type === c.competition_type
+                                && compFilter?.competition_id  === c.competition_id;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setCompFilter(c)}
+                      className={`px-3 py-1 rounded-lg text-xs font-condensed font-semibold transition-all
+                        ${isActive
+                          ? 'bg-teamA/20 text-teamA border border-teamA/30'
+                          : 'text-muted hover:text-text hover:bg-surf2 border border-transparent'}`}
+                    >
+                      {c.competition_name}{c.edition ? ` (${c.edition})` : ''}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Filtro stato */}
             <div className="flex gap-1 ml-auto">
               {[
-                { v: 'all', l: 'Tutte' },
-                { v: 'scheduled', l: 'Programmate' },
+                { v: 'all',         l: 'Tutte' },
+                { v: 'scheduled',   l: 'Programmate' },
                 { v: 'in_progress', l: 'In corso' },
-                { v: 'completed', l: 'Completate' },
+                { v: 'completed',   l: 'Completate' },
               ].map(({ v, l }) => (
                 <button
                   key={v}
-                  onClick={() => setFilter(v)}
+                  onClick={() => setStatusFilter(v)}
                   className={`px-3 py-1 rounded-lg text-xs font-condensed font-semibold transition-all
-                    ${filter === v
-                      ? 'bg-teamA/20 text-teamA border border-teamA/30'
-                      : 'text-muted hover:text-text hover:bg-surf2 border border-transparent'
-                    }`}
+                    ${statusFilter === v
+                      ? 'bg-surf2 text-text border border-white/15'
+                      : 'text-muted hover:text-text hover:bg-surf2 border border-transparent'}`}
                 >
                   {l}
                 </button>

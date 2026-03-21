@@ -345,32 +345,61 @@ router.post("/:id/lineup", async (req, res) => {
 router.get("/:id/stats", async (req, res) => {
   const matchId = req.params.id;
   try {
-    const teamStats = await q(
-      `
-            SELECT stm.*, t.name AS team_name, t.short_name
-            FROM   stats_team_match stm
-            JOIN   teams t ON t.id = stm.team_id
-            WHERE  stm.match_id = $1
-        `,
-      [matchId],
-    );
+    const [matchRow, teamMatch, playerMatch, teamSets, playerSets] =
+      await Promise.all([
+        q(`SELECT home_team_id, away_team_id FROM matches WHERE id = $1`, [
+          matchId,
+        ]),
 
-    const playerStats = await q(
-      `
-            SELECT
-                spm.*,
-                p.name, p.surname, p.shirt_number, p.role,
-                t.name AS team_name
-            FROM  stats_player_match spm
-            JOIN  players p ON p.id = spm.player_id
-            JOIN  teams   t ON t.id = spm.team_id
-            WHERE spm.match_id = $1
-            ORDER BY spm.team_id, spm.total_points DESC
-        `,
-      [matchId],
-    );
+        q(
+          `SELECT stm.*, t.name AS team_name, t.short_name
+         FROM   stats_team_match stm
+         JOIN   teams t ON t.id = stm.team_id
+         WHERE  stm.match_id = $1`,
+          [matchId],
+        ),
 
-    res.json({ teamStats, playerStats });
+        q(
+          `SELECT spm.*, p.name, p.surname, p.shirt_number, p.role, t.name AS team_name
+         FROM  stats_player_match spm
+         JOIN  players p ON p.id = spm.player_id
+         JOIN  teams   t ON t.id = spm.team_id
+         WHERE spm.match_id = $1
+         ORDER BY spm.team_id, spm.total_points DESC`,
+          [matchId],
+        ),
+
+        q(
+          `SELECT sts.*, ms.set_number, t.name AS team_name, t.short_name
+         FROM   stats_team_set sts
+         JOIN   match_sets ms ON ms.id = sts.match_set_id
+         JOIN   teams t ON t.id = sts.team_id
+         WHERE  ms.match_id = $1
+         ORDER BY ms.set_number`,
+          [matchId],
+        ),
+
+        q(
+          `SELECT sps.*, ms.set_number, p.name, p.surname, p.shirt_number, p.role, t.name AS team_name
+         FROM  stats_player_set sps
+         JOIN  match_sets ms ON ms.id = sps.match_set_id
+         JOIN  players p ON p.id = sps.player_id
+         JOIN  teams   t ON t.id = sps.team_id
+         WHERE ms.match_id = $1
+         ORDER BY ms.set_number, sps.team_id, sps.total_points DESC`,
+          [matchId],
+        ),
+      ]);
+
+    const match = matchRow[0] ?? {};
+    res.json({
+      homeTeamId: match.home_team_id,
+      awayTeamId: match.away_team_id,
+      teamMatch,
+      playerMatch,
+      teamSets,
+      playerSets,
+    });
   } catch (err) {
     console.error("[matches] GET /:id/stats", err);
     res.status(500).json({ error: "Errore interno del server" });
@@ -421,24 +450,21 @@ const STAT_TYPE_TO_EVENT_TYPE = {
 };
 
 // Mappa chiave STAT (dal frontend JS) → colonna DB
+// Solo le chiavi che NON corrispondono 1:1 al nome colonna DB
 const STAT_TO_COL = {
-  ace: "aces",
-  serves: "serve_positive",
-  servesErr: "serve_errors",
-  total_serves: "serves_total",
-  attackWin: "attack_kills",
-  attackOut: "attack_errors",
-  attackNotSuccessful: "attack_blocked",
-  totalAttack: "attacks_total",
-  blockSuccessful: "block_kills",
-  blockNotSuccessful: "block_errors",
-  totalBlock: "blocks_total",
-  defensePos: "reception_positive",
-  defenseNeg: "reception_negative",
-  totalRicezione: "receptions_total",
-  ball_lost: "dig_errors",
-  card_yellow: "cards_yellow",
-  card_red: "cards_red",
+  attackWin: "attack_win",
+  attackOut: "attack_out",
+  attackNotSuccessful: "attack_not_successful",
+  totalAttack: "total_attack",
+  servesErr: "serves_err",
+  serverErrLine: "serves_err_line",
+  totalRicezione: "total_receive",
+  defensePos: "def_pos",
+  defenseNeg: "def_neg",
+  blockSuccessful: "block_successful",
+  blockNotSuccessful: "block_not_successful",
+  totalBlock: "total_block",
+  totalCard: "total_card",
 };
 
 // Colonne DB con valore 0 di default (tutte le colonne numeriche delle tabelle stats)
@@ -524,17 +550,17 @@ const STATS_TEAM_COLS = [
 
 // Converte l'oggetto stats del frontend in un oggetto { col: valore }
 function mapStats(rawStats, stats_col) {
+  const colSet = new Set(stats_col);
   const out = {};
   stats_col.forEach((col) => (out[col] = 0));
 
   Object.entries(rawStats).forEach(([key, val]) => {
-    const col = STAT_TO_COL[key];
-    if (col && typeof val === "number") out[col] = val;
+    if (typeof val !== "number") return;
+    // Prova prima la mappatura esplicita, poi il nome diretto se corrisponde a una colonna DB
+    const col = STAT_TO_COL[key] ?? (colSet.has(key) ? key : null);
+    if (col && colSet.has(col)) out[col] = val;
   });
 
-  // points_scored = kill vincenti + ace + muri vincenti
-  out.points_scored =
-    (out.attack_kills ?? 0) + (out.aces ?? 0) + (out.block_kills ?? 0);
   return out;
 }
 
@@ -646,11 +672,15 @@ router.post("/:id/save", async (req, res) => {
 
       for (const e of s.events) {
         //console.log(e);
+        const courtPos = e.courtPositions
+          ? JSON.stringify(e.courtPositions)
+          : null;
+
         await client.query(
           `
                 INSERT INTO match_set_events
-                    (match_set_id, event_order, event_type, team_side, server_player_id, point_won_by_team, point_mode, is_ace, card_player_id, card_type, score_home, score_away)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                    (match_set_id, event_order, event_type, team_side, server_player_id, point_won_by_team, point_mode, is_ace, card_player_id, card_type, score_home, score_away, court_positions)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             `,
           [
             setId,
@@ -659,12 +689,13 @@ router.post("/:id/save", async (req, res) => {
             e.team === "a" ? homeTeamId : e.team === "b" ? awayTeamId : null,
             e.serverPlayerId ?? null,
             e.squadWhoWinPoint ?? null,
-            null, //per ora di defauòt
+            null,
             e.isAce,
             null,
             null,
             e.teamA.score ?? 0,
             e.teamB.score ?? 0,
+            courtPos,
           ],
         );
       }
@@ -890,6 +921,7 @@ router.get("/:id/timeline", async (req, res) => {
              score_home,
              score_away,
              event_order,
+             court_positions,
              created_at
            FROM match_set_events
            WHERE match_set_id = $1

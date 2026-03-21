@@ -1,8 +1,8 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 
-export default function ProtectedRoute({ children }) {
-  const { isAuthenticated, loading } = useAuth();
+export default function ProtectedRoute({ children, requireTeam = true }) {
+  const { isAuthenticated, loading, selectedTeam } = useAuth();
 
   if (loading) {
     return (
@@ -14,5 +14,8 @@ export default function ProtectedRoute({ children }) {
     );
   }
 
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (requireTeam && !selectedTeam) return <Navigate to="/select-team" replace />;
+
+  return children;
 }

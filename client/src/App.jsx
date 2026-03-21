@@ -8,6 +8,8 @@ import Monitor     from '@/pages/Monitor';
 import Timeline    from '@/pages/Timeline';
 import Players     from '@/pages/Players';
 import PlayerDetail from '@/pages/PlayerDetail';
+import Stats        from '@/pages/Stats';
+import TeamSelect   from '@/pages/TeamSelect';
 
 export default function App() {
   return (
@@ -31,6 +33,12 @@ export default function App() {
         } />
         <Route path="/players/:id" element={
           <ProtectedRoute><PlayerDetail /></ProtectedRoute>
+        } />
+        <Route path="/stats" element={
+          <ProtectedRoute><Stats /></ProtectedRoute>
+        } />
+        <Route path="/select-team" element={
+          <ProtectedRoute requireTeam={false}><TeamSelect /></ProtectedRoute>
         } />
 
         {/* Fallback */}

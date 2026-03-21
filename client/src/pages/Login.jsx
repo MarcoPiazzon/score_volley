@@ -12,7 +12,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
 
-  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
+  if (isAuthenticated) return <Navigate to="/select-team" replace />;
 
   const handleChange = e =>
     setForm(f => ({ ...f, [e.target.name]: e.target.value }));
@@ -28,7 +28,7 @@ export default function Login() {
     try {
       const data = await apiPost('/auth/login', form);
       login(data.token, data.user);
-      navigate('/dashboard', { replace: true });
+      navigate('/select-team', { replace: true });
     } catch (err) {
       setError(err.message ?? 'Errore durante il login');
     } finally {

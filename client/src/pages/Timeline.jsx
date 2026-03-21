@@ -140,7 +140,9 @@ export default function Timeline() {
   const totalSteps   = touchOrder.length;
   const activePlayerId = (touchStep !== null && touchStep < totalSteps) ? touchOrder[touchStep] : null;
   const serverPlayerId = currentEvent?.server_player_id ?? null;
-  const winSide        = currentEvent ? resolveTeamSide(currentEvent.point_won_by_team) : null;
+  const winSide        = currentEvent?.point_won_by_team != null
+    ? (currentEvent.point_won_by_team === matchData?.home_team_id ? 'a' : 'b')
+    : null;
 
   const homeStarters = useMemo(() =>
     lineup?.home?.starters ? [...lineup.home.starters].sort((a,b)=>(a.position_number??99)-(b.position_number??99)) : []
@@ -148,6 +150,20 @@ export default function Timeline() {
   const awayStarters = useMemo(() =>
     lineup?.away?.starters ? [...lineup.away.starters].sort((a,b)=>(a.position_number??99)-(b.position_number??99)) : []
   , [lineup]);
+
+  // Giocatori in campo per l'evento selezionato (posizioni dinamiche da court_positions)
+  // Fallback sulla formazione iniziale per compatibilità con partite senza dati posizione
+  const courtA = useMemo(() => {
+    const ids = currentEvent?.court_positions?.a;
+    if (ids?.length === 6) return ids.map(pid => playerMap.get(pid)).filter(Boolean);
+    return homeStarters;
+  }, [currentEvent, playerMap, homeStarters]);
+
+  const courtB = useMemo(() => {
+    const ids = currentEvent?.court_positions?.b;
+    if (ids?.length === 6) return ids.map(pid => playerMap.get(pid)).filter(Boolean);
+    return awayStarters;
+  }, [currentEvent, playerMap, awayStarters]);
   const availableSets = useMemo(() => sets.filter(s => s.winner_team_id !== null), [sets]);
 
   // ── Navigazione ─────────────────────────────────────────────────
@@ -157,6 +173,17 @@ export default function Timeline() {
   const handleEvtSelect = useCallback((idx) => {
     setSelEvtIdx(idx); setTouchStep(0); setPopupPlayer(null); setRightPanel('detail');
   }, []);
+
+  const totalEvents = currentSet?.events?.length ?? 0;
+  const prevEvent = useCallback(() => {
+    if (selEvtIdx === null || selEvtIdx <= 0) return;
+    handleEvtSelect(selEvtIdx - 1);
+  }, [selEvtIdx, handleEvtSelect]);
+  const nextEvent = useCallback(() => {
+    if (selEvtIdx === null || selEvtIdx >= totalEvents - 1) return;
+    handleEvtSelect(selEvtIdx + 1);
+  }, [selEvtIdx, totalEvents, handleEvtSelect]);
+
   const handleSetSelect = useCallback((idx) => {
     setSelSetIdx(idx);
     const evts = sets[idx]?.events ?? [];
@@ -208,50 +235,33 @@ export default function Timeline() {
       {/* TOP BAR */}
       <div className="tl-topbar">
         <button className="tl-back-btn" onClick={() => navigate('/dashboard')}>← Dashboard</button>
-        <div className="tl-scoreboard">
-          <div className="tl-team-block a" style={{padding:'0 12px'}}>
-            <span className="tl-team-name a">{homeShort}</span>
-            <div className="tl-set-pips">
-              {sets.map((s,i) => (
-                <div key={i} className={`tl-set-pip ${s.winner_team_id===matchData?.home_team_id?'won-a':''}`}>{s.home_score}</div>
-              ))}
-            </div>
-          </div>
-          <div className="tl-pts a">{matchData?.home_sets_won??0}</div>
-          <div className="tl-pts-div">:</div>
-          <div className="tl-pts b">{matchData?.away_sets_won??0}</div>
-          <div className="tl-team-block b" style={{padding:'0 12px'}}>
-            <span className="tl-team-name b">{awayShort}</span>
-            <div className="tl-set-pips">
-              {sets.map((s,i) => (
-                <div key={i} className={`tl-set-pip ${s.winner_team_id===matchData?.away_team_id?'won-b':''}`}>{s.away_score}</div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* SET BAR */}
-      <div className="tl-set-bar">
-        <span style={{fontSize:'10px',fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--subtle)',marginRight:4}}>Set</span>
-        {sets.map((s,i) => (
-          <button key={i} className={`tl-set-btn ${selSetIdx===i?'active':''}`} onClick={()=>handleSetSelect(i)}>
-            {s.set_number}
-          </button>
-        ))}
       </div>
 
       {/* MAIN */}
       <div className="tl-main">
 
-        {/* SX: lista eventi */}
+        {/* SX: set selector + lista eventi */}
+        <div className="tl-left-col">
+
+          {/* Set selector */}
+          <div className="tl-set-bar">
+            <span style={{fontSize:'9px',fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--subtle)'}}>Set</span>
+            {sets.map((s,i) => (
+              <button key={i} className={`tl-set-btn ${selSetIdx===i?'active':''}`} onClick={()=>handleSetSelect(i)}>
+                {s.set_number}
+              </button>
+            ))}
+          </div>
+
         <div className="tl-event-list">
           {(currentSet?.events??[]).length===0 && (
             <div style={{color:'var(--muted)',fontSize:'12px',padding:'12px 4px',textAlign:'center'}}>Nessun evento</div>
           )}
           {(currentSet?.events??[]).map((evt,i) => {
             const meta = getEventMeta(evt.event_type);
-            const side = resolveTeamSide(evt.point_won_by_team ?? evt.team_side);
+            const side = evt.point_won_by_team != null
+              ? (evt.point_won_by_team === matchData?.home_team_id ? 'a' : 'b')
+              : resolveTeamSide(evt.team_side);
             return (
               <div key={evt.id??i}
                    className={`tl-event-item ${selEvtIdx===i?'active':''}`}
@@ -263,9 +273,47 @@ export default function Timeline() {
             );
           })}
         </div>
+        </div>{/* /tl-left-col */}
 
         {/* CENTRO: campo + nav */}
         <div className="tl-court-area">
+
+          {/* Scoreboard — segue il punto selezionato */}
+          <div className="tl-scoreboard">
+            <div className="tl-team-block a" style={{padding:'0 16px'}}>
+              <span className="tl-team-name a">{homeShort}</span>
+              <div className="tl-set-pips">
+                {sets.map((s,i) => (
+                  <div key={i} className={`tl-set-pip ${s.winner_team_id===matchData?.home_team_id?'won-a':''}`}>{s.home_score}</div>
+                ))}
+              </div>
+            </div>
+            <div className="tl-pts a">{currentEvent?.score_home ?? 0}</div>
+            <div className="tl-pts-div">:</div>
+            <div className="tl-pts b">{currentEvent?.score_away ?? 0}</div>
+            <div className="tl-team-block b" style={{padding:'0 16px'}}>
+              <span className="tl-team-name b">{awayShort}</span>
+              <div className="tl-set-pips">
+                {sets.map((s,i) => (
+                  <div key={i} className={`tl-set-pip ${s.winner_team_id===matchData?.away_team_id?'won-b':''}`}>{s.away_score}</div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Contenuto centrato (navigazione + campo) */}
+          <div className="tl-court-content">
+
+          {/* Navigazione punti */}
+          {totalEvents > 0 && (
+            <div className="tl-nav-bar">
+              <button className="tl-nav-btn" onClick={prevEvent} disabled={!selEvtIdx || selEvtIdx<=0}>‹</button>
+              <div className="tl-nav-label" style={{fontSize:'11px'}}>
+                Punto {selEvtIdx !== null ? selEvtIdx + 1 : '—'} / {totalEvents}
+              </div>
+              <button className="tl-nav-btn" onClick={nextEvent} disabled={selEvtIdx===null||selEvtIdx>=totalEvents-1}>›</button>
+            </div>
+          )}
 
           {/* Barra navigazione tocchi */}
           {currentEvent && totalSteps > 0 && (
@@ -296,12 +344,13 @@ export default function Timeline() {
             <div className={`tl-court ${winSide?`win-${winSide}`:''}`}>
               <div className="tl-net" />
 
-              {homeStarters.map((p,idx) => {
+              {courtA.map((p,idx) => {
                 const pos = COURT_POS_A[idx+1]; if (!pos) return null;
-                const isActive = p.player_id === activePlayerId;
-                const isServer = p.player_id === serverPlayerId && touchStep === 0;
+                const pid = p.player_id ?? p.id;
+                const isActive = pid === activePlayerId;
+                const isServer = pid === serverPlayerId && touchStep === 0;
                 return (
-                  <div key={p.player_id}
+                  <div key={pid}
                        className={['tl-player a', p.is_libero?'libero':'', isActive?'active-touch':'', isServer?'server':''].join(' ')}
                        style={{left:`${pos[0]}%`,top:`${pos[1]}%`}}
                        onClick={()=>handlePlayerClick(p,'a')}
@@ -312,12 +361,13 @@ export default function Timeline() {
                 );
               })}
 
-              {awayStarters.map((p,idx) => {
+              {courtB.map((p,idx) => {
                 const pos = COURT_POS_B[idx+1]; if (!pos) return null;
-                const isActive = p.player_id === activePlayerId;
-                const isServer = p.player_id === serverPlayerId && touchStep === 0;
+                const pid = p.player_id ?? p.id;
+                const isActive = pid === activePlayerId;
+                const isServer = pid === serverPlayerId && touchStep === 0;
                 return (
-                  <div key={p.player_id}
+                  <div key={pid}
                        className={['tl-player b', p.is_libero?'libero':'', isActive?'active-touch':'', isServer?'server':''].join(' ')}
                        style={{left:`${pos[0]}%`,top:`${pos[1]}%`}}
                        onClick={()=>handlePlayerClick(p,'b')}
@@ -329,10 +379,11 @@ export default function Timeline() {
               })}
             </div>
           </div>
-        </div>
+          </div>{/* /tl-court-content */}
+        </div>{/* /tl-court-area */}
 
         {/* DX: dettaglio / stats */}
-        <div className="tl-detail">
+        <div className={`tl-detail${rightPanel === 'stats' ? ' wide' : ''}`}>
 
           {/* Toggle */}
           <div className="tl-detail-toggle">
@@ -346,7 +397,9 @@ export default function Timeline() {
               ? <div className="tl-detail-empty">Seleziona un evento</div>
               : (() => {
                   const meta   = getEventMeta(currentEvent.event_type);
-                  const side   = resolveTeamSide(currentEvent.point_won_by_team ?? currentEvent.team_side);
+                  const side   = currentEvent.point_won_by_team != null
+                    ? (currentEvent.point_won_by_team === matchData?.home_team_id ? 'a' : 'b')
+                    : resolveTeamSide(currentEvent.team_side);
                   const server = serverPlayerId ? playerMap.get(serverPlayerId) : null;
                   const touches = touchOrder.map(pid=>playerMap.get(pid)).filter(Boolean);
                   return (

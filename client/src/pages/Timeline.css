@@ -20,12 +20,13 @@
   align-items: center;
   background: var(--surf-1);
   border-bottom: 1px solid var(--border);
-  height: 52px;
+  height: 44px;
   flex-shrink: 0;
   padding: 0 16px;
   gap: 12px;
-  position: relative;
 }
+
+
 
 .tl-back-btn {
   font-family: 'Barlow Condensed', sans-serif;
@@ -49,16 +50,12 @@
 }
 
 .tl-scoreboard {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
   display: flex;
   align-items: center;
   background: var(--surf-2);
   border: 1px solid var(--border-m);
   border-radius: var(--r);
   overflow: hidden;
-  z-index: 2;
 }
 
 .tl-team-block {
@@ -74,7 +71,7 @@
 
 .tl-team-name {
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 800;
   letter-spacing: 1.5px;
   text-transform: uppercase;
@@ -90,12 +87,12 @@
 
 .tl-pts {
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 36px;
-  font-weight: 800;
-  width: 58px;
+  font-size: 56px;
+  font-weight: 900;
+  width: 72px;
   text-align: center;
   line-height: 1;
-  padding: 6px 0 4px;
+  padding: 8px 0 6px;
 }
 
 .tl-pts.a {
@@ -108,10 +105,10 @@
 
 .tl-pts-div {
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 24px;
+  font-size: 36px;
   font-weight: 300;
   color: var(--subtle);
-  padding: 0 2px;
+  padding: 0 4px;
 }
 
 .tl-set-pips {
@@ -146,13 +143,23 @@
   color: var(--b);
 }
 
+/* ── LEFT COLUMN (set selector + event list) ── */
+.tl-left-col {
+  width: 160px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 /* ── SET SELECTOR BAR ── */
 .tl-set-bar {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 16px;
-  background: var(--surf-1);
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 8px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
@@ -193,14 +200,13 @@
 
 /* ── LEFT: EVENT LIST ── */
 .tl-event-list {
-  width: 160px;
-  flex-shrink: 0;
-  border-right: 1px solid var(--border);
+  flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 2px;
   padding: 8px 6px;
+  min-height: 0;
 }
 
 .tl-event-item {
@@ -266,11 +272,22 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 16px;
-  gap: 12px;
+  justify-content: flex-start;
+  padding: 12px 16px 16px;
+  gap: 10px;
   min-width: 0;
   overflow: hidden;
+}
+
+.tl-court-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 0;
 }
 
 .tl-court-wrap {
@@ -458,6 +475,12 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  transition: width .2s ease;
+}
+
+.tl-detail.wide {
+  width: 620px;
+  padding: 16px 16px;
 }
 
 .tl-detail-empty {
@@ -904,7 +927,7 @@
 .tl-stats-panel {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   overflow-y: auto;
   flex: 1;
   min-height: 0;
@@ -984,8 +1007,8 @@
 
 .tl-stats-squad-bar {
   display: flex;
-  gap: 8px;
-  padding: 8px 0;
+  gap: 16px;
+  padding: 10px 0;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
@@ -999,12 +1022,12 @@
 
 .tl-ssb-val {
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
 .tl-ssb-lbl {
-  font-size: 8px;
+  font-size: 9px;
   color: var(--muted);
   letter-spacing: 1px;
   text-transform: uppercase;
@@ -1019,17 +1042,17 @@
 .tl-stats-tbl {
   width: 100%;
   border-collapse: collapse;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .tl-stats-tbl th {
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: .5px;
   color: var(--muted);
   text-transform: uppercase;
-  padding: 3px 4px;
+  padding: 5px 6px;
   text-align: center;
   border-bottom: 1px solid var(--border);
 }
@@ -1040,7 +1063,7 @@
 }
 
 .tl-stats-tbl td {
-  padding: 4px 4px;
+  padding: 6px 6px;
   border-bottom: 1px solid var(--border);
   text-align: center;
   color: var(--text);
@@ -1078,16 +1101,20 @@
 }
 
 .tl-stat-name {
-  font-size: 10px;
-  max-width: 70px;
+  font-size: 11px;
+  max-width: 90px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.tl-detail.wide .tl-stat-name {
+  max-width: 120px;
+}
+
 .tl-stat-val {
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
 }
 

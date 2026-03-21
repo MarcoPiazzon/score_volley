@@ -364,15 +364,6 @@ export default function Monitor() {
     if (m?.servingSquad?.players?.[0]) {
       setSelectedPlayer(m.servingSquad.players[0]);
     }
-
-    //Match
-    m.addStatPlayer(m.servingSquad.players[0], STAT.TOTAL_SERVES);
-    m.addStatSquad(m.servingSquad.players[0], STAT.TOTAL_SERVES);
-    
-    //Set
-    m.addStatSetPlayer(m.servingSquad.players[0], STAT.TOTAL_SERVES);
-    m.addStatSetSquad(m.servingSquad.players[0], STAT.TOTAL_SERVES);
-    
   }, []);
 
   // ── Toggle modalità arbitro ────────────────────────────────────

@@ -494,6 +494,12 @@ export class Match {
     // Salva il server attuale PRIMA di modificare lo stato (serve per il log)
     const serverAtPointStart = this.servingSquad?.servingPlayer ?? null;
 
+    // Posizioni in campo PRIMA di qualsiasi rotazione (= posizioni durante questo punto)
+    const courtPositions = {
+      a: this.squadA.players.map((p) => p.id),
+      b: this.squadB.players.map((p) => p.id),
+    };
+
     const squadWhoWinPoint = isWin ? scoringSquad : otherSquad;
     // Aggiorna stat sul giocatore
 
@@ -512,15 +518,24 @@ export class Match {
     if (statType === "LOST_BALL") {
     }
 
-    //console.log(this.currentSelectedPlayers.length);
-    if (this.currentSelectedPlayers.length > 0 && !isAce) {
-      //Match
-      this.addStatPlayer(serverAtPointStart, STAT.SERVES);
-      this.addStatSetSquad(serverAtPointStart, STAT.SERVES);
+    // Cattura i tocchi del punto PRIMA di qualsiasi rotazione/assignServe
+    const touchOfPlayers = [...this.currentSelectedPlayers];
+    this.currentSelectedPlayers = [];
 
-      //Set
-      this.addStatSetPlayer(serverAtPointStart, STAT.SERVES);
-      this.addStatSetSquad(serverAtPointStart, STAT.SERVES);
+    if (touchOfPlayers.length > 0) {
+      // TOTAL_SERVES: ogni punto è preceduto da una battuta
+      this.addStatPlayer(serverAtPointStart, STAT.TOTAL_SERVES);
+      this.addStatSquad(serverAtPointStart, STAT.TOTAL_SERVES);
+      this.addStatSetPlayer(serverAtPointStart, STAT.TOTAL_SERVES);
+      this.addStatSetSquad(serverAtPointStart, STAT.TOTAL_SERVES);
+
+      // SERVES: battuta non-errore e non-ace (l'ace aggiunge SERVES via ACTION_EXTRA in Monitor)
+      if (!isAce && statType !== STAT.SERVES_ERR) {
+        this.addStatPlayer(serverAtPointStart, STAT.SERVES);
+        this.addStatSquad(serverAtPointStart, STAT.SERVES);
+        this.addStatSetPlayer(serverAtPointStart, STAT.SERVES);
+        this.addStatSetSquad(serverAtPointStart, STAT.SERVES);
+      }
     }
 
     if (isWin) {
@@ -531,7 +546,6 @@ export class Match {
       if (this.servingSquad !== scoringSquad) {
         this.servingSquad = scoringSquad;
         scoringSquad.rotate();
-        this.assignServe();
       }
     } else {
       // Errore → punto avversario
@@ -541,9 +555,11 @@ export class Match {
       if (this.servingSquad !== otherSquad) {
         this.servingSquad = otherSquad;
         otherSquad.rotate();
-        this.assignServe();
       }
     }
+
+    // Pre-popola sempre il battitore del prossimo punto (con o senza rotazione)
+    this.assignServe();
 
     this.squadA.players.forEach((p) => {
       this.addStatPlayer(p, STAT.POINTS_PLAYED);
@@ -554,11 +570,6 @@ export class Match {
       this.addStatPlayer(p, STAT.POINTS_PLAYED);
       this.addStatSetPlayer(p, STAT.POINTS_PLAYED);
     });
-
-    // Snapshot touchOfPlayers per il log, poi reset per il prossimo punto
-    //console.log(this.currentSelectedPlayers);
-    const touchOfPlayers = [...this.currentSelectedPlayers];
-    this.currentSelectedPlayers = [];
 
     this._pushToEvents({
       type: "point",
@@ -572,6 +583,7 @@ export class Match {
       teamA: this.squadA.toJSON(),
       teamB: this.squadB.toJSON(),
       touchOfPlayers,
+      courtPositions,
     });
 
     //console.log(this.currentSet.events);
