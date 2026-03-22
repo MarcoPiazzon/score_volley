@@ -30,8 +30,9 @@ const EVENT_META = {
   raised:      { icon: '!', label: 'Alzata Irr.',    cls: 'foul'    },
   position:    { icon: '!', label: 'Pos. Errata',    cls: 'foul'    },
   invasion:    { icon: '!', label: 'Invasione',      cls: 'foul'    },
-  card:        { icon: '▪', label: 'Cartellino',     cls: 'card'    },
-  timeout:     { icon: '⏱', label: 'Timeout',        cls: 'timeout' },
+  card:         { icon: '▪', label: 'Cartellino',     cls: 'card'         },
+  timeout:      { icon: '⏱', label: 'Timeout',        cls: 'timeout'      },
+  substitution: { icon: '⇄', label: 'Sostituzione',   cls: 'substitution' },
 };
 
 function getEventMeta(type) {
@@ -105,6 +106,7 @@ export default function Timeline() {
   const [statsCat,   setStatsCat]   = useState('Generali');
   const [statsScope, setStatsScope] = useState('match'); // 'match' | set_number int
   const [statsView,  setStatsView]  = useState('players'); // 'players' | 'teams'
+  const [evtFilter,  setEvtFilter]  = useState('all'); // 'all' | 'point' | 'card' | 'timeout'
 
   // ── Caricamento ─────────────────────────────────────────────────
   useEffect(() => {
@@ -176,23 +178,37 @@ export default function Timeline() {
   }, [currentEvent, playerMap, awayStarters]);
   const availableSets = useMemo(() => sets.filter(s => s.winner_team_id !== null), [sets]);
 
+  // ── Filtro eventi ────────────────────────────────────────────────
+  const filteredEvents = useMemo(() => {
+    const evts = currentSet?.events ?? [];
+    return evts
+      .map((evt, i) => ({ evt, realIdx: i }))
+      .filter(({ evt }) => {
+        if (evtFilter === 'all') return true;
+        if (evtFilter === 'point') return evt.event_type !== 'card' && evt.event_type !== 'timeout' && evt.event_type !== 'substitution';
+        return evt.event_type === evtFilter;
+      });
+  }, [currentSet, evtFilter]);
+
   // ── Navigazione ─────────────────────────────────────────────────
   const prevTouch = useCallback(() => setTouchStep(s => Math.max(0, (s ?? 0) - 1)), []);
   const nextTouch = useCallback(() => setTouchStep(s => Math.min(totalSteps - 1, (s ?? 0) + 1)), [totalSteps]);
 
-  const handleEvtSelect = useCallback((idx) => {
-    setSelEvtIdx(idx); setTouchStep(0); setPopupPlayer(null); setRightPanel('detail');
+  const handleEvtSelect = useCallback((realIdx) => {
+    setSelEvtIdx(realIdx); setTouchStep(0); setPopupPlayer(null); setRightPanel('detail');
   }, []);
 
-  const totalEvents = currentSet?.events?.length ?? 0;
+  const filteredIdx   = filteredEvents.findIndex(({ realIdx }) => realIdx === selEvtIdx);
+  const totalFiltered = filteredEvents.length;
+
   const prevEvent = useCallback(() => {
-    if (selEvtIdx === null || selEvtIdx <= 0) return;
-    handleEvtSelect(selEvtIdx - 1);
-  }, [selEvtIdx, handleEvtSelect]);
+    if (filteredIdx <= 0) return;
+    handleEvtSelect(filteredEvents[filteredIdx - 1].realIdx);
+  }, [filteredIdx, filteredEvents, handleEvtSelect]);
   const nextEvent = useCallback(() => {
-    if (selEvtIdx === null || selEvtIdx >= totalEvents - 1) return;
-    handleEvtSelect(selEvtIdx + 1);
-  }, [selEvtIdx, totalEvents, handleEvtSelect]);
+    if (filteredIdx >= totalFiltered - 1) return;
+    handleEvtSelect(filteredEvents[filteredIdx + 1].realIdx);
+  }, [filteredIdx, filteredEvents, totalFiltered, handleEvtSelect]);
 
   const handleSetSelect = useCallback((idx) => {
     setSelSetIdx(idx);
@@ -200,6 +216,7 @@ export default function Timeline() {
     setSelEvtIdx(evts.length > 0 ? 0 : null);
     setTouchStep(evts.length > 0 ? 0 : null);
     setPopupPlayer(null);
+    setEvtFilter('all');
   }, [sets]);
 
   // ── Stats helpers ────────────────────────────────────────────────
@@ -263,21 +280,49 @@ export default function Timeline() {
             ))}
           </div>
 
+          {/* Filtro tipo evento */}
+          <div className="tl-evt-filter-bar">
+            {[
+              { key: 'all',          label: 'Tutti' },
+              { key: 'point',        label: '✦ Punti' },
+              { key: 'card',         label: '▪ Cartellini' },
+              { key: 'timeout',      label: '⏱ Timeout' },
+              { key: 'substitution', label: '⇄ Cambi' },
+            ].map(({ key, label }) => (
+              <button key={key}
+                      className={`tl-evt-filter-btn ${evtFilter === key ? 'active' : ''}`}
+                      onClick={() => {
+                        setEvtFilter(key);
+                        const first = (currentSet?.events ?? [])
+                          .findIndex(e => key === 'all' ? true
+                            : key === 'point' ? (e.event_type !== 'card' && e.event_type !== 'timeout' && e.event_type !== 'substitution')
+                            : e.event_type === key);
+                        setSelEvtIdx(first >= 0 ? first : null);
+                        setTouchStep(first >= 0 ? 0 : null);
+                      }}>
+                {label}
+              </button>
+            ))}
+          </div>
+
         <div className="tl-event-list">
-          {(currentSet?.events??[]).length===0 && (
+          {filteredEvents.length === 0 && (
             <div style={{color:'var(--muted)',fontSize:'12px',padding:'12px 4px',textAlign:'center'}}>Nessun evento</div>
           )}
-          {(currentSet?.events??[]).map((evt,i) => {
+          {filteredEvents.map(({ evt, realIdx }) => {
             const meta = getEventMeta(evt.event_type);
             const side = evt.point_won_by_team != null
               ? (evt.point_won_by_team === matchData?.home_team_id ? 'a' : 'b')
               : resolveTeamSide(evt.team_side);
+            const icon = evt.event_type === 'card'
+              ? (evt.card_type === 'red' ? '🟥' : '🟨')
+              : meta.icon;
             return (
-              <div key={evt.id??i}
-                   className={`tl-event-item ${selEvtIdx===i?'active':''}`}
-                   onClick={()=>handleEvtSelect(i)}>
-                <div className="tl-event-score">{evt.score_home??'?'}–{evt.score_away??'?'}</div>
-                <div className="tl-event-icon">{meta.icon}</div>
+              <div key={evt.id ?? realIdx}
+                   className={`tl-event-item ${selEvtIdx === realIdx ? 'active' : ''} ${meta.cls}`}
+                   onClick={() => handleEvtSelect(realIdx)}>
+                <div className="tl-event-score">{evt.score_home ?? '?'}–{evt.score_away ?? '?'}</div>
+                <div className="tl-event-icon">{icon}</div>
                 {side && <div className={`tl-event-dot ${side}`}/>}
               </div>
             );
@@ -314,14 +359,14 @@ export default function Timeline() {
           {/* Contenuto centrato (navigazione + campo) */}
           <div className="tl-court-content">
 
-          {/* Navigazione punti */}
-          {totalEvents > 0 && (
+          {/* Navigazione eventi */}
+          {totalFiltered > 0 && (
             <div className="tl-nav-bar">
-              <button className="tl-nav-btn" onClick={prevEvent} disabled={!selEvtIdx || selEvtIdx<=0}>‹</button>
+              <button className="tl-nav-btn" onClick={prevEvent} disabled={filteredIdx <= 0}>‹</button>
               <div className="tl-nav-label" style={{fontSize:'11px'}}>
-                Punto {selEvtIdx !== null ? selEvtIdx + 1 : '—'} / {totalEvents}
+                {filteredIdx >= 0 ? filteredIdx + 1 : '—'} / {totalFiltered}
               </div>
-              <button className="tl-nav-btn" onClick={nextEvent} disabled={selEvtIdx===null||selEvtIdx>=totalEvents-1}>›</button>
+              <button className="tl-nav-btn" onClick={nextEvent} disabled={filteredIdx < 0 || filteredIdx >= totalFiltered - 1}>›</button>
             </div>
           )}
 
@@ -482,6 +527,45 @@ export default function Timeline() {
                           </div>
                         </div>
                       )}
+
+                      {currentEvent.event_type === 'timeout' && (() => {
+                        const tSide = resolveTeamSide(currentEvent.team_side);
+                        const tName = tSide === 'a' ? (lineup?.home?.team_name ?? homeShort) : (lineup?.away?.team_name ?? awayShort);
+                        return (
+                          <div className="tl-detail-section">
+                            <div className="tl-detail-label">Timeout chiamato da</div>
+                            <div className="tl-detail-value" style={{color: tSide === 'a' ? 'var(--a)' : 'var(--b)'}}>
+                              {tName}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {currentEvent.event_type === 'substitution' && (() => {
+                        const cp = currentEvent.court_positions;
+                        const pOut = cp?.out != null ? playerMap.get(cp.out) : null;
+                        const pIn  = cp?.in  != null ? playerMap.get(cp.in)  : null;
+                        const subSide = resolveTeamSide(currentEvent.team_side);
+                        return (
+                          <div className="tl-detail-section">
+                            <div className="tl-detail-label">Sostituzione</div>
+                            <div className="tl-sub-row">
+                              <span className="tl-sub-tag out">OUT</span>
+                              {pOut
+                                ? <><div className={`tl-touch-num ${subSide}`}>{pOut.shirt_number}</div><span className="tl-touch-name">{pOut.surname ?? pOut.name ?? `#${cp.out}`}</span></>
+                                : <span className="tl-touch-name" style={{color:'var(--muted)'}}>—</span>
+                              }
+                            </div>
+                            <div className="tl-sub-row">
+                              <span className="tl-sub-tag in">IN</span>
+                              {pIn
+                                ? <><div className={`tl-touch-num ${subSide}`}>{pIn.shirt_number}</div><span className="tl-touch-name">{pIn.surname ?? pIn.name ?? `#${cp.in}`}</span></>
+                                : <span className="tl-touch-name" style={{color:'var(--muted)'}}>—</span>
+                              }
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </>
                   );
                 })()

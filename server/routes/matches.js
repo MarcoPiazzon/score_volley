@@ -674,7 +674,7 @@ router.post("/:id/save", async (req, res) => {
         //console.log(e);
         const courtPos = e.courtPositions
           ? JSON.stringify(e.courtPositions)
-          : null;
+          : (e.outId != null ? JSON.stringify({ out: e.outId, in: e.inId }) : null);
 
         await client.query(
           `

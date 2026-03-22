@@ -582,7 +582,7 @@ export class Match {
     const touchOfPlayers = [...this.currentSelectedPlayers];
     this.currentSelectedPlayers = [];
 
-    if (touchOfPlayers.length > 0) {
+    if (serverAtPointStart) {
       // TOTAL_SERVES: ogni punto è preceduto da una battuta
       this.addStatPlayer(serverAtPointStart, STAT.TOTAL_SERVES);
       this.addStatSquad(serverAtPointStart, STAT.TOTAL_SERVES);

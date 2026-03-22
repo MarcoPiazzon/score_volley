@@ -445,6 +445,7 @@ export default function Monitor() {
             const matchData = await apiGet(`/matches/${matchId}`);
             matchMeta.current = matchData;
             attachCallbacks(match);
+            match.assignServe();
             matchRef.current = match;
             autoSelectServer();
             rerender();
@@ -510,6 +511,14 @@ export default function Monitor() {
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchId]);
+
+  // ── Keepalive: ping ogni 2 minuti per evitare standby del server ─
+  useEffect(() => {
+    const id = setInterval(() => {
+      apiGet('/health').catch(() => {});
+    }, 2 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const match = matchRef.current;
 
