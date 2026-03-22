@@ -541,8 +541,10 @@ export default function Monitor() {
       flashMsg('Seleziona giocatore — cartellino rosso 🟥', '#f04e4e'); return;
     }
     if (type === 'UNDO') {
-      if (!m.undoLastPoint()) { flashMsg('Nulla da annullare', '#64748b'); return; }
-      flashMsg('↩ Punto annullato', '#f5c542');
+      const undone = m.undoLastEvent();
+      if (!undone) { flashMsg('Nulla da annullare', '#64748b'); return; }
+      const undoLabels = { point: '↩ Punto annullato', card: '↩ Cartellino annullato', timeout: '↩ Timeout annullato', substitution: '↩ Cambio annullato' };
+      flashMsg(undoLabels[undone] ?? '↩ Annullato', '#f5c542');
       autoSelectServer(); rerender(); return;
     }
     if (type === 'SWAP_SERVE') {

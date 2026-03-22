@@ -389,7 +389,6 @@ export class Match {
     this.tieBreakPoints = format.tieBreakPoints ?? 15;
     this.changeFieldDone = false;
 
-    this.history = [];
     this._snapshots = []; // per undo
 
     /**
@@ -486,8 +485,6 @@ export class Match {
 
   // ── Score a point ───────────────────────────────────────────────
   scorePoint(player, isWin, statType, isAce) {
-    this._snapshot();
-
     const scoringSquad = player.team === "a" ? this.squadA : this.squadB;
     const otherSquad = player.team === "a" ? this.squadB : this.squadA;
 
@@ -510,10 +507,8 @@ export class Match {
     this.addStatPlayer(player, STAT.TOTAL_POINTS);
     this.addStatSetPlayer(player, STAT.TOTAL_POINTS);
 
-    const squad = player.team === "a" ? this.squadA : this.squadB;
-
-    this.addStatSquad(squad, statType);
-    this.addStatSetSquad(squad, statType);
+    this.addStatSquad(player, statType);
+    this.addStatSetSquad(player, statType);
 
     if (statType === "LOST_BALL") {
     }
@@ -582,24 +577,12 @@ export class Match {
       isAce: isAce,
       teamA: this.squadA.toJSON(),
       teamB: this.squadB.toJSON(),
+      scoreA: this.currentSet?.scoreA ?? this.squadA.score,
+      scoreB: this.currentSet?.scoreB ?? this.squadB.score,
       touchOfPlayers,
       courtPositions,
     });
-
-    //console.log(this.currentSet.events);
-
-    this._logEvent({
-      type: "point",
-      playerId: player.id,
-      team: player.team,
-      isWin,
-      statType,
-      serverPlayerId: serverAtPointStart?.id ?? null,
-      serverTeam: serverAtPointStart?.team ?? null,
-      teamA: this.squadA.toJSON(),
-      teamB: this.squadB.toJSON(),
-      touchOfPlayers,
-    });
+    this._snapshot();
     this._checkSetEnd();
   }
 
@@ -626,12 +609,29 @@ export class Match {
       }
       this._checkSetEnd();
     }
-    this._logEvent({ type: "card", playerId: player.id, cardType: type });
+    this._pushToEvents({
+      type: "card",
+      playerId: player.id,
+      team: player.team,
+      cardType: type,
+      scoreA: this.currentSet?.scoreA ?? this.squadA.score,
+      scoreB: this.currentSet?.scoreB ?? this.squadB.score,
+    });
   }
 
   // ── Timeout ─────────────────────────────────────────────────────
   callTimeout(squad) {
-    return squad.takeTimeout();
+    const ok = squad.takeTimeout();
+    if (!ok) return false;
+    this._snapshot();
+    this._pushToEvents({
+      type: "timeout",
+      team: squad.side,
+      timeoutNum: squad.timeout,
+      scoreA: this.currentSet?.scoreA ?? this.squadA.score,
+      scoreB: this.currentSet?.scoreB ?? this.squadB.score,
+    });
+    return true;
   }
 
   // ── Substitute ──────────────────────────────────────────────────
@@ -640,21 +640,24 @@ export class Match {
     squad.substitute(outPlayer, inPlayer);
     outPlayer.addStat(STAT.TOTAL_CHANGE);
     inPlayer.addStat(STAT.TOTAL_CHANGE);
-    this._logEvent({
-      type: "sub",
+    this._pushToEvents({
+      type: "substitution",
       team: squad.side,
       outId: outPlayer.id,
       inId: inPlayer.id,
+      scoreA: this.currentSet?.scoreA ?? this.squadA.score,
+      scoreB: this.currentSet?.scoreB ?? this.squadB.score,
     });
   }
 
   // ── Undo ────────────────────────────────────────────────────────
-  undoLastPoint() {
-    if (this._snapshots.length < 2) return false;
+  undoLastEvent() {
+    const events = this.currentSet?.events ?? [];
+    if (events.length === 0 || this._snapshots.length < 2) return false;
     this._snapshots.pop();
     this._restoreSnapshot(this._snapshots[this._snapshots.length - 1]);
-    this.history.pop();
-    return true;
+    const removed = events.pop();
+    return removed?.type ?? true;
   }
 
   // ── Check set end ────────────────────────────────────────────────
@@ -724,6 +727,13 @@ export class Match {
       statsB: this.squadB.players.map((p) => ({ ...p.stats })),
       statsBA: this.squadA.bench.map((p) => ({ ...p.stats })),
       statsBB: this.squadB.bench.map((p) => ({ ...p.stats })),
+      squadStatsA: { ...this.squadA.stats },
+      squadStatsB: { ...this.squadB.stats },
+      setPlayerStats: Object.fromEntries(
+        Object.entries(this.currentSet?.stats?.players ?? {}).map(([id, s]) => [id, { ...s }])
+      ),
+      setSquadStatsA: { ...(this.currentSet?.stats?.squads?.a ?? {}) },
+      setSquadStatsB: { ...(this.currentSet?.stats?.squads?.b ?? {}) },
       setScoreA: this.currentSet?.scoreA ?? 0,
       setScoreB: this.currentSet?.scoreB ?? 0,
     };
@@ -787,16 +797,18 @@ export class Match {
     this.squadA.setServingPlayer();
     this.squadB.setServingPlayer();
 
+    this.squadA.stats = { ...snap.squadStatsA };
+    this.squadB.stats = { ...snap.squadStatsB };
+
     if (this.currentSet) {
       this.currentSet.scoreA = snap.setScoreA;
       this.currentSet.scoreB = snap.setScoreB;
+      this.currentSet.stats.players = Object.fromEntries(
+        Object.entries(snap.setPlayerStats).map(([id, s]) => [id, { ...s }])
+      );
+      this.currentSet.stats.squads.a = { ...snap.setSquadStatsA };
+      this.currentSet.stats.squads.b = { ...snap.setSquadStatsB };
     }
-  }
-
-  _logEvent(event) {
-    this.history.push({ ...event, timestamp: Date.now() });
-
-    //console.log(this.history);
   }
 
   _pushToEvents(event) {
