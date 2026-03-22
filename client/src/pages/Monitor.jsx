@@ -643,6 +643,57 @@ if (type === 'LOST_BALL' && !servePhase) {
   }
 }
 
+    // ── Scenario 2 muro (punto diretto): il muro rimanda la palla nel campo
+    // avversario senza che altri tocchi avvengano, e la squadra murante fa punto.
+    // L'utente preme POINT mentre il block handler è ancora selezionato.
+    if (
+      type === 'POINT' &&
+      m._blockHandler != null &&
+      m._blockHandler.id === selectedPlayer?.id &&
+      m._touchesAfterBlock === 1
+    ) {
+      m.addStatPlayer(m._blockHandler, STAT.BLOCK_SUCCESSFUL);
+      m.addStatSquad(m._blockHandler, STAT.BLOCK_SUCCESSFUL);
+      m.addStatSetPlayer(m._blockHandler, STAT.BLOCK_SUCCESSFUL);
+      m.addStatSetSquad(m._blockHandler, STAT.BLOCK_SUCCESSFUL);
+      m.addStatPlayer(m._blockHandler, STAT.TOTAL_BLOCK);
+      m.addStatSquad(m._blockHandler, STAT.TOTAL_BLOCK);
+      m.addStatSetPlayer(m._blockHandler, STAT.TOTAL_BLOCK);
+      m.addStatSetSquad(m._blockHandler, STAT.TOTAL_BLOCK);
+      if (m._blockAttacker) {
+        m.addStatPlayer(m._blockAttacker, STAT.ATTACK_NOT_SUCCESSFUL);
+        m.addStatSquad(m._blockAttacker, STAT.ATTACK_NOT_SUCCESSFUL);
+        m.addStatSetPlayer(m._blockAttacker, STAT.ATTACK_NOT_SUCCESSFUL);
+        m.addStatSetSquad(m._blockAttacker, STAT.ATTACK_NOT_SUCCESSFUL);
+        m.addStatPlayer(m._blockAttacker, STAT.TOTAL_ATTACK);
+        m.addStatSquad(m._blockAttacker, STAT.TOTAL_ATTACK);
+        m.addStatSetPlayer(m._blockAttacker, STAT.TOTAL_ATTACK);
+        m.addStatSetSquad(m._blockAttacker, STAT.TOTAL_ATTACK);
+      }
+      m.scorePoint(selectedPlayer, true, null, false);
+      flashMsg('▣ Muro vincente!', '#22d47a');
+      setServePhase(true);
+      autoSelectServer(); rerender(); return;
+    }
+
+    // ── Scenario 1 muro: il block handler raccoglie ma poi perde il pallone ──
+    // LOST_BALL premuto sul primo giocatore che ha toccato dopo il muro,
+    // senza che nessun compagno abbia toccato il pallone.
+    // Assegna: blockHandler → BLOCK_NOT_SUCCESSFUL + TOTAL_BLOCK
+    //          blockAttacker → ATTACK_WIN + TOTAL_ATTACK
+    // Nessuna BALL_LOST viene aggiunta; il punto va alla squadra dell'attaccante.
+    if (
+      type === 'LOST_BALL' &&
+      m._blockHandler != null &&
+      m._blockHandler.id === selectedPlayer?.id &&
+      m._touchesAfterBlock === 1
+    ) {
+      m.scoreBlockFail(selectedPlayer);
+      flashMsg('Muro fallito', '#f04e4e');
+      setServePhase(true);
+      autoSelectServer(); rerender(); return;
+    }
+
     // ── Scenario 1: difesa fallita dal primo ricevitore ───────────────
     // Il LOST_BALL è premuto sul giocatore che ha ricevuto per primo dopo un
     // cross non-battuta, senza che nessun compagno abbia toccato il pallone.
@@ -653,6 +704,7 @@ if (type === 'LOST_BALL' && !servePhase) {
     if (
       type === 'LOST_BALL' &&
       m._lastCrossReceiver != null &&
+      m._lastCrossAttacker != null &&
       m._lastCrossReceiver.id === selectedPlayer?.id &&
       m._touchesOnCurrentSide === 1
     ) {

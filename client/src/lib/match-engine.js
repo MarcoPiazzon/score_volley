@@ -452,9 +452,21 @@ export class Match {
     this._serveReceiveConsumed = false;
 
     /**
+     * Stato per il tracciamento del muro.
+     * _blockAttacker     : Player | null  — chi ha attaccato (il tocco prima di 'blocked')
+     * _blockHandler      : Player | null  — primo player della squadra murante che tocca dopo il blocco
+     * _touchesAfterBlock : number         — tocchi della squadra murante dall'ultimo 'blocked'
+     * _lastTouchUndo     : Function|null  — funzione che annulla le stat del pushTouch precedente
+     */
+    this._blockAttacker     = null;
+    this._blockHandler      = null;
+    this._touchesAfterBlock = 0;
+    this._lastTouchUndo     = null;
+
+    /**
      * currentSelectedPlayers — sequenza di tocchi del punto in corso.
      * Formato: [{ playerId, team, type }]
-     *   type: 'serve' | 'touch'
+     *   type: 'serve' | 'touch' | 'blocked'
      * Viene resettato a ogni nuovo punto, pre-popolato col battitore,
      * e salvato in history/currentSet.events come touchOfPlayers.
      */
@@ -470,122 +482,190 @@ export class Match {
    * Aggiunge un tocco all'array del punto in corso.
    * Chiamato da Monitor ogni volta che l'utente seleziona un giocatore.
    * @param {Player} player
-   * @param {string} [type='touch']
+   * @param {string} [type='touch']  — 'serve' | 'touch' | 'blocked'
    */
   pushTouch(player, type = "touch") {
     const touches = this.currentSelectedPlayers;
+    const ops = []; // accumula le stat applicate, per poterle annullare in _lastTouchUndo
 
-    // ── Rilevamento cross-net ────────────────────────────────────
-    // Quando il team del nuovo tocco differisce dall'ultimo tocco, il pallone
-    // ha attraversato la rete. Esclusi: il primo cross (battuta→ricezione) e i
-    // tocchi di tipo 'blocked' (il muro verrà gestito separatamente).
+    // Helper: applica stat su tutti e 4 i livelli e registra l'operazione per l'undo
+    const apply = (target, stat) => {
+      this.addStatPlayer(target, stat);
+      this.addStatSquad(target, stat);
+      this.addStatSetPlayer(target, stat);
+      this.addStatSetSquad(target, stat);
+      ops.push({ target, stat });
+    };
+
+    // Snapshot dello stato PRIMA delle modifiche — usato da _lastTouchUndo
+    const prevState = {
+      lastCrossAttacker:    this._lastCrossAttacker,
+      lastCrossReceiver:    this._lastCrossReceiver,
+      touchesOnCurrentSide: this._touchesOnCurrentSide,
+      serveReceiver:        this._serveReceiver,
+      serveReceiveConsumed: this._serveReceiveConsumed,
+      blockAttacker:        this._blockAttacker,
+      blockHandler:         this._blockHandler,
+      touchesAfterBlock:    this._touchesAfterBlock,
+    };
+
     if (touches.length > 0) {
       const prev = touches[touches.length - 1];
-      if (prev.team !== player.team) {
-        // È il cross della battuta se tutti i tocchi precedenti sono dello stesso
-        // team e il primo ha type 'serve'
+
+      if (type === "blocked") {
+        // ── MURO ────────────────────────────────────────────────────
+        // Il muro è eseguito dalla squadra opposta all'attaccante.
+        // Identifichiamo l'attaccante dal tocco precedente e resettiamo
+        // lo stato del muro (il block handler sarà il primo tocco successivo).
+        // Nessuna stat viene assegnata qui: le stat verranno decise nei casi
+        // successivi (scenario 1/2/3) a seconda di come va il punto.
+        this._blockAttacker     = this._findPlayerById(prev.playerId);
+        this._blockHandler      = null;
+        this._touchesAfterBlock = 0;
+        this._touchesOnCurrentSide = 1; // il muratore è il primo tocco su questo lato
+
+      } else if (this._blockAttacker != null) {
+        // ── BLOCK MODE: tocchi dopo il muro ─────────────────────────
+        if (prev.team !== player.team) {
+          // Cross-net in block mode (scenario 2): il pallone è tornato nel campo
+          // dell'attaccante senza che un secondo giocatore della squadra murante lo toccasse.
+          if (this._blockHandler != null) {
+            // Muro riuscito: assegna BLOCK_SUCCESSFUL all'handler e ATTACK_NOT_SUCCESSFUL all'attaccante
+            apply(this._blockHandler, STAT.BLOCK_SUCCESSFUL);
+            apply(this._blockHandler, STAT.TOTAL_BLOCK);
+            apply(this._blockAttacker, STAT.ATTACK_NOT_SUCCESSFUL);
+            apply(this._blockAttacker, STAT.TOTAL_ATTACK);
+            // DEF_POS per il primo ricevitore sull'altro lato
+            apply(player, STAT.DEF_POS);
+            apply(player, STAT.TOTAL_DEF);
+            // Imposta lo stato cross per il gioco successivo (nessun "attaccante" dal muro)
+            this._lastCrossAttacker    = null;
+            this._lastCrossReceiver    = player;
+            this._touchesOnCurrentSide = 1;
+          }
+          // Pulisci lo stato del muro
+          this._blockAttacker     = null;
+          this._blockHandler      = null;
+          this._touchesAfterBlock = 0;
+
+        } else {
+          // Stesso team in block mode
+          if (this._blockHandler == null) {
+            // Primo tocco dopo il muro → questo è il block handler (chi raccoglie il pallone)
+            this._blockHandler      = player;
+            this._touchesAfterBlock = 1;
+          } else {
+            // Secondo tocco stesso team (scenario 3): il muro è riuscito
+            apply(this._blockHandler, STAT.BLOCK_SUCCESSFUL);
+            apply(this._blockHandler, STAT.TOTAL_BLOCK);
+            apply(this._blockAttacker, STAT.ATTACK_NOT_SUCCESSFUL);
+            apply(this._blockAttacker, STAT.TOTAL_ATTACK);
+            // Pulisci lo stato del muro
+            this._blockAttacker     = null;
+            this._blockHandler      = null;
+            this._touchesAfterBlock = 0;
+          }
+          this._touchesOnCurrentSide++;
+        }
+
+      } else if (prev.team !== player.team) {
+        // ── Cross-net normale ────────────────────────────────────────
+        // Il cross della battuta (primo cross, da chi serve) non conta come attacco.
         const isServeCross =
           touches[0]?.type === "serve" &&
           touches.every((t) => t.team === prev.team);
 
         if (!isServeCross) {
-          // ── Cross non-battuta: attacco → difesa ─────────────────
-
-          // Se il cross avviene mentre il serve receiver non ha ancora avuto un
-          // compagno che tocca, il pallone è tornato dall'altra parte → receive_successful
+          // Se il serve receiver non ha ancora avuto un compagno e il pallone
+          // torna dall'altra parte direttamente → receive_successful
           if (this._serveReceiver != null && !this._serveReceiveConsumed) {
-            this.addStatPlayer(this._serveReceiver, STAT.RECEIVE_SUCCESSFUL);
-            this.addStatSquad(this._serveReceiver, STAT.RECEIVE_SUCCESSFUL);
-            this.addStatSetPlayer(this._serveReceiver, STAT.RECEIVE_SUCCESSFUL);
-            this.addStatSetSquad(this._serveReceiver, STAT.RECEIVE_SUCCESSFUL);
-            this.addStatPlayer(this._serveReceiver, STAT.TOTAL_RECEIVE);
-            this.addStatSquad(this._serveReceiver, STAT.TOTAL_RECEIVE);
-            this.addStatSetPlayer(this._serveReceiver, STAT.TOTAL_RECEIVE);
-            this.addStatSetSquad(this._serveReceiver, STAT.TOTAL_RECEIVE);
+            apply(this._serveReceiver, STAT.RECEIVE_SUCCESSFUL);
+            apply(this._serveReceiver, STAT.TOTAL_RECEIVE);
             this._serveReceiveConsumed = true;
           }
 
-          // Attacco: stat per chi ha mandato il pallone dall'altra parte
+          // ATTACK_SUCCESSFUL + TOTAL_ATTACK per chi ha mandato il pallone dall'altra parte
           const attacker = this._findPlayerById(prev.playerId);
           if (attacker) {
-            this.addStatPlayer(attacker, STAT.ATTACK_SUCCESSFUL);
-            this.addStatSquad(attacker, STAT.ATTACK_SUCCESSFUL);
-            this.addStatSetPlayer(attacker, STAT.ATTACK_SUCCESSFUL);
-            this.addStatSetSquad(attacker, STAT.ATTACK_SUCCESSFUL);
-
-            this.addStatPlayer(attacker, STAT.TOTAL_ATTACK);
-            this.addStatSquad(attacker, STAT.TOTAL_ATTACK);
-            this.addStatSetPlayer(attacker, STAT.TOTAL_ATTACK);
-            this.addStatSetSquad(attacker, STAT.TOTAL_ATTACK);
+            apply(attacker, STAT.ATTACK_SUCCESSFUL);
+            apply(attacker, STAT.TOTAL_ATTACK);
           }
 
-          // Difesa da attacco: DEF_POS + TOTAL_DEF per il primo player ricevente
-          this.addStatPlayer(player, STAT.DEF_POS);
-          this.addStatSquad(player, STAT.DEF_POS);
-          this.addStatSetPlayer(player, STAT.DEF_POS);
-          this.addStatSetSquad(player, STAT.DEF_POS);
-
-          this.addStatPlayer(player, STAT.TOTAL_DEF);
-          this.addStatSquad(player, STAT.TOTAL_DEF);
-          this.addStatSetPlayer(player, STAT.TOTAL_DEF);
-          this.addStatSetSquad(player, STAT.TOTAL_DEF);
+          // DEF_POS + TOTAL_DEF per il primo player ricevente
+          apply(player, STAT.DEF_POS);
+          apply(player, STAT.TOTAL_DEF);
 
           this._lastCrossAttacker    = attacker;
           this._lastCrossReceiver    = player;
           this._touchesOnCurrentSide = 1;
         } else {
-          // ── Cross battuta: serve → primo ricevitore ─────────────
+          // Cross battuta: registra il ricevitore
           this._lastCrossAttacker    = null;
           this._lastCrossReceiver    = null;
           this._touchesOnCurrentSide = 1;
-          // Registra il ricevitore per tracciare la ricezione da battuta
           this._serveReceiver        = player;
           this._serveReceiveConsumed = false;
         }
+
       } else {
         // ── Stesso team ─────────────────────────────────────────────
         // Se il serve receiver non ha ancora avuto un compagno e questo è il
-        // secondo tocco sul lato ricevente da parte di un ALTRO giocatore
-        // → receive_successful
+        // secondo tocco da parte di un ALTRO giocatore → receive_successful
         if (
           this._serveReceiver != null &&
           !this._serveReceiveConsumed &&
           this._touchesOnCurrentSide === 1 &&
           player.id !== this._serveReceiver.id
         ) {
-          this.addStatPlayer(this._serveReceiver, STAT.RECEIVE_SUCCESSFUL);
-          this.addStatSquad(this._serveReceiver, STAT.RECEIVE_SUCCESSFUL);
-          this.addStatSetPlayer(this._serveReceiver, STAT.RECEIVE_SUCCESSFUL);
-          this.addStatSetSquad(this._serveReceiver, STAT.RECEIVE_SUCCESSFUL);
-          this.addStatPlayer(this._serveReceiver, STAT.TOTAL_RECEIVE);
-          this.addStatSquad(this._serveReceiver, STAT.TOTAL_RECEIVE);
-          this.addStatSetPlayer(this._serveReceiver, STAT.TOTAL_RECEIVE);
-          this.addStatSetSquad(this._serveReceiver, STAT.TOTAL_RECEIVE);
+          apply(this._serveReceiver, STAT.RECEIVE_SUCCESSFUL);
+          apply(this._serveReceiver, STAT.TOTAL_RECEIVE);
           this._serveReceiveConsumed = true;
         }
         this._touchesOnCurrentSide++;
       }
     }
-    // ── Fine rilevamento ─────────────────────────────────────────
+    // ── TOUCHES (sempre) ─────────────────────────────────────────────
+    apply(player, STAT.TOUCHES);
 
+    // ── Registra la funzione di undo per removeLastTouch ─────────────
+    this._lastTouchUndo = () => {
+      // Annulla le stat in ordine inverso
+      for (let i = ops.length - 1; i >= 0; i--) {
+        const { target, stat } = ops[i];
+        this.subtractStatPlayer(target, stat);
+        this.subtractStatSquad(target, stat);
+        this.subtractStatSetPlayer(target, stat);
+        this.subtractStatSetSquad(target, stat);
+      }
+      // Ripristina lo stato
+      this._lastCrossAttacker    = prevState.lastCrossAttacker;
+      this._lastCrossReceiver    = prevState.lastCrossReceiver;
+      this._touchesOnCurrentSide = prevState.touchesOnCurrentSide;
+      this._serveReceiver        = prevState.serveReceiver;
+      this._serveReceiveConsumed = prevState.serveReceiveConsumed;
+      this._blockAttacker        = prevState.blockAttacker;
+      this._blockHandler         = prevState.blockHandler;
+      this._touchesAfterBlock    = prevState.touchesAfterBlock;
+    };
+
+    // ── Push touch ───────────────────────────────────────────────────
     this.currentSelectedPlayers.push({
       playerId: player.id,
       team: player.team,
       type,
     });
-
-    this.addStatPlayer(player, STAT.TOUCHES);
-    this.addStatSquad(player, STAT.TOUCHES);
-    this.addStatSetPlayer(player, STAT.TOUCHES);
-    this.addStatSetSquad(player, STAT.TOUCHES);
   }
 
   /**
-   * Rimuove un tocco all'array del punto in corso.
-   * Chiamato da Monitor ogni volta che l'utente seleziona un giocatore.
+   * Rimuove l'ultimo tocco dall'array del punto in corso e annulla
+   * le stat che pushTouch aveva applicato per quel tocco.
    */
   removeLastTouch() {
     this.currentSelectedPlayers.pop();
+    if (this._lastTouchUndo) {
+      this._lastTouchUndo();
+      this._lastTouchUndo = null;
+    }
   }
 
   // ── Init ────────────────────────────────────────────────────────
@@ -758,12 +838,16 @@ export class Match {
       this.addStatSetSquad(this._serveReceiver, STAT.TOTAL_RECEIVE);
     }
 
-    // Reset stato cross-net e ricezione: il punto è finito, il prossimo rally riparte da zero
+    // Reset stato cross-net, ricezione e muro: il punto è finito, il prossimo rally riparte da zero
     this._lastCrossAttacker    = null;
     this._lastCrossReceiver    = null;
     this._touchesOnCurrentSide = 0;
     this._serveReceiver        = null;
     this._serveReceiveConsumed = false;
+    this._blockAttacker        = null;
+    this._blockHandler         = null;
+    this._touchesAfterBlock    = 0;
+    this._lastTouchUndo        = null;
 
     // Cattura i tocchi del punto PRIMA di qualsiasi rotazione/assignServe
     const touchOfPlayers = [...this.currentSelectedPlayers];
@@ -1164,6 +1248,50 @@ export class Match {
     // Segna il punto per la squadra dell'attaccante.
     // statType = null → scorePoint non aggiunge nessuna stat extra.
     this.scorePoint(receiver, false, null, false);
+  }
+
+  /**
+   * Scenario 1 muro: il block handler raccoglie il pallone ma non riesce a
+   * tenerlo in gioco (LOST_BALL sul primo tocco dopo il muro).
+   *
+   * Assegnazioni:
+   *   _blockHandler  : BLOCK_NOT_SUCCESSFUL + TOTAL_BLOCK  (muro non vincente)
+   *   _blockAttacker : ATTACK_WIN + TOTAL_ATTACK           (kill: l'attacco ha prodotto il punto)
+   *
+   * Il punto va alla squadra dell'attaccante (_blockAttacker).
+   * statType = null → scorePoint non aggiunge nessuna stat extra.
+   */
+  scoreBlockFail(losingPlayer) {
+    const handler  = this._blockHandler;
+    const attacker = this._blockAttacker;
+
+    if (handler) {
+      this.addStatPlayer(handler, STAT.BLOCK_NOT_SUCCESSFUL);
+      this.addStatSquad(handler, STAT.BLOCK_NOT_SUCCESSFUL);
+      this.addStatSetPlayer(handler, STAT.BLOCK_NOT_SUCCESSFUL);
+      this.addStatSetSquad(handler, STAT.BLOCK_NOT_SUCCESSFUL);
+
+      this.addStatPlayer(handler, STAT.TOTAL_BLOCK);
+      this.addStatSquad(handler, STAT.TOTAL_BLOCK);
+      this.addStatSetPlayer(handler, STAT.TOTAL_BLOCK);
+      this.addStatSetSquad(handler, STAT.TOTAL_BLOCK);
+    }
+
+    if (attacker) {
+      this.addStatPlayer(attacker, STAT.ATTACK_WIN);
+      this.addStatSquad(attacker, STAT.ATTACK_WIN);
+      this.addStatSetPlayer(attacker, STAT.ATTACK_WIN);
+      this.addStatSetSquad(attacker, STAT.ATTACK_WIN);
+
+      this.addStatPlayer(attacker, STAT.TOTAL_ATTACK);
+      this.addStatSquad(attacker, STAT.TOTAL_ATTACK);
+      this.addStatSetPlayer(attacker, STAT.TOTAL_ATTACK);
+      this.addStatSetSquad(attacker, STAT.TOTAL_ATTACK);
+    }
+
+    // Segna il punto per la squadra dell'attaccante (losingPlayer perde il punto).
+    // statType = null → scorePoint non aggiunge nessuna stat extra.
+    this.scorePoint(losingPlayer, false, null, false);
   }
 
   // ── Serializzazione localStorage ─────────────────────────────────
