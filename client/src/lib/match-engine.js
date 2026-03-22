@@ -1364,7 +1364,10 @@ export class Match {
         libero: pd.libero,
       });
       p.onCourt = pd.onCourt;
-      p.stats = { ...pd.stats };
+      // Unisce i default del costruttore con i dati salvati:
+      // le chiavi aggiunte in versioni successive vengono inizializzate a 0
+      // invece di mancare del tutto (il che farebbe silently skip l'addStat).
+      p.stats = { ...p.stats, ...pd.stats };
       return p;
     };
 
@@ -1378,7 +1381,7 @@ export class Match {
       sq.score = sd.score;
       sq.setsWon = sd.setsWon;
       sq.timeout = sd.timeout;
-      sq.stats = { ...sd.stats };
+      sq.stats = { ...sq.stats, ...sd.stats };
       sq.players = sd.players.map(makePlayer);
       sq.bench = sd.bench.map(makePlayer);
       sq.setServingPlayer();
@@ -1397,8 +1400,9 @@ export class Match {
       s.startingLineup = sd.startingLineup ?? { a: [], b: [] };
       s.events = [...sd.events];
       s.stats.players = { ...sd.stats.players };
-      s.stats.squads.a = { ...sd.stats.squads.a };
-      s.stats.squads.b = { ...sd.stats.squads.b };
+      const emptySquad = s.emptySquadStats();
+      s.stats.squads.a = { ...emptySquad, ...(sd.stats.squads.a ?? {}) };
+      s.stats.squads.b = { ...emptySquad, ...(sd.stats.squads.b ?? {}) };
       return s;
     });
 
