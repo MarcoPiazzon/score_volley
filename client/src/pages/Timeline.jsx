@@ -52,7 +52,10 @@ const STAT_CATS = {
   Battuta:    ['ace', 'serves', 'serves_err', 'total_serves'],
   Muro:       ['block_successful', 'block_not_successful', 'total_block'],
   Falli:      ['foul_double', 'foul_four_touches', 'foul_raised', 'foul_position', 'foul_invasion', 'total_foul'],
-  Cartellini: ['card_yellow', 'card_red', 'total_card'],
+  Cartellini:    ['card_yellow', 'card_red', 'total_card'],
+  Timeout:       ['total_timeout'],
+  'Set Point':   ['total_set_points', 'set_points_win', 'set_points_err', 'set_points_cancelled'],
+  'Match Point': ['total_match_points', 'match_points_win', 'match_points_err', 'match_points_cancelled'],
 };
 const STAT_SHORT = {
   touches:'Tocc', points_played:'PP',
@@ -62,6 +65,9 @@ const STAT_SHORT = {
   foul_double:'Dop', foul_four_touches:'4T', foul_raised:'Alz',
   foul_position:'Pos', foul_invasion:'Inv', total_foul:'Tot',
   card_yellow:'Gial', card_red:'Ros', total_card:'Tot',
+  total_timeout:'T/O',
+  total_set_points:'Tot', set_points_win:'Vin', set_points_err:'Err', set_points_cancelled:'Ann',
+  total_match_points:'Tot', match_points_win:'Vin', match_points_err:'Err', match_points_cancelled:'Ann',
 };
 const STAT_FULL = {
   touches:'Tocchi', points_played:'Punti giocati',
@@ -72,6 +78,9 @@ const STAT_FULL = {
   foul_double:'Doppio fallo', foul_four_touches:'4 tocchi', foul_raised:'Alzata irr.',
   foul_position:'Fallo posizione', foul_invasion:'Invasione', total_foul:'Tot falli',
   card_yellow:'Cartellini gialli', card_red:'Cartellini rossi', total_card:'Tot cartellini',
+  total_timeout:'Timeout chiamati',
+  total_set_points:'Tot set point', set_points_win:'Set point vinti', set_points_err:'Set point errati', set_points_cancelled:'Set point annullati',
+  total_match_points:'Tot match point', match_points_win:'Match point vinti', match_points_err:'Match point errati', match_points_cancelled:'Match point annullati',
 };
 
 // ═════════════════════════════════════════════════════════════════

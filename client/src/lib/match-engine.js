@@ -483,6 +483,17 @@ export class Match {
     }
   }
 
+  // ── Set/Match ball check ─────────────────────────────────────────
+  _isSetBall(squadScore, opponentScore) {
+    const isTieBreak = this.currentSetNumber === this.maxSet;
+    const target = isTieBreak ? this.tieBreakPoints : this.setPoints;
+    return squadScore >= target - 1 && squadScore - opponentScore >= 1;
+  }
+
+  _isMatchBall(squadScore, opponentScore, setsWon) {
+    return setsWon === this.setsToWin - 1 && this._isSetBall(squadScore, opponentScore);
+  }
+
   // ── Score a point ───────────────────────────────────────────────
   scorePoint(player, isWin, statType, isAce) {
     const scoringSquad = player.team === "a" ? this.squadA : this.squadB;
@@ -490,6 +501,17 @@ export class Match {
 
     // Salva il server attuale PRIMA di modificare lo stato (serve per il log)
     const serverAtPointStart = this.servingSquad?.servingPlayer ?? null;
+
+    // Punteggi e set vinti PRIMA dell'aggiornamento — per calcolare set/match ball
+    const preScoreScoring  = scoringSquad === this.squadA ? (this.currentSet?.scoreA ?? this.squadA.score) : (this.currentSet?.scoreB ?? this.squadB.score);
+    const preScoreOther    = otherSquad   === this.squadA ? (this.currentSet?.scoreA ?? this.squadA.score) : (this.currentSet?.scoreB ?? this.squadB.score);
+    const preSetsWonScoring = scoringSquad.setsWon;
+    const preSetsWonOther   = otherSquad.setsWon;
+
+    const setballScoring = this._isSetBall(preScoreScoring, preScoreOther);
+    const setballOther   = this._isSetBall(preScoreOther,   preScoreScoring);
+    const matchballScoring = this._isMatchBall(preScoreScoring, preScoreOther, preSetsWonScoring);
+    const matchballOther   = this._isMatchBall(preScoreOther,   preScoreScoring, preSetsWonOther);
 
     // Posizioni in campo PRIMA di qualsiasi rotazione (= posizioni durante questo punto)
     const courtPositions = {
@@ -509,6 +531,49 @@ export class Match {
 
     this.addStatSquad(player, statType);
     this.addStatSetSquad(player, statType);
+
+    // ── Set point stats ──────────────────────────────────────────
+    if (setballScoring || setballOther) {
+      this.addStatPlayer(player, STAT.TOTAL_SET_POINTS);
+      this.addStatSetPlayer(player, STAT.TOTAL_SET_POINTS);
+      this.addStatSquad(player, STAT.TOTAL_SET_POINTS);
+      this.addStatSetSquad(player, STAT.TOTAL_SET_POINTS);
+
+      if (setballScoring) {
+        const spStat = isWin ? STAT.SET_POINTS_WIN : STAT.SET_POINTS_ERR;
+        this.addStatPlayer(player, spStat);
+        this.addStatSetPlayer(player, spStat);
+        this.addStatSquad(player, spStat);
+        this.addStatSetSquad(player, spStat);
+      } else {
+        // avversario era in set ball, il player ha vinto il punto → annullato
+        this.addStatPlayer(player, STAT.SET_POINTS_CANCELLED);
+        this.addStatSetPlayer(player, STAT.SET_POINTS_CANCELLED);
+        this.addStatSquad(player, STAT.SET_POINTS_CANCELLED);
+        this.addStatSetSquad(player, STAT.SET_POINTS_CANCELLED);
+      }
+    }
+
+    // ── Match point stats ────────────────────────────────────────
+    if (matchballScoring || matchballOther) {
+      this.addStatPlayer(player, STAT.TOTAL_MATCH_POINTS);
+      this.addStatSetPlayer(player, STAT.TOTAL_MATCH_POINTS);
+      this.addStatSquad(player, STAT.TOTAL_MATCH_POINTS);
+      this.addStatSetSquad(player, STAT.TOTAL_MATCH_POINTS);
+
+      if (matchballScoring) {
+        const mpStat = isWin ? STAT.MATCH_POINTS_WIN : STAT.MATCH_POINTS_ERR;
+        this.addStatPlayer(player, mpStat);
+        this.addStatSetPlayer(player, mpStat);
+        this.addStatSquad(player, mpStat);
+        this.addStatSetSquad(player, mpStat);
+      } else {
+        this.addStatPlayer(player, STAT.MATCH_POINTS_CANCELLED);
+        this.addStatSetPlayer(player, STAT.MATCH_POINTS_CANCELLED);
+        this.addStatSquad(player, STAT.MATCH_POINTS_CANCELLED);
+        this.addStatSetSquad(player, STAT.MATCH_POINTS_CANCELLED);
+      }
+    }
 
     if (statType === "LOST_BALL") {
     }
@@ -624,6 +689,8 @@ export class Match {
     const ok = squad.takeTimeout();
     if (!ok) return false;
     this._snapshot();
+    squad.addStat(STAT.TOTAL_TIMEOUT);
+    this.currentSet?.recordSquadStat(squad, STAT.TOTAL_TIMEOUT);
     this._pushToEvents({
       type: "timeout",
       team: squad.side,
