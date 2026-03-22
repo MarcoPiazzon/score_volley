@@ -328,6 +328,7 @@ export default function Monitor() {
   const [statsOpen,    setStatsOpen]    = useState(false);
   const [statsCat,     setStatsCat]     = useState('Generali');
   const [statsSet,     setStatsSet]     = useState('match');
+  const [statsView,    setStatsView]    = useState('players'); // 'players' | 'teams'
 
   const [tiebreakSwapped, setTiebreakSwapped] = useState(false);
 
@@ -1024,82 +1025,120 @@ if (type === 'LOST_BALL' && !servePhase) {
           <button className="sp-close" onClick={() => setStatsOpen(false)}>✕</button>
         </div>
 
-        <div className="sp-tabs">
-          <button className={`sp-tab ${statsSet === 'match' ? 'active' : ''}`}
-                  onClick={() => setStatsSet('match')}>Match</button>
-          {match.sets.slice(0, match.currentSetNumber - 1).map((_, i) => (
-            <button key={i} className={`sp-tab ${statsSet === i ? 'active' : ''}`}
-                    onClick={() => setStatsSet(i)}>Set {i+1}</button>
-          ))}
-          <button className={`sp-tab ${statsSet === 'current' ? 'active' : ''}`}
-                  onClick={() => setStatsSet('current')}>
-            Set {match.currentSetNumber} (live)
-          </button>
+        {/* Riga controlli: set tabs + view toggle */}
+        <div className="sp-controls-row">
+          <div className="sp-tabs">
+            <button className={`sp-tab ${statsSet === 'match' ? 'active' : ''}`}
+                    onClick={() => setStatsSet('match')}>Match</button>
+            {match.sets.slice(0, match.currentSetNumber - 1).map((_, i) => (
+              <button key={i} className={`sp-tab ${statsSet === i ? 'active' : ''}`}
+                      onClick={() => setStatsSet(i)}>Set {i+1}</button>
+            ))}
+            <button className={`sp-tab ${statsSet === 'current' ? 'active' : ''}`}
+                    onClick={() => setStatsSet('current')}>
+              Set {match.currentSetNumber} ▸
+            </button>
+          </div>
+          <div className="sp-view-toggle">
+            <button className={`sp-view-btn ${statsView === 'players' ? 'active' : ''}`}
+                    onClick={() => setStatsView('players')}>Giocatori</button>
+            <button className={`sp-view-btn ${statsView === 'teams' ? 'active' : ''}`}
+                    onClick={() => setStatsView('teams')}>Squadre</button>
+          </div>
         </div>
 
         <div className="sp-body">
-          <div className="stats-two-col">
-            {[squadA, squadB].map(squad => {
-              const allPlayers = [...squad.players, ...squad.bench];
-              const keys = STAT_CATS[statsCat] ?? [];
-              const getStats = (player) => {
-                if (statsSet === 'match') return player.stats;
-                const idx = statsSet === 'current' ? match.currentSetNumber - 1 : statsSet;
-                return match.sets[idx]?.stats?.players?.[player.id] ?? player.stats;
-              };
-              const squadTotal = (key) => allPlayers.reduce((s, p) => s + (p.stats[key] ?? 0), 0);
-              return (
-                <div key={squad.side}>
-                  <div className="stats-col-title" style={{ color:`var(--${squad.side})` }}>{squad.name}</div>
-                  <div className="stats-col-meta">
-                    Set vinti: <b>{squad.setsWon}</b> · Punteggio: <b>{squad.score}</b> · Timeout: <b>{squad.timeout}/2</b>
+
+          {/* ── VISTA GIOCATORI ── */}
+          {statsView === 'players' && (
+            <div className="stats-two-col">
+              {[squadA, squadB].map(squad => {
+                const allPlayers = [...squad.players, ...squad.bench];
+                const keys = STAT_CATS[statsCat] ?? [];
+                const getStats = (player) => {
+                  if (statsSet === 'match') return player.stats;
+                  const idx = statsSet === 'current' ? match.currentSetNumber - 1 : statsSet;
+                  return match.sets[idx]?.stats?.players?.[player.id] ?? {};
+                };
+                return (
+                  <div key={squad.side}>
+                    <div className="stats-col-title" style={{ color:`var(--${squad.side})` }}>{squad.name}</div>
+                    <div className="stats-col-meta">
+                      Set vinti: <b>{squad.setsWon}</b> · Punteggio: <b>{squad.score}</b> · Timeout: <b>{squad.timeout}/2</b>
+                    </div>
+                    <table className="stats-tbl">
+                      <thead>
+                        <tr>
+                          <th>#</th><th>Giocatore</th>
+                          {keys.map(k => <th key={k} title={STAT_FULL[k]}>{STAT_SHORT[k]}</th>)}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allPlayers.map(p => {
+                          const ps = getStats(p);
+                          return (
+                            <tr key={p.id} className={p.onCourt ? '' : 'bench-row'}>
+                              <td><span className={`stat-num ${squad.side}`}>{p.shirtNumber}</span></td>
+                              <td className="stat-name">
+                                {p.displayName}{p.libero && <span className="lib-badge">L</span>}
+                              </td>
+                              {keys.map(k => {
+                                const v = ps?.[k] ?? 0;
+                                return <td key={k} className={`stat-val ${v > 0 ? 'nz' : ''}`}>{v}</td>;
+                              })}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
-                  <div className="stats-squad-bar">
-                    {[
-                      { key: STAT.ATTACK_WIN,       lbl:'Att',  color:'var(--green)' },
-                      { key: STAT.ACE,              lbl:'Ace',  color:'var(--green)' },
-                      { key: STAT.BLOCK_SUCCESSFUL, lbl:'Muro', color:'var(--green)' },
-                      { key: STAT.TOTAL_FOUL,       lbl:'Falli',color:'var(--red)'   },
-                      { key: STAT.TOTAL_CARD,       lbl:'Card', color:'var(--amber)' },
-                    ].map((item, i, arr) => (
-                      <div key={item.key} style={{ display:'flex', alignItems:'center', gap:'16px' }}>
-                        <div className="ssb-item">
-                          <div className="ssb-val" style={{ color:item.color }}>{squadTotal(item.key)}</div>
-                          <div className="ssb-lbl">{item.lbl}</div>
-                        </div>
-                        {i < arr.length - 1 && <div className="ssb-sep" />}
-                      </div>
-                    ))}
-                  </div>
-                  <table className="stats-tbl">
-                    <thead>
-                      <tr>
-                        <th>#</th><th>Giocatore</th>
-                        {keys.map(k => <th key={k} title={STAT_FULL[k]}>{STAT_SHORT[k]}</th>)}
+                );
+              })}
+            </div>
+          )}
+
+          {/* ── VISTA SQUADRE ── */}
+          {statsView === 'teams' && (() => {
+            const getSquadStats = (squad) => {
+              if (statsSet === 'match') return squad.stats;
+              const idx = statsSet === 'current' ? match.currentSetNumber - 1 : statsSet;
+              return match.sets[idx]?.stats?.squads?.[squad.side] ?? squad.stats;
+            };
+            const sA = getSquadStats(squadA);
+            const sB = getSquadStats(squadB);
+            return (
+              <table className="stats-tbl teams-tbl">
+                <thead>
+                  <tr>
+                    <th>Statistica</th>
+                    <th style={{color:'var(--a)'}}>{squadA.shortName}</th>
+                    <th style={{color:'var(--b)'}}>{squadB.shortName}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(STAT_CATS).map(([cat, keys]) => (
+                    <>
+                      <tr key={`cat-${cat}`} className="teams-tbl-cat-row">
+                        <td colSpan={3}>{cat}</td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {allPlayers.map(p => {
-                        const ps = getStats(p);
+                      {keys.map(k => {
+                        const vA = sA?.[k] ?? 0;
+                        const vB = sB?.[k] ?? 0;
                         return (
-                          <tr key={p.id} className={p.onCourt ? '' : 'bench-row'}>
-                            <td><span className={`stat-num ${squad.side}`}>{p.shirtNumber}</span></td>
-                            <td className="stat-name">
-                              {p.displayName}{p.libero && <span className="lib-badge">L</span>}
-                            </td>
-                            {keys.map(k => {
-                              const v = ps?.[k] ?? 0;
-                              return <td key={k} className={`stat-val ${v > 0 ? 'nz' : ''}`}>{v}</td>;
-                            })}
+                          <tr key={k}>
+                            <td className="stat-name">{STAT_FULL[k]}</td>
+                            <td className={`stat-val ${vA > 0 ? 'nz' : ''} ${vA > vB ? 'best' : ''}`}>{vA}</td>
+                            <td className={`stat-val ${vB > 0 ? 'nz' : ''} ${vB > vA ? 'best' : ''}`}>{vB}</td>
                           </tr>
                         );
                       })}
-                    </tbody>
-                  </table>
-                </div>
-              );
-            })}
-          </div>
+                    </>
+                  ))}
+                </tbody>
+              </table>
+            );
+          })()}
+
         </div>
       </div>
     </div>

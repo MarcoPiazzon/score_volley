@@ -95,6 +95,7 @@ export default function Timeline() {
   const [rightPanel, setRightPanel] = useState('detail');
   const [statsCat,   setStatsCat]   = useState('Generali');
   const [statsScope, setStatsScope] = useState('match'); // 'match' | set_number int
+  const [statsView,  setStatsView]  = useState('players'); // 'players' | 'teams'
 
   // ── Caricamento ─────────────────────────────────────────────────
   useEffect(() => {
@@ -481,100 +482,126 @@ export default function Timeline() {
           {rightPanel==='stats' && (
             <div className="tl-stats-panel">
 
-              {/* Tab match/set */}
-              <div className="tl-stats-tabs">
-                <button className={`tl-stats-tab ${statsScope==='match'?'active':''}`} onClick={()=>setStatsScope('match')}>Match</button>
-                {availableSets.map(s => (
-                  <button key={s.set_number}
-                          className={`tl-stats-tab ${statsScope===s.set_number?'active':''}`}
-                          onClick={()=>setStatsScope(s.set_number)}>
-                    Set {s.set_number}
-                  </button>
-                ))}
+              {/* Riga controlli: set tabs + view toggle */}
+              <div className="tl-stats-controls-row">
+                <div className="tl-stats-tabs">
+                  <button className={`tl-stats-tab ${statsScope==='match'?'active':''}`} onClick={()=>setStatsScope('match')}>Match</button>
+                  {availableSets.map(s => (
+                    <button key={s.set_number}
+                            className={`tl-stats-tab ${statsScope===s.set_number?'active':''}`}
+                            onClick={()=>setStatsScope(s.set_number)}>
+                      Set {s.set_number}
+                    </button>
+                  ))}
+                </div>
+                <div className="tl-stats-view-toggle">
+                  <button className={`tl-stats-view-btn ${statsView==='players'?'active':''}`} onClick={()=>setStatsView('players')}>Giocatori</button>
+                  <button className={`tl-stats-view-btn ${statsView==='teams'?'active':''}`}   onClick={()=>setStatsView('teams')}>Squadre</button>
+                </div>
               </div>
 
-              {/* Categorie */}
-              <div className="tl-stats-cats">
-                {Object.keys(STAT_CATS).map(cat => (
-                  <button key={cat}
-                          className={`tl-stats-cat-btn ${statsCat===cat?'active':''}`}
-                          onClick={()=>setStatsCat(cat)}>
-                    {cat}
-                  </button>
-                ))}
-              </div>
+              {/* Categorie (solo vista giocatori) */}
+              {statsView==='players' && (
+                <div className="tl-stats-cats">
+                  {Object.keys(STAT_CATS).map(cat => (
+                    <button key={cat}
+                            className={`tl-stats-cat-btn ${statsCat===cat?'active':''}`}
+                            onClick={()=>setStatsCat(cat)}>
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {!statsData ? (
                 <div style={{color:'var(--muted)',fontSize:'12px',padding:'12px 0'}}>
                   Statistiche non disponibili — salva la partita prima.
                 </div>
               ) : (
-                <div className="tl-stats-two-col">
-              {[
-                  {isHome:true,  side:'a', name:lineup?.home?.team_name??homeShort},
-                  {isHome:false, side:'b', name:lineup?.away?.team_name??awayShort},
-                ].map(({isHome,side,name}) => {
-                  const keys      = STAT_CATS[statsCat] ?? [];
-                  const teamStat  = getTeamStats(isHome);
-                  const players   = getPlayerStats().filter(p =>
-                    p.team_id === (isHome ? statsData.homeTeamId : statsData.awayTeamId)
-                  );
-                  return (
-                    <div key={side} className="tl-stats-team-block">
-                      <div className="tl-stats-team-title" style={{color:`var(--${side})`}}>{name}</div>
+                <>
+                  {/* ── VISTA GIOCATORI ── */}
+                  {statsView==='players' && (
+                    <div className="tl-stats-two-col">
+                      {[
+                        {isHome:true,  side:'a', name:lineup?.home?.team_name??homeShort},
+                        {isHome:false, side:'b', name:lineup?.away?.team_name??awayShort},
+                      ].map(({isHome,side,name}) => {
+                        const keys    = STAT_CATS[statsCat] ?? [];
+                        const players = getPlayerStats().filter(p =>
+                          p.team_id === (isHome ? statsData.homeTeamId : statsData.awayTeamId)
+                        );
+                        return (
+                          <div key={side} className="tl-stats-team-block">
+                            <div className="tl-stats-team-title" style={{color:`var(--${side})`}}>{name}</div>
+                            <table className="tl-stats-tbl">
+                              <thead>
+                                <tr>
+                                  <th>#</th><th>Giocatore</th>
+                                  {keys.map(k => <th key={k} title={STAT_FULL[k]}>{STAT_SHORT[k]}</th>)}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {players.length===0 && (
+                                  <tr><td colSpan={2+keys.length} style={{color:'var(--muted)',textAlign:'center',fontSize:'11px'}}>Nessun dato</td></tr>
+                                )}
+                                {players.map(p => (
+                                  <tr key={p.player_id}>
+                                    <td><span className={`tl-stat-num ${side}`}>{p.shirt_number}</span></td>
+                                    <td className="tl-stat-name">
+                                      {p.surname??p.name}
+                                      {p.is_libero && <span className="tl-lib-badge">L</span>}
+                                    </td>
+                                    {keys.map(k => {
+                                      const v = p[k]??0;
+                                      return <td key={k} className={`tl-stat-val ${v>0?'nz':''}`}>{v}</td>;
+                                    })}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
 
-                      {teamStat && (
-                        <div className="tl-stats-squad-bar">
-                          {[
-                            {k:'attack_win',l:'Att',c:'var(--green)'},
-                            {k:'ace',l:'Ace',c:'var(--green)'},
-                            {k:'block_successful',l:'Muro',c:'var(--green)'},
-                            {k:'total_foul',l:'Falli',c:'var(--red)'},
-                            {k:'total_card',l:'Card',c:'var(--amber)'},
-                          ].map((item,i,arr) => (
-                            <div key={item.k} style={{display:'flex',alignItems:'center',gap:'8px'}}>
-                              <div className="tl-ssb-item">
-                                <div className="tl-ssb-val" style={{color:item.c}}>{teamStat[item.k]??0}</div>
-                                <div className="tl-ssb-lbl">{item.l}</div>
-                              </div>
-                              {i<arr.length-1 && <div className="tl-ssb-sep"/>}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <table className="tl-stats-tbl">
+                  {/* ── VISTA SQUADRE ── */}
+                  {statsView==='teams' && (() => {
+                    const sA = getTeamStats(true);
+                    const sB = getTeamStats(false);
+                    return (
+                      <table className="tl-stats-tbl tl-teams-tbl">
                         <thead>
                           <tr>
-                            <th>#</th><th>Giocatore</th>
-                            {keys.map(k => <th key={k} title={STAT_FULL[k]}>{STAT_SHORT[k]}</th>)}
+                            <th>Statistica</th>
+                            <th style={{color:'var(--a)'}}>{homeShort}</th>
+                            <th style={{color:'var(--b)'}}>{awayShort}</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {players.length===0 && (
-                            <tr><td colSpan={2+keys.length} style={{color:'var(--muted)',textAlign:'center',fontSize:'11px'}}>
-                              Nessun dato
-                            </td></tr>
-                          )}
-                          {players.map(p => (
-                            <tr key={p.player_id}>
-                              <td><span className={`tl-stat-num ${side}`}>{p.shirt_number}</span></td>
-                              <td className="tl-stat-name">
-                                {p.surname??p.name}
-                                {p.is_libero && <span className="tl-lib-badge">L</span>}
-                              </td>
+                          {Object.entries(STAT_CATS).map(([cat, keys]) => (
+                            <>
+                              <tr key={`cat-${cat}`} className="tl-teams-cat-row">
+                                <td colSpan={3}>{cat}</td>
+                              </tr>
                               {keys.map(k => {
-                                const v = p[k]??0;
-                                return <td key={k} className={`tl-stat-val ${v>0?'nz':''}`}>{v}</td>;
+                                const vA = sA?.[k] ?? 0;
+                                const vB = sB?.[k] ?? 0;
+                                return (
+                                  <tr key={k}>
+                                    <td className="tl-stat-name">{STAT_FULL[k]}</td>
+                                    <td className={`tl-stat-val ${vA>0?'nz':''} ${vA>vB?'best':''}`}>{vA}</td>
+                                    <td className={`tl-stat-val ${vB>0?'nz':''} ${vB>vA?'best':''}`}>{vB}</td>
+                                  </tr>
+                                );
                               })}
-                            </tr>
+                            </>
                           ))}
                         </tbody>
                       </table>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })()}
+                </>
               )}
             </div>
           )}

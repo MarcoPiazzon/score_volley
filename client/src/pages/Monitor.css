@@ -950,11 +950,45 @@
   color: var(--text);
 }
 
+.sp-controls-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 8px 16px 0;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
 .sp-tabs {
   display: flex;
   gap: 2px;
-  padding: 8px 16px 0;
   flex-shrink: 0;
+}
+
+.sp-view-toggle {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.sp-view-btn {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--border-m);
+  background: var(--surf-2);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .15s;
+}
+.sp-view-btn.active {
+  background: var(--a-dim);
+  border-color: var(--a);
+  color: var(--a);
 }
 
 .sp-tab {
@@ -1127,6 +1161,36 @@
 
 .stat-val.nz {
   color: var(--green);
+}
+
+.stat-val.best {
+  color: var(--amber);
+  font-size: 15px;
+}
+
+.teams-tbl {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+}
+.teams-tbl td:nth-child(2),
+.teams-tbl td:nth-child(3) {
+  text-align: center;
+  width: 70px;
+}
+.teams-tbl th:nth-child(2),
+.teams-tbl th:nth-child(3) {
+  text-align: center;
+  width: 70px;
+}
+.teams-tbl-cat-row td {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--subtle);
+  padding: 10px 6px 3px;
+  border-top: 1px solid var(--border-m);
 }
 
 .lib-badge {
