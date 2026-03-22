@@ -327,7 +327,16 @@ export default function Monitor() {
   const matchMeta  = useRef(null);
   const flashRef   = useRef(null);
   const [tick, setTick]           = useState(0);
-  const rerender = useCallback(() => setTick(t => t + 1), []);
+
+  const storageKey = `match_${matchId}`;
+
+  const rerender = useCallback(() => {
+    setTick(t => t + 1);
+    const m = matchRef.current;
+    if (m) {
+      try { localStorage.setItem(storageKey, JSON.stringify(m.serialize())); } catch (_) {}
+    }
+  }, [storageKey]);
 
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState('');
@@ -403,6 +412,49 @@ export default function Monitor() {
     async function load() {
       setLoading(true);
       try {
+        const attachCallbacks = (match) => {
+          match._onSetEnd = (winner, sA, sB) => {
+            const n = match.currentSetNumber - 1;
+            flashMsg(`Set ${n} → ${winner.shortName}! (${sA}-${sB})`,
+                     winner.side === 'a' ? '#3b8bff' : '#ff6b35');
+            setTiebreakSwapped(false);
+            autoSelectServer();
+            rerender();
+          };
+          match._onMatchEnd = (winner) => {
+            const other = winner === match.squadA ? match.squadB : match.squadA;
+            flashMsg(`🏆 Vittoria ${winner.shortName}! (${winner.setsWon}-${other.setsWon})`, '#f5c542');
+            rerender();
+            setTimeout(() => {
+              setIsMatchEnd(true);
+              setShowSave(true);
+            }, 600);
+          };
+          match._onFieldChange = () => {
+            setTiebreakSwapped(s => !s);
+            flashMsg(`↕ Cambio campo (set ${match.currentSetNumber})`, '#f5c542');
+          };
+        };
+
+        // Prova a ripristinare da localStorage
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            const match = Match.deserialize(parsed);
+            const matchData = await apiGet(`/matches/${matchId}`);
+            matchMeta.current = matchData;
+            attachCallbacks(match);
+            matchRef.current = match;
+            autoSelectServer();
+            rerender();
+            return;
+          } catch (e) {
+            console.warn('Ripristino localStorage fallito, carico da zero', e);
+            localStorage.removeItem(storageKey);
+          }
+        }
+
         const [matchData, lineupData] = await Promise.all([
           apiGet(`/matches/${matchId}`),
           apiGet(`/matches/${matchId}/lineup`),
@@ -443,30 +495,7 @@ export default function Monitor() {
         const squadB = makeSquad(lineupData.away, 'b');
         const match  = new Match(squadA, squadB, format);
 
-        match._onSetEnd = (winner, sA, sB) => {
-          const n = match.currentSetNumber - 1;
-          flashMsg(`Set ${n} → ${winner.shortName}! (${sA}-${sB})`,
-                   winner.side === 'a' ? '#3b8bff' : '#ff6b35');
-          setTiebreakSwapped(false);
-          autoSelectServer();
-          rerender();
-        };
-
-        match._onMatchEnd = (winner) => {
-          const other = winner === match.squadA ? match.squadB : match.squadA;
-          flashMsg(`🏆 Vittoria ${winner.shortName}! (${winner.setsWon}-${other.setsWon})`, '#f5c542');
-          rerender();
-          setTimeout(() => {
-            setIsMatchEnd(true);
-            setShowSave(true);
-          }, 600);
-        };
-
-        match._onFieldChange = () => {
-          setTiebreakSwapped(s => !s);
-          flashMsg(`↕ Cambio campo (set ${match.currentSetNumber})`, '#f5c542');
-        };
-
+        attachCallbacks(match);
         match.startMatch(squadA);
         matchRef.current = match;
         autoSelectServer();
@@ -633,6 +662,7 @@ if (type === 'LOST_BALL' && !servePhase) {
     try {
       const payload = m.toSavePayload(meta);
       const res = await apiPost(`/matches/${meta.id}/save`, payload);
+      localStorage.removeItem(storageKey);
       flashMsg(`✓ Salvata (${res.sets ?? '?'} set)`, '#22d47a');
       setShowSave(false);
       setIsMatchEnd(false);

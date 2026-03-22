@@ -904,6 +904,99 @@ export class Match {
     this.currentSet?.recordSquadStat(squad, type);
   }
 
+  // ── Serializzazione localStorage ─────────────────────────────────
+  serialize() {
+    const serializePlayer = (p) => ({
+      id: p.id, shirtNumber: p.shirtNumber, name: p.name, surname: p.surname,
+      role: p.role, team: p.team, libero: p.libero, onCourt: p.onCourt,
+      stats: { ...p.stats },
+    });
+
+    const serializeSquad = (sq) => ({
+      teamId: sq.teamId, name: sq.name, shortName: sq.shortName, side: sq.side,
+      score: sq.score, setsWon: sq.setsWon, timeout: sq.timeout,
+      stats: { ...sq.stats },
+      players: sq.players.map(serializePlayer),
+      bench: sq.bench.map(serializePlayer),
+    });
+
+    return {
+      format: {
+        maxSet: this.maxSet, setsToWin: this.setsToWin,
+        setPoints: this.setPoints, tieBreakPoints: this.tieBreakPoints,
+      },
+      squadA: serializeSquad(this.squadA),
+      squadB: serializeSquad(this.squadB),
+      sets: this.sets.map(s => ({
+        number: s.number,
+        scoreA: s.scoreA, scoreB: s.scoreB,
+        winner: s.winner,
+        startingLineup: s.startingLineup,
+        events: [...s.events],
+        stats: {
+          players: { ...s.stats.players },
+          squads: {
+            a: { ...s.stats.squads.a },
+            b: { ...s.stats.squads.b },
+          },
+        },
+      })),
+      currentSetNumber: this.currentSetNumber,
+      servingSide: this.servingSquad?.side ?? 'a',
+      changeFieldDone: this.changeFieldDone,
+      snapshots: this._snapshots,
+    };
+  }
+
+  static deserialize(data) {
+    const makePlayer = (pd) => {
+      const p = new Player({
+        id: pd.id, shirtNumber: pd.shirtNumber, name: pd.name,
+        surname: pd.surname, role: pd.role, team: pd.team, libero: pd.libero,
+      });
+      p.onCourt = pd.onCourt;
+      p.stats = { ...pd.stats };
+      return p;
+    };
+
+    const makeSquad = (sd) => {
+      const sq = new Squad({ teamId: sd.teamId, name: sd.name, shortName: sd.shortName, side: sd.side });
+      sq.score = sd.score;
+      sq.setsWon = sd.setsWon;
+      sq.timeout = sd.timeout;
+      sq.stats = { ...sd.stats };
+      sq.players = sd.players.map(makePlayer);
+      sq.bench = sd.bench.map(makePlayer);
+      sq.setServingPlayer();
+      return sq;
+    };
+
+    const squadA = makeSquad(data.squadA);
+    const squadB = makeSquad(data.squadB);
+    const match = new Match(squadA, squadB, data.format);
+
+    match.sets = data.sets.map(sd => {
+      const s = new Sset(sd.number);
+      s.scoreA = sd.scoreA;
+      s.scoreB = sd.scoreB;
+      s.winner = sd.winner;
+      s.startingLineup = sd.startingLineup ?? { a: [], b: [] };
+      s.events = [...sd.events];
+      s.stats.players = { ...sd.stats.players };
+      s.stats.squads.a = { ...sd.stats.squads.a };
+      s.stats.squads.b = { ...sd.stats.squads.b };
+      return s;
+    });
+
+    match.currentSetNumber = data.currentSetNumber;
+    match.currentSet = match.sets[match.sets.length - 1] ?? null;
+    match.servingSquad = data.servingSide === 'a' ? squadA : squadB;
+    match.changeFieldDone = data.changeFieldDone ?? false;
+    match._snapshots = data.snapshots ?? [];
+
+    return match;
+  }
+
   // ── Export per il DB ─────────────────────────────────────────────
   toSavePayload(matchMeta) {
     const homeTeamId = matchMeta?.home_team_id ?? this.squadA.teamId;
