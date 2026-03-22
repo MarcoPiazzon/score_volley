@@ -1,15 +1,18 @@
 export const STAT = Object.freeze({
   TOUCHES: "touches",
-  ATTACK_WIN: "attackWin",
-  ATTACK_OUT: "attackOut",
-  ATTACK_NOT_SUCCESSFUL: "attackNotSuccessful",
-  TOTAL_ATTACK: "totalAttack",
+  ATTACK_WIN: "attackWin",              // Attacchi che hanno prodotto direttamente il punto (kill)
+  ATTACK_SUCCESSFUL: "attackSuccessful",// Attacchi positivi che non hanno prodotto il punto (avversario ha difeso e poi ha segnato)
+  ATTACK_OUT: "attackOut",              // Attacchi errati (out o a rete)
+  ATTACK_NOT_SUCCESSFUL: "attackNotSuccessful", // Attacchi non vincenti generici (non usato — mantenuto per compatibilità DB)
+  TOTAL_ATTACK: "totalAttack",          // Totale attacchi (win + successful + out + blocked)
   ACE: "ace",
   SERVES: "serves",
   SERVES_ERR: "servesErr",
   SERVES_ERR_LINE: "serverErrLine",
   TOTAL_SERVES: "total_serves",
-  TOTAL_RECEIVE: "totalRicezione",
+  TOTAL_RECEIVE: "totalRicezione",       // Ricezioni totali da battuta (successful + not_successful)
+  RECEIVE_SUCCESSFUL: "receiveSuccessful",     // Ricezione da battuta riuscita (un compagno tocca O palla torna dall'altra parte)
+  RECEIVE_NOT_SUCCESSFUL: "receiveNotSuccessful", // Ricezione da battuta fallita (nessun compagno tocca E palla non torna)
   FOUL_DOUBLE: "foul_double",
   FOUL_FOUR_TOUCHES: "foul_four_touches",
   FOUL_RAISED: "foul_raised",
@@ -17,8 +20,9 @@ export const STAT = Object.freeze({
   FOUL_INVASION: "foul_invasion",
   TOTAL_FOUL: "total_foul",
   BALL_LOST: "ball_lost",
-  DEF_POS: "defensePos",
-  DEF_NEG: "defenseNeg",
+  DEF_POS: "defensePos",   // Difesa riuscita da attacco (NON dalla battuta)
+  DEF_NEG: "defenseNeg",   // Difesa fallita da attacco (NON dalla battuta)
+  TOTAL_DEF: "totalDef",   // Totale difese da attacco (def_pos + def_neg)
   BLOCK_SUCCESSFUL: "blockSuccessful",
   BLOCK_NOT_SUCCESSFUL: "blockNotSuccessful",
   TOTAL_BLOCK: "totalBlock",

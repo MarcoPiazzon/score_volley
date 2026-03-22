@@ -49,8 +49,10 @@ function resolveTeamSide(raw) {
 // ── Categorie stats ───────────────────────────────────────────────
 const STAT_CATS = {
   Generali:   ['touches', 'points_played'],
-  Attacco:    ['attack_win', 'attack_out', 'attack_not_successful', 'total_attack'],
-  Battuta:    ['ace', 'serves', 'serves_err', 'total_serves'],
+  Attacco:    ['attack_win', 'attack_successful', 'attack_out', 'total_attack'],
+  Battuta:    ['ace', 'serves', 'serves_err', 'serves_err_line', 'total_serves'],
+  Ricezione:  ['receive_successful', 'receive_not_successful', 'total_receive'],
+  Difesa:     ['def_pos', 'def_neg', 'total_def'],
   Muro:       ['block_successful', 'block_not_successful', 'total_block'],
   Falli:      ['foul_double', 'foul_four_touches', 'foul_raised', 'foul_position', 'foul_invasion', 'total_foul'],
   Cartellini:    ['card_yellow', 'card_red', 'total_card'],
@@ -60,8 +62,10 @@ const STAT_CATS = {
 };
 const STAT_SHORT = {
   touches:'Tocc', points_played:'PP',
-  attack_win:'ATT', attack_out:'Out', attack_not_successful:'Nv', total_attack:'Tot',
-  ace:'Ace', serves:'Ok', serves_err:'Err', total_serves:'Tot',
+  attack_win:'Kill', attack_successful:'Pos', attack_out:'Err', total_attack:'Tot',
+  ace:'Ace', serves:'Ok', serves_err:'Err', serves_err_line:'Lin', total_serves:'Tot',
+  receive_successful:'Ok', receive_not_successful:'Err', total_receive:'Tot',
+  def_pos:'Pos', def_neg:'Neg', total_def:'Tot',
   block_successful:'Vin', block_not_successful:'Nv', total_block:'Tot',
   foul_double:'Dop', foul_four_touches:'4T', foul_raised:'Alz',
   foul_position:'Pos', foul_invasion:'Inv', total_foul:'Tot',
@@ -72,9 +76,11 @@ const STAT_SHORT = {
 };
 const STAT_FULL = {
   touches:'Tocchi', points_played:'Punti giocati',
-  attack_win:'Attacchi vincenti', attack_out:'Attacchi out',
-  attack_not_successful:'Non vincenti', total_attack:'Tot attacchi',
-  ace:'Ace', serves:'Battute OK', serves_err:'Errori battuta', total_serves:'Tot battute',
+  attack_win:'Kill (punto diretto)', attack_successful:'Attacco positivo (difeso)',
+  attack_out:'Attacchi errati', total_attack:'Tot attacchi',
+  ace:'Ace', serves:'Battute OK', serves_err:'Errori battuta', serves_err_line:'Errori linea', total_serves:'Tot battute',
+  receive_successful:'Ricezione riuscita', receive_not_successful:'Ricezione non riuscita', total_receive:'Tot ricezioni',
+  def_pos:'Difesa positiva', def_neg:'Difesa negativa', total_def:'Tot difese',
   block_successful:'Muri vincenti', block_not_successful:'Muri non vincenti', total_block:'Tot muri',
   foul_double:'Doppio fallo', foul_four_touches:'4 tocchi', foul_raised:'Alzata irr.',
   foul_position:'Fallo posizione', foul_invasion:'Invasione', total_foul:'Tot falli',

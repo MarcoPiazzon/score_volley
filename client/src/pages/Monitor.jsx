@@ -42,8 +42,10 @@ const ROLE_MAP = {
 // ── Stats config ──────────────────────────────────────────────────
 const STAT_CATS = {
   Generali:  [STAT.TOUCHES, STAT.POINTS_PLAYED, STAT.TOTAL_POINTS],
-  Attacco:   [STAT.ATTACK_WIN, STAT.ATTACK_OUT, STAT.ATTACK_NOT_SUCCESSFUL, STAT.TOTAL_ATTACK],
-  Battuta:   [STAT.ACE, STAT.SERVES, STAT.SERVES_ERR, STAT.TOTAL_SERVES],
+  Attacco:   [STAT.ATTACK_WIN, STAT.ATTACK_SUCCESSFUL, STAT.ATTACK_OUT, STAT.TOTAL_ATTACK],
+  Battuta:   [STAT.ACE, STAT.SERVES, STAT.SERVES_ERR, STAT.SERVES_ERR_LINE, STAT.TOTAL_SERVES],
+  Ricezione: [STAT.RECEIVE_SUCCESSFUL, STAT.RECEIVE_NOT_SUCCESSFUL, STAT.TOTAL_RECEIVE],
+  Difesa:    [STAT.DEF_POS, STAT.DEF_NEG, STAT.TOTAL_DEF],
   Muro:      [STAT.BLOCK_SUCCESSFUL, STAT.BLOCK_NOT_SUCCESSFUL, STAT.TOTAL_BLOCK],
   Falli:     [STAT.FOUL_DOUBLE, STAT.FOUL_FOUR_TOUCHES, STAT.FOUL_RAISED, STAT.FOUL_POSITION, STAT.FOUL_INVASION, STAT.TOTAL_FOUL],
   Cartellini: [STAT.CARD_YELLOW, STAT.CARD_RED, STAT.TOTAL_CARD],
@@ -53,8 +55,10 @@ const STAT_CATS = {
 };
 const STAT_SHORT = {
   [STAT.TOUCHES]: 'Tocc', [STAT.POINTS_PLAYED]: 'PP', [STAT.TOTAL_POINTS]: 'TP',
-  [STAT.ATTACK_WIN]: 'ATT', [STAT.ATTACK_OUT]: 'Out', [STAT.ATTACK_NOT_SUCCESSFUL]: 'Nv', [STAT.TOTAL_ATTACK]: 'Tot',
-  [STAT.ACE]: 'Ace', [STAT.SERVES]: 'Ok', [STAT.SERVES_ERR]: 'Err', [STAT.TOTAL_SERVES]: 'Tot',
+  [STAT.ATTACK_WIN]: 'Kill', [STAT.ATTACK_SUCCESSFUL]: 'Pos', [STAT.ATTACK_OUT]: 'Err', [STAT.TOTAL_ATTACK]: 'Tot',
+  [STAT.ACE]: 'Ace', [STAT.SERVES]: 'Ok', [STAT.SERVES_ERR]: 'Err', [STAT.SERVES_ERR_LINE]: 'Lin', [STAT.TOTAL_SERVES]: 'Tot',
+  [STAT.RECEIVE_SUCCESSFUL]: 'Ok', [STAT.RECEIVE_NOT_SUCCESSFUL]: 'Err', [STAT.TOTAL_RECEIVE]: 'Tot',
+  [STAT.DEF_POS]: 'Pos', [STAT.DEF_NEG]: 'Neg', [STAT.TOTAL_DEF]: 'Tot',
   [STAT.BLOCK_SUCCESSFUL]: 'Vin', [STAT.BLOCK_NOT_SUCCESSFUL]: 'Nv', [STAT.TOTAL_BLOCK]: 'Tot',
   [STAT.FOUL_DOUBLE]: 'Dop', [STAT.FOUL_FOUR_TOUCHES]: '4T', [STAT.FOUL_RAISED]: 'Alz',
   [STAT.FOUL_POSITION]: 'Pos', [STAT.FOUL_INVASION]: 'Inv', [STAT.TOTAL_FOUL]: 'Tot',
@@ -65,10 +69,12 @@ const STAT_SHORT = {
 };
 const STAT_FULL = {
   [STAT.TOUCHES]: 'Tocchi', [STAT.POINTS_PLAYED]: 'Punti giocati', [STAT.TOTAL_POINTS]: 'Punti realizzati',
-  [STAT.ATTACK_WIN]: 'Attacchi vincenti', [STAT.ATTACK_OUT]: 'Attacchi out',
-  [STAT.ATTACK_NOT_SUCCESSFUL]: 'Non vincenti', [STAT.TOTAL_ATTACK]: 'Totale attacchi',
+  [STAT.ATTACK_WIN]: 'Kill (punto diretto)', [STAT.ATTACK_SUCCESSFUL]: 'Attacco positivo (difeso)',
+  [STAT.ATTACK_OUT]: 'Attacchi errati', [STAT.TOTAL_ATTACK]: 'Totale attacchi',
   [STAT.ACE]: 'Ace', [STAT.SERVES]: 'Battute OK', [STAT.SERVES_ERR]: 'Errori battuta',
-  [STAT.TOTAL_SERVES]: 'Totale battute',
+  [STAT.SERVES_ERR_LINE]: 'Errori linea', [STAT.TOTAL_SERVES]: 'Totale battute',
+  [STAT.RECEIVE_SUCCESSFUL]: 'Ricezione riuscita', [STAT.RECEIVE_NOT_SUCCESSFUL]: 'Ricezione non riuscita', [STAT.TOTAL_RECEIVE]: 'Totale ricezioni',
+  [STAT.DEF_POS]: 'Difesa positiva', [STAT.DEF_NEG]: 'Difesa negativa', [STAT.TOTAL_DEF]: 'Totale difese',
   [STAT.BLOCK_SUCCESSFUL]: 'Muri vincenti', [STAT.BLOCK_NOT_SUCCESSFUL]: 'Muri non vincenti', [STAT.TOTAL_BLOCK]: 'Totale muri',
   [STAT.FOUL_DOUBLE]: 'Doppio fallo', [STAT.FOUL_FOUR_TOUCHES]: '4 tocchi',
   [STAT.FOUL_RAISED]: 'Alzata irregolare', [STAT.FOUL_POSITION]: 'Fallo posizione',
@@ -84,7 +90,8 @@ const ACTION_MAP = {
   ACE:         { stat: STAT.ACE,                 value: true  },
   OUT:         { stat: STAT.ATTACK_OUT,           value: false },
   LOST_BALL:   { stat: STAT.BALL_LOST,            value: false },
-  SERVE_ERROR: { stat: STAT.SERVES_ERR,           value: false },
+  SERVE_ERROR:      { stat: STAT.SERVES_ERR,      value: false },
+  SERVES_ERR_LINE:  { stat: STAT.SERVES_ERR_LINE, value: false },
   BLOCKED:     { stat: STAT.BLOCK_NOT_SUCCESSFUL, value: false },
   DOUBLE:      { stat: STAT.FOUL_DOUBLE,          value: false },
   '4TOUCHES':  { stat: STAT.FOUL_FOUR_TOUCHES,    value: false },
@@ -96,7 +103,8 @@ const ACTION_EXTRA = {
   POINT:       [STAT.TOTAL_ATTACK],
   ACE:         [STAT.SERVES],
   OUT:         [STAT.TOTAL_ATTACK],
-  SERVE_ERROR: [],
+  SERVE_ERROR:     [],
+  SERVES_ERR_LINE: [],
   BLOCKED:     [STAT.TOTAL_BLOCK],
   DOUBLE:      [STAT.TOTAL_FOUL],
   '4TOUCHES':  [STAT.TOTAL_FOUL],
@@ -106,11 +114,11 @@ const ACTION_EXTRA = {
 };
 const ACTION_LABELS = {
   POINT: '✦ Point!', ACE: '⚡ Ace!', OUT: '✕ Out', LOST_BALL: '○ Lost Ball',
-  SERVE_ERROR: '✗ Serve Error', BLOCKED: '▣ Blocked', DOUBLE: 'Double',
+  SERVE_ERROR: '✗ Serve Error', SERVES_ERR_LINE: '✗ Err. Linea', BLOCKED: '▣ Blocked', DOUBLE: 'Double',
   '4TOUCHES': '4 Touches', RAISED: 'Raised', POSITION: 'Position', INVASION: 'Invasion',
 };
 const ACTION_COLORS = {
-  POINT: '#22d47a', ACE: '#22d47a', SERVE_ERROR: '#f04e4e', OUT: '#f04e4e',
+  POINT: '#22d47a', ACE: '#22d47a', SERVE_ERROR: '#f04e4e', SERVES_ERR_LINE: '#f04e4e', OUT: '#f04e4e',
   BLOCKED: '#64748b', DOUBLE: '#f5c542', '4TOUCHES': '#f5c542',
   RAISED: '#f5c542', POSITION: '#f5c542', INVASION: '#f5c542', LOST_BALL: '#64748b',
 };
@@ -259,8 +267,9 @@ function SaveDialog({ match, matchMeta, onConfirm, onCancel, saving, isMatchEnd 
 //  FineTurnoModal — selettore tipo punto (sale dal basso)
 // ════════════════════════════════════════════════════════════════════
 const FINE_TURNO_SERVE = [
-  { type: 'ACE',         icon: '⚡', label: 'Ace',         cls: 'green' },
-  { type: 'SERVE_ERROR', icon: '✗',  label: 'Serve Error', cls: 'red'   },
+  { type: 'ACE',            icon: '⚡', label: 'Ace',         cls: 'green' },
+  { type: 'SERVE_ERROR',    icon: '✗',  label: 'Serve Error', cls: 'red'   },
+  { type: 'SERVES_ERR_LINE', icon: '—', label: 'Err. Linea',  cls: 'red'   },
 ];
 const FINE_TURNO_POINT = [
   { type: 'POINT',     icon: '✦', label: 'Point',     cls: 'green' },
@@ -634,12 +643,31 @@ if (type === 'LOST_BALL' && !servePhase) {
   }
 }
 
+    // ── Scenario 1: difesa fallita dal primo ricevitore ───────────────
+    // Il LOST_BALL è premuto sul giocatore che ha ricevuto per primo dopo un
+    // cross non-battuta, senza che nessun compagno abbia toccato il pallone.
+    // In questo caso l'engine converte le stats provvisorie in:
+    //   attacker: ATTACK_SUCCESSFUL → ATTACK_WIN
+    //   receiver: DEF_POS → DEF_NEG
+    // Nessuna BALL_LOST viene aggiunta; il punto va alla squadra dell'attaccante.
+    if (
+      type === 'LOST_BALL' &&
+      m._lastCrossReceiver != null &&
+      m._lastCrossReceiver.id === selectedPlayer?.id &&
+      m._touchesOnCurrentSide === 1
+    ) {
+      m.scoreDefenseError(selectedPlayer, m._lastCrossAttacker);
+      flashMsg('Difesa fallita', '#f04e4e');
+      setServePhase(true);
+      autoSelectServer(); rerender(); return;
+    }
+
     const action = ACTION_MAP[type];
     if (!action) return;
     if (!selectedPlayer) { flashMsg('Seleziona prima un giocatore!', '#f04e4e'); return; }
 
-    // ACE e SERVE_ERROR consumano la fase battuta
-    if (type === 'ACE' || type === 'SERVE_ERROR') setServePhase(false);
+    // ACE, SERVE_ERROR e SERVES_ERR_LINE consumano la fase battuta
+    if (type === 'ACE' || type === 'SERVE_ERROR' || type === 'SERVES_ERR_LINE') setServePhase(false);
 
     const extras = ACTION_EXTRA[type] ?? [];
     extras.forEach(s => { 

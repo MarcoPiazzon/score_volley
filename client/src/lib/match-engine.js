@@ -26,66 +26,101 @@ export class Player {
     this.stats = {
       [STAT.TOUCHES]: 0, //palloni toccati durante la partita intera
 
-      //Attack
-      [STAT.ATTACK_WIN]: 0, //attacchi vinti
-      [STAT.ATTACK_OUT]: 0, //attacchi sbagliati (solo fuori)
+      // ── Attacco ─────────────────────────────────────────────────
+      // Attacco vincente (kill): ha prodotto direttamente il punto
+      [STAT.ATTACK_WIN]: 0,
+      // Attacco positivo: correttamente eseguito ma l'avversario ha difeso e poi ha segnato
+      [STAT.ATTACK_SUCCESSFUL]: 0,
+      // Attacco errato: palla fuori o a rete
+      [STAT.ATTACK_OUT]: 0,
+      // Non usato — mantenuto per compatibilità DB
       [STAT.ATTACK_NOT_SUCCESSFUL]: 0,
-      [STAT.TOTAL_ATTACK]: 0, // attacchi totali fatti nella partita
+      // Totale attacchi (win + successful + out + blocked)
+      [STAT.TOTAL_ATTACK]: 0,
 
-      //Serve
-      [STAT.ACE]: 0, //ace totali
+      // ── Battuta ─────────────────────────────────────────────────
+      // Ace: battuta che produce direttamente il punto
+      [STAT.ACE]: 0,
+      // Battuta in campo, non ace, non errore
       [STAT.SERVES]: 0,
-      [STAT.SERVES_ERR]: 0, //errori totali in battuta
-      [STAT.SERVES_ERR_LINE]: 0, //da capire come fare mai gestita
-      [STAT.TOTAL_SERVES]: 0, //battute totali
+      // Errore in battuta: palla fuori o a rete
+      [STAT.SERVES_ERR]: 0,
+      // Errore sulla linea di fondo in battuta (tipo specifico di SERVES_ERR)
+      [STAT.SERVES_ERR_LINE]: 0,
+      // Totale battute effettuate (ace + ok + errori)
+      [STAT.TOTAL_SERVES]: 0,
 
-      //Ricezione
-      [STAT.DEF_POS]: 0, //ricezioni corrette mai gestita
-      [STAT.DEF_NEG]: 0, //ricezioni sbagliate mai gestita
+      // ── Ricezione da battuta ────────────────────────────────────
+      // Ricezione riuscita: un compagno tocca dopo il ricevitore, OPPURE il pallone
+      // torna nel campo avversario direttamente dal ricevitore (1-touch return)
+      [STAT.RECEIVE_SUCCESSFUL]: 0,
+      // Ricezione non riuscita: nessun compagno tocca E il pallone non torna dall'altra parte
+      [STAT.RECEIVE_NOT_SUCCESSFUL]: 0,
+      // Totale ricezioni da battuta (successful + not_successful)
       [STAT.TOTAL_RECEIVE]: 0,
 
-      //Lost Ball
-      [STAT.BALL_LOST]: 0, //palle perse o passaggi sbagliati
+      // ── Difesa da attacco (NON dalla battuta) ───────────────────
+      // Difesa positiva: il pallone viene controllato e rimane in gioco
+      [STAT.DEF_POS]: 0,
+      // Difesa negativa: il pallone non viene controllato (punto per l'attaccante)
+      [STAT.DEF_NEG]: 0,
+      // Totale difese da attacco (def_pos + def_neg)
+      [STAT.TOTAL_DEF]: 0,
 
+      // Palla persa: errore generico di gioco (passaggio sbagliato, palla non controllata)
+      [STAT.BALL_LOST]: 0,
+
+      // ── Muro ────────────────────────────────────────────────────
+      // Muro vincente: ha prodotto direttamente il punto (non ancora gestito — futuro)
       [STAT.BLOCK_SUCCESSFUL]: 0,
+      // Muro non vincente: l'attaccante è stato murato ma la palla è rimasta in gioco
       [STAT.BLOCK_NOT_SUCCESSFUL]: 0,
+      // Totale muri tentati
       [STAT.TOTAL_BLOCK]: 0,
 
-      //Foul WB
-      [STAT.FOUL_DOUBLE]: 0, //doppe
-      [STAT.FOUL_FOUR_TOUCHES]: 0, //4 tocchi
-      [STAT.FOUL_RAISED]: 0, //sollevata
+      // ── Falli con palla ─────────────────────────────────────────
+      [STAT.FOUL_DOUBLE]: 0,       // Doppio fallo (doppio tocco)
+      [STAT.FOUL_FOUR_TOUCHES]: 0, // Quattro tocchi consecutivi
+      [STAT.FOUL_RAISED]: 0,       // Alzata irregolare
 
-      //Foul WOB
-      [STAT.FOUL_POSITION]: 0, //fallo di posizione
-      [STAT.FOUL_INVASION]: 0, //fallo di invasione
+      // ── Falli senza palla ────────────────────────────────────────
+      [STAT.FOUL_POSITION]: 0, // Fallo di posizione
+      [STAT.FOUL_INVASION]: 0, // Invasione sotto rete
 
+      // Totale falli commessi
       [STAT.TOTAL_FOUL]: 0,
 
-      //Card
-      [STAT.CARD_YELLOW]: 0, //cartellini gialli
-      [STAT.CARD_RED]: 0, //cartelini rossi
+      // ── Cartellini ──────────────────────────────────────────────
+      [STAT.CARD_YELLOW]: 0, // Cartellini gialli ricevuti
+      [STAT.CARD_RED]: 0,    // Cartellini rossi ricevuti
+      [STAT.TOTAL_CARD]: 0,  // Totale cartellini
 
-      [STAT.TOTAL_CARD]: 0,
-
-      //Set Point
+      // ── Set Point ───────────────────────────────────────────────
+      // Palloni giocati durante un set point (proprio o avversario)
       [STAT.TOTAL_SET_POINTS]: 0,
+      // Set point convertito: realizzato il punto che chiude il set
       [STAT.SET_POINTS_WIN]: 0,
+      // Set point sbagliato: errore sul set point avversario (regalo il set)
       [STAT.SET_POINTS_ERR]: 0,
+      // Set point annullato: vinto il punto sul set point avversario
       [STAT.SET_POINTS_CANCELLED]: 0,
 
-      //Match Point
+      // ── Match Point ─────────────────────────────────────────────
+      // Palloni giocati durante un match point (proprio o avversario)
       [STAT.TOTAL_MATCH_POINTS]: 0,
-      [STAT.MATCH_POINTS_WIN]: 0,
-      [STAT.MATCH_POINTS_ERR]: 0,
-      [STAT.MATCH_POINTS_CANCELLED]: 0,
+      [STAT.MATCH_POINTS_WIN]: 0,       // Match point convertito
+      [STAT.MATCH_POINTS_ERR]: 0,       // Match point sbagliato
+      [STAT.MATCH_POINTS_CANCELLED]: 0, // Match point annullato
 
+      // Timeout chiamati (per il giocatore rimane sempre 0, gestito solo a livello squadra)
       [STAT.TOTAL_TIMEOUT]: 0,
 
-      //Change
+      // Sostituzioni: conta sia l'entrata che l'uscita
       [STAT.TOTAL_CHANGE]: 0,
 
+      // Punti giocati: numero di punti in cui il giocatore era in campo
       [STAT.POINTS_PLAYED]: 0,
+      // Punti realizzati: punti portati direttamente (attacco vincente, ace, errore avversario)
       [STAT.TOTAL_POINTS]: 0,
     };
   }
@@ -127,64 +162,68 @@ export class Squad {
     this.stats = {
       [STAT.TOUCHES]: 0, //palloni toccati durante la partita intera
 
-      //Attack
-      [STAT.ATTACK_WIN]: 0, //attacchi vinti
-      [STAT.ATTACK_OUT]: 0, //attacchi sbagliati (solo fuori)
-      [STAT.ATTACK_NOT_SUCCESSFUL]: 0,
-      [STAT.TOTAL_ATTACK]: 0, // attacchi totali fatti nella partita
+      // ── Attacco ─────────────────────────────────────────────────
+      [STAT.ATTACK_WIN]: 0,        // Kill: attacco che produce direttamente il punto
+      [STAT.ATTACK_SUCCESSFUL]: 0, // Attacco positivo: correttamente eseguito ma difeso dall'avversario (che poi ha segnato)
+      [STAT.ATTACK_OUT]: 0,        // Attacco errato: fuori o a rete
+      [STAT.ATTACK_NOT_SUCCESSFUL]: 0, // Non usato — mantenuto per compatibilità DB
+      [STAT.TOTAL_ATTACK]: 0,      // Totale attacchi (win + successful + out + blocked)
 
-      //Serve
-      [STAT.ACE]: 0, //ace totali
-      [STAT.SERVES]: 0,
-      [STAT.SERVES_ERR]: 0, //errori totali in battuta
-      [STAT.SERVES_ERR_LINE]: 0, //da capire come fare mai gestita
-      [STAT.TOTAL_SERVES]: 0, //battute totali
+      // ── Battuta ─────────────────────────────────────────────────
+      [STAT.ACE]: 0,           // Ace: punto diretto in battuta
+      [STAT.SERVES]: 0,        // Battuta in campo, non ace, non errore
+      [STAT.SERVES_ERR]: 0,    // Errore in battuta: fuori o a rete
+      [STAT.SERVES_ERR_LINE]: 0, // Errore sulla linea di fondo (tipo specifico di SERVES_ERR)
+      [STAT.TOTAL_SERVES]: 0,  // Totale battute (ace + ok + errori)
 
-      //Ricezione
-      [STAT.DEF_POS]: 0, //ricezioni corrette mai gestita
-      [STAT.DEF_NEG]: 0, //ricezioni sbagliate mai gestita
-      [STAT.TOTAL_RECEIVE]: 0,
+      // ── Ricezione da battuta ────────────────────────────────────
+      [STAT.RECEIVE_SUCCESSFUL]: 0,     // Ricezione riuscita: un compagno tocca OPPURE palla torna dall'altra parte
+      [STAT.RECEIVE_NOT_SUCCESSFUL]: 0, // Ricezione non riuscita: nessun compagno tocca E palla non torna
+      [STAT.TOTAL_RECEIVE]: 0,          // Totale ricezioni da battuta
 
-      //Lost Ball
-      [STAT.BALL_LOST]: 0, //palle perse o passaggi sbagliati
+      // ── Difesa da attacco (NON dalla battuta) ───────────────────
+      [STAT.DEF_POS]: 0,   // Difesa positiva: pallone controllato
+      [STAT.DEF_NEG]: 0,   // Difesa negativa: pallone non controllato (punto all'attaccante)
+      [STAT.TOTAL_DEF]: 0, // Totale difese da attacco (def_pos + def_neg)
 
-      [STAT.BLOCK_SUCCESSFUL]: 0,
-      [STAT.BLOCK_NOT_SUCCESSFUL]: 0,
-      [STAT.TOTAL_BLOCK]: 0,
+      // Palla persa: errore generico (passaggio sbagliato, palla non controllata)
+      [STAT.BALL_LOST]: 0,
 
-      //Foul WB
-      [STAT.FOUL_DOUBLE]: 0, //doppe
-      [STAT.FOUL_FOUR_TOUCHES]: 0, //4 tocchi
-      [STAT.FOUL_RAISED]: 0, //sollevata
+      // ── Muro ────────────────────────────────────────────────────
+      [STAT.BLOCK_SUCCESSFUL]: 0,     // Muro vincente: produce il punto (futuro)
+      [STAT.BLOCK_NOT_SUCCESSFUL]: 0, // Attaccante murato ma palla rimasta in gioco
+      [STAT.TOTAL_BLOCK]: 0,          // Totale muri tentati
 
-      //Foul WOB
-      [STAT.FOUL_POSITION]: 0, //fallo di posizione
-      [STAT.FOUL_INVASION]: 0, //fallo di invasione
+      // ── Falli con palla ─────────────────────────────────────────
+      [STAT.FOUL_DOUBLE]: 0,       // Doppio fallo
+      [STAT.FOUL_FOUR_TOUCHES]: 0, // Quattro tocchi
+      [STAT.FOUL_RAISED]: 0,       // Alzata irregolare
 
-      [STAT.TOTAL_FOUL]: 0,
+      // ── Falli senza palla ────────────────────────────────────────
+      [STAT.FOUL_POSITION]: 0, // Fallo di posizione
+      [STAT.FOUL_INVASION]: 0, // Invasione
 
-      //Card
-      [STAT.CARD_YELLOW]: 0, //cartellini gialli
-      [STAT.CARD_RED]: 0, //cartelini rossi
+      [STAT.TOTAL_FOUL]: 0, // Totale falli
 
+      // ── Cartellini ──────────────────────────────────────────────
+      [STAT.CARD_YELLOW]: 0,
+      [STAT.CARD_RED]: 0,
       [STAT.TOTAL_CARD]: 0,
 
-      //Set Point
-      [STAT.TOTAL_SET_POINTS]: 0,
-      [STAT.SET_POINTS_WIN]: 0,
-      [STAT.SET_POINTS_ERR]: 0,
-      [STAT.SET_POINTS_CANCELLED]: 0,
+      // ── Set Point ───────────────────────────────────────────────
+      [STAT.TOTAL_SET_POINTS]: 0,    // Palloni giocati in set point (proprio o avversario)
+      [STAT.SET_POINTS_WIN]: 0,       // Set point convertito
+      [STAT.SET_POINTS_ERR]: 0,       // Set point sbagliato
+      [STAT.SET_POINTS_CANCELLED]: 0, // Set point avversario annullato
 
-      //Match Point
-      [STAT.TOTAL_MATCH_POINTS]: 0,
-      [STAT.MATCH_POINTS_WIN]: 0,
-      [STAT.MATCH_POINTS_ERR]: 0,
-      [STAT.MATCH_POINTS_CANCELLED]: 0,
+      // ── Match Point ─────────────────────────────────────────────
+      [STAT.TOTAL_MATCH_POINTS]: 0,    // Palloni giocati in match point (proprio o avversario)
+      [STAT.MATCH_POINTS_WIN]: 0,       // Match point convertito
+      [STAT.MATCH_POINTS_ERR]: 0,       // Match point sbagliato
+      [STAT.MATCH_POINTS_CANCELLED]: 0, // Match point avversario annullato
 
-      [STAT.TOTAL_TIMEOUT]: 0,
-
-      //Change
-      [STAT.TOTAL_CHANGE]: 0,
+      [STAT.TOTAL_TIMEOUT]: 0, // Timeout chiamati dalla squadra
+      [STAT.TOTAL_CHANGE]: 0,  // Sostituzioni (entrate + uscite)
     };
   }
 
@@ -262,66 +301,68 @@ export class Sset {
     return {
       [STAT.TOUCHES]: 0, //palloni toccati durante la partita intera
 
-      //Attack
-      [STAT.ATTACK_WIN]: 0, //attacchi vinti
-      [STAT.ATTACK_OUT]: 0, //attacchi sbagliati (solo fuori)
-      [STAT.ATTACK_NOT_SUCCESSFUL]: 0,
-      [STAT.TOTAL_ATTACK]: 0, // attacchi totali fatti nella partita
+      // ── Attacco ─────────────────────────────────────────────────
+      [STAT.ATTACK_WIN]: 0,        // Kill: attacco che produce direttamente il punto
+      [STAT.ATTACK_SUCCESSFUL]: 0, // Attacco positivo: correttamente eseguito ma difeso dall'avversario (che poi ha segnato)
+      [STAT.ATTACK_OUT]: 0,        // Attacco errato: fuori o a rete
+      [STAT.ATTACK_NOT_SUCCESSFUL]: 0, // Non usato — mantenuto per compatibilità DB
+      [STAT.TOTAL_ATTACK]: 0,      // Totale attacchi (win + successful + out + blocked)
 
-      //Serve
-      [STAT.ACE]: 0, //ace totali
-      [STAT.SERVES]: 0,
-      [STAT.SERVES_ERR]: 0, //errori totali in battuta
-      [STAT.SERVES_ERR_LINE]: 0, //da capire come fare mai gestita
-      [STAT.TOTAL_SERVES]: 0, //battute totali
+      // ── Battuta ─────────────────────────────────────────────────
+      [STAT.ACE]: 0,           // Ace: punto diretto in battuta
+      [STAT.SERVES]: 0,        // Battuta in campo, non ace, non errore
+      [STAT.SERVES_ERR]: 0,    // Errore in battuta: fuori o a rete
+      [STAT.SERVES_ERR_LINE]: 0, // Errore sulla linea di fondo (tipo specifico di SERVES_ERR)
+      [STAT.TOTAL_SERVES]: 0,  // Totale battute (ace + ok + errori)
 
-      //Ricezione
-      [STAT.DEF_POS]: 0, //ricezioni corrette mai gestita
-      [STAT.DEF_NEG]: 0, //ricezioni sbagliate mai gestita
-      [STAT.TOTAL_RECEIVE]: 0,
+      // ── Ricezione da battuta ────────────────────────────────────
+      [STAT.RECEIVE_SUCCESSFUL]: 0,     // Ricezione riuscita: un compagno tocca OPPURE palla torna dall'altra parte
+      [STAT.RECEIVE_NOT_SUCCESSFUL]: 0, // Ricezione non riuscita: nessun compagno tocca E palla non torna
+      [STAT.TOTAL_RECEIVE]: 0,          // Totale ricezioni da battuta
 
-      //Lost Ball
-      [STAT.BALL_LOST]: 0, //palle perse o passaggi sbagliati
+      // ── Difesa da attacco (NON dalla battuta) ───────────────────
+      [STAT.DEF_POS]: 0,   // Difesa positiva: pallone controllato
+      [STAT.DEF_NEG]: 0,   // Difesa negativa: pallone non controllato (punto all'attaccante)
+      [STAT.TOTAL_DEF]: 0, // Totale difese da attacco (def_pos + def_neg)
 
-      //Block
-      [STAT.BLOCK_SUCCESSFUL]: 0,
-      [STAT.BLOCK_NOT_SUCCESSFUL]: 0,
-      [STAT.TOTAL_BLOCK]: 0,
+      // Palla persa: errore generico (passaggio sbagliato, palla non controllata)
+      [STAT.BALL_LOST]: 0,
 
-      //Foul WB
-      [STAT.FOUL_DOUBLE]: 0, //doppe
-      [STAT.FOUL_FOUR_TOUCHES]: 0, //4 tocchi
-      [STAT.FOUL_RAISED]: 0, //sollevata
+      // ── Muro ────────────────────────────────────────────────────
+      [STAT.BLOCK_SUCCESSFUL]: 0,     // Muro vincente: produce il punto (futuro)
+      [STAT.BLOCK_NOT_SUCCESSFUL]: 0, // Attaccante murato ma palla rimasta in gioco
+      [STAT.TOTAL_BLOCK]: 0,          // Totale muri tentati
 
-      //Foul WOB
-      [STAT.FOUL_POSITION]: 0, //fallo di posizione
-      [STAT.FOUL_INVASION]: 0, //fallo di invasione
+      // ── Falli con palla ─────────────────────────────────────────
+      [STAT.FOUL_DOUBLE]: 0,       // Doppio fallo
+      [STAT.FOUL_FOUR_TOUCHES]: 0, // Quattro tocchi
+      [STAT.FOUL_RAISED]: 0,       // Alzata irregolare
 
-      [STAT.TOTAL_FOUL]: 0,
+      // ── Falli senza palla ────────────────────────────────────────
+      [STAT.FOUL_POSITION]: 0, // Fallo di posizione
+      [STAT.FOUL_INVASION]: 0, // Invasione
 
-      //Card
-      [STAT.CARD_YELLOW]: 0, //cartellini gialli
-      [STAT.CARD_RED]: 0, //cartelini rossi
+      [STAT.TOTAL_FOUL]: 0, // Totale falli
 
+      // ── Cartellini ──────────────────────────────────────────────
+      [STAT.CARD_YELLOW]: 0,
+      [STAT.CARD_RED]: 0,
       [STAT.TOTAL_CARD]: 0,
 
-      //Set Point
-      [STAT.TOTAL_SET_POINTS]: 0,
-      [STAT.SET_POINTS_WIN]: 0,
-      [STAT.SET_POINTS_ERR]: 0,
-      [STAT.SET_POINTS_CANCELLED]: 0,
+      // ── Set Point ───────────────────────────────────────────────
+      [STAT.TOTAL_SET_POINTS]: 0,    // Palloni giocati in set point (proprio o avversario)
+      [STAT.SET_POINTS_WIN]: 0,       // Set point convertito
+      [STAT.SET_POINTS_ERR]: 0,       // Set point sbagliato
+      [STAT.SET_POINTS_CANCELLED]: 0, // Set point avversario annullato
 
-      //Match Point
-      [STAT.TOTAL_MATCH_POINTS]: 0,
-      [STAT.MATCH_POINTS_WIN]: 0,
-      [STAT.MATCH_POINTS_ERR]: 0,
-      [STAT.MATCH_POINTS_CANCELLED]: 0,
+      // ── Match Point ─────────────────────────────────────────────
+      [STAT.TOTAL_MATCH_POINTS]: 0,    // Palloni giocati in match point (proprio o avversario)
+      [STAT.MATCH_POINTS_WIN]: 0,       // Match point convertito
+      [STAT.MATCH_POINTS_ERR]: 0,       // Match point sbagliato
+      [STAT.MATCH_POINTS_CANCELLED]: 0, // Match point avversario annullato
 
-      //Timeout
-      [STAT.TOTAL_TIMEOUT]: 0,
-
-      //Change
-      [STAT.TOTAL_CHANGE]: 0,
+      [STAT.TOTAL_TIMEOUT]: 0, // Timeout chiamati dalla squadra
+      [STAT.TOTAL_CHANGE]: 0,  // Sostituzioni
     };
   }
 
@@ -392,6 +433,25 @@ export class Match {
     this._snapshots = []; // per undo
 
     /**
+     * Stato cross-net per rilevamento automatico attacchi/ricezioni.
+     * Resettato alla fine di ogni punto in scorePoint().
+     * _lastCrossAttacker : Player | null  — ultimo player che ha mandato il pallone dall'altra parte (non serve)
+     * _lastCrossReceiver  : Player | null  — primo player della squadra ricevente dopo l'ultimo cross
+     * _touchesOnCurrentSide : number       — tocchi della squadra ricevente dall'ultimo cross (parte da 1)
+     */
+    this._lastCrossAttacker = null;
+    this._lastCrossReceiver  = null;
+    this._touchesOnCurrentSide = 0;
+
+    /**
+     * Stato per il tracciamento della ricezione da battuta.
+     * _serveReceiver       : Player | null  — chi ha ricevuto la battuta
+     * _serveReceiveConsumed: boolean        — se receive_successful/not_successful è già stato assegnato
+     */
+    this._serveReceiver        = null;
+    this._serveReceiveConsumed = false;
+
+    /**
      * currentSelectedPlayers — sequenza di tocchi del punto in corso.
      * Formato: [{ playerId, team, type }]
      *   type: 'serve' | 'touch'
@@ -413,17 +473,109 @@ export class Match {
    * @param {string} [type='touch']
    */
   pushTouch(player, type = "touch") {
+    const touches = this.currentSelectedPlayers;
+
+    // ── Rilevamento cross-net ────────────────────────────────────
+    // Quando il team del nuovo tocco differisce dall'ultimo tocco, il pallone
+    // ha attraversato la rete. Esclusi: il primo cross (battuta→ricezione) e i
+    // tocchi di tipo 'blocked' (il muro verrà gestito separatamente).
+    if (touches.length > 0) {
+      const prev = touches[touches.length - 1];
+      if (prev.team !== player.team) {
+        // È il cross della battuta se tutti i tocchi precedenti sono dello stesso
+        // team e il primo ha type 'serve'
+        const isServeCross =
+          touches[0]?.type === "serve" &&
+          touches.every((t) => t.team === prev.team);
+
+        if (!isServeCross) {
+          // ── Cross non-battuta: attacco → difesa ─────────────────
+
+          // Se il cross avviene mentre il serve receiver non ha ancora avuto un
+          // compagno che tocca, il pallone è tornato dall'altra parte → receive_successful
+          if (this._serveReceiver != null && !this._serveReceiveConsumed) {
+            this.addStatPlayer(this._serveReceiver, STAT.RECEIVE_SUCCESSFUL);
+            this.addStatSquad(this._serveReceiver, STAT.RECEIVE_SUCCESSFUL);
+            this.addStatSetPlayer(this._serveReceiver, STAT.RECEIVE_SUCCESSFUL);
+            this.addStatSetSquad(this._serveReceiver, STAT.RECEIVE_SUCCESSFUL);
+            this.addStatPlayer(this._serveReceiver, STAT.TOTAL_RECEIVE);
+            this.addStatSquad(this._serveReceiver, STAT.TOTAL_RECEIVE);
+            this.addStatSetPlayer(this._serveReceiver, STAT.TOTAL_RECEIVE);
+            this.addStatSetSquad(this._serveReceiver, STAT.TOTAL_RECEIVE);
+            this._serveReceiveConsumed = true;
+          }
+
+          // Attacco: stat per chi ha mandato il pallone dall'altra parte
+          const attacker = this._findPlayerById(prev.playerId);
+          if (attacker) {
+            this.addStatPlayer(attacker, STAT.ATTACK_SUCCESSFUL);
+            this.addStatSquad(attacker, STAT.ATTACK_SUCCESSFUL);
+            this.addStatSetPlayer(attacker, STAT.ATTACK_SUCCESSFUL);
+            this.addStatSetSquad(attacker, STAT.ATTACK_SUCCESSFUL);
+
+            this.addStatPlayer(attacker, STAT.TOTAL_ATTACK);
+            this.addStatSquad(attacker, STAT.TOTAL_ATTACK);
+            this.addStatSetPlayer(attacker, STAT.TOTAL_ATTACK);
+            this.addStatSetSquad(attacker, STAT.TOTAL_ATTACK);
+          }
+
+          // Difesa da attacco: DEF_POS + TOTAL_DEF per il primo player ricevente
+          this.addStatPlayer(player, STAT.DEF_POS);
+          this.addStatSquad(player, STAT.DEF_POS);
+          this.addStatSetPlayer(player, STAT.DEF_POS);
+          this.addStatSetSquad(player, STAT.DEF_POS);
+
+          this.addStatPlayer(player, STAT.TOTAL_DEF);
+          this.addStatSquad(player, STAT.TOTAL_DEF);
+          this.addStatSetPlayer(player, STAT.TOTAL_DEF);
+          this.addStatSetSquad(player, STAT.TOTAL_DEF);
+
+          this._lastCrossAttacker    = attacker;
+          this._lastCrossReceiver    = player;
+          this._touchesOnCurrentSide = 1;
+        } else {
+          // ── Cross battuta: serve → primo ricevitore ─────────────
+          this._lastCrossAttacker    = null;
+          this._lastCrossReceiver    = null;
+          this._touchesOnCurrentSide = 1;
+          // Registra il ricevitore per tracciare la ricezione da battuta
+          this._serveReceiver        = player;
+          this._serveReceiveConsumed = false;
+        }
+      } else {
+        // ── Stesso team ─────────────────────────────────────────────
+        // Se il serve receiver non ha ancora avuto un compagno e questo è il
+        // secondo tocco sul lato ricevente da parte di un ALTRO giocatore
+        // → receive_successful
+        if (
+          this._serveReceiver != null &&
+          !this._serveReceiveConsumed &&
+          this._touchesOnCurrentSide === 1 &&
+          player.id !== this._serveReceiver.id
+        ) {
+          this.addStatPlayer(this._serveReceiver, STAT.RECEIVE_SUCCESSFUL);
+          this.addStatSquad(this._serveReceiver, STAT.RECEIVE_SUCCESSFUL);
+          this.addStatSetPlayer(this._serveReceiver, STAT.RECEIVE_SUCCESSFUL);
+          this.addStatSetSquad(this._serveReceiver, STAT.RECEIVE_SUCCESSFUL);
+          this.addStatPlayer(this._serveReceiver, STAT.TOTAL_RECEIVE);
+          this.addStatSquad(this._serveReceiver, STAT.TOTAL_RECEIVE);
+          this.addStatSetPlayer(this._serveReceiver, STAT.TOTAL_RECEIVE);
+          this.addStatSetSquad(this._serveReceiver, STAT.TOTAL_RECEIVE);
+          this._serveReceiveConsumed = true;
+        }
+        this._touchesOnCurrentSide++;
+      }
+    }
+    // ── Fine rilevamento ─────────────────────────────────────────
+
     this.currentSelectedPlayers.push({
       playerId: player.id,
       team: player.team,
       type,
     });
 
-    //Match
     this.addStatPlayer(player, STAT.TOUCHES);
     this.addStatSquad(player, STAT.TOUCHES);
-
-    //Set
     this.addStatSetPlayer(player, STAT.TOUCHES);
     this.addStatSetSquad(player, STAT.TOUCHES);
   }
@@ -491,7 +643,10 @@ export class Match {
   }
 
   _isMatchBall(squadScore, opponentScore, setsWon) {
-    return setsWon === this.setsToWin - 1 && this._isSetBall(squadScore, opponentScore);
+    return (
+      setsWon === this.setsToWin - 1 &&
+      this._isSetBall(squadScore, opponentScore)
+    );
   }
 
   // ── Score a point ───────────────────────────────────────────────
@@ -503,15 +658,29 @@ export class Match {
     const serverAtPointStart = this.servingSquad?.servingPlayer ?? null;
 
     // Punteggi e set vinti PRIMA dell'aggiornamento — per calcolare set/match ball
-    const preScoreScoring  = scoringSquad === this.squadA ? (this.currentSet?.scoreA ?? this.squadA.score) : (this.currentSet?.scoreB ?? this.squadB.score);
-    const preScoreOther    = otherSquad   === this.squadA ? (this.currentSet?.scoreA ?? this.squadA.score) : (this.currentSet?.scoreB ?? this.squadB.score);
+    const preScoreScoring =
+      scoringSquad === this.squadA
+        ? (this.currentSet?.scoreA ?? this.squadA.score)
+        : (this.currentSet?.scoreB ?? this.squadB.score);
+    const preScoreOther =
+      otherSquad === this.squadA
+        ? (this.currentSet?.scoreA ?? this.squadA.score)
+        : (this.currentSet?.scoreB ?? this.squadB.score);
     const preSetsWonScoring = scoringSquad.setsWon;
-    const preSetsWonOther   = otherSquad.setsWon;
+    const preSetsWonOther = otherSquad.setsWon;
 
     const setballScoring = this._isSetBall(preScoreScoring, preScoreOther);
-    const setballOther   = this._isSetBall(preScoreOther,   preScoreScoring);
-    const matchballScoring = this._isMatchBall(preScoreScoring, preScoreOther, preSetsWonScoring);
-    const matchballOther   = this._isMatchBall(preScoreOther,   preScoreScoring, preSetsWonOther);
+    const setballOther = this._isSetBall(preScoreOther, preScoreScoring);
+    const matchballScoring = this._isMatchBall(
+      preScoreScoring,
+      preScoreOther,
+      preSetsWonScoring,
+    );
+    const matchballOther = this._isMatchBall(
+      preScoreOther,
+      preScoreScoring,
+      preSetsWonOther,
+    );
 
     // Posizioni in campo PRIMA di qualsiasi rotazione (= posizioni durante questo punto)
     const courtPositions = {
@@ -520,17 +689,17 @@ export class Match {
     };
 
     const squadWhoWinPoint = isWin ? scoringSquad : otherSquad;
-    // Aggiorna stat sul giocatore
 
-    console.log(player);
-    this.addStatPlayer(player, statType);
-    this.addStatSetPlayer(player, statType);
+    // Aggiorna stat principale sul giocatore (null = nessuna stat extra, es. scoreDefenseError)
+    if (statType != null) {
+      this.addStatPlayer(player, statType);
+      this.addStatSetPlayer(player, statType);
+      this.addStatSquad(player, statType);
+      this.addStatSetSquad(player, statType);
+    }
 
     this.addStatPlayer(player, STAT.TOTAL_POINTS);
     this.addStatSetPlayer(player, STAT.TOTAL_POINTS);
-
-    this.addStatSquad(player, statType);
-    this.addStatSetSquad(player, statType);
 
     // ── Set point stats ──────────────────────────────────────────
     if (setballScoring || setballOther) {
@@ -575,8 +744,26 @@ export class Match {
       }
     }
 
-    if (statType === "LOST_BALL") {
+    // ── Ricezione da battuta non riuscita ────────────────────────
+    // Se il punto finisce senza che il serve receiver abbia ricevuto aiuto da un
+    // compagno né il pallone sia tornato dall'altra parte → receive_not_successful
+    if (this._serveReceiver != null && !this._serveReceiveConsumed) {
+      this.addStatPlayer(this._serveReceiver, STAT.RECEIVE_NOT_SUCCESSFUL);
+      this.addStatSquad(this._serveReceiver, STAT.RECEIVE_NOT_SUCCESSFUL);
+      this.addStatSetPlayer(this._serveReceiver, STAT.RECEIVE_NOT_SUCCESSFUL);
+      this.addStatSetSquad(this._serveReceiver, STAT.RECEIVE_NOT_SUCCESSFUL);
+      this.addStatPlayer(this._serveReceiver, STAT.TOTAL_RECEIVE);
+      this.addStatSquad(this._serveReceiver, STAT.TOTAL_RECEIVE);
+      this.addStatSetPlayer(this._serveReceiver, STAT.TOTAL_RECEIVE);
+      this.addStatSetSquad(this._serveReceiver, STAT.TOTAL_RECEIVE);
     }
+
+    // Reset stato cross-net e ricezione: il punto è finito, il prossimo rally riparte da zero
+    this._lastCrossAttacker    = null;
+    this._lastCrossReceiver    = null;
+    this._touchesOnCurrentSide = 0;
+    this._serveReceiver        = null;
+    this._serveReceiveConsumed = false;
 
     // Cattura i tocchi del punto PRIMA di qualsiasi rotazione/assignServe
     const touchOfPlayers = [...this.currentSelectedPlayers];
@@ -590,7 +777,11 @@ export class Match {
       this.addStatSetSquad(serverAtPointStart, STAT.TOTAL_SERVES);
 
       // SERVES: battuta non-errore e non-ace (l'ace aggiunge SERVES via ACTION_EXTRA in Monitor)
-      if (!isAce && statType !== STAT.SERVES_ERR) {
+      if (
+        !isAce &&
+        statType !== STAT.SERVES_ERR &&
+        statType !== STAT.SERVES_ERR_LINE
+      ) {
         this.addStatPlayer(serverAtPointStart, STAT.SERVES);
         this.addStatSquad(serverAtPointStart, STAT.SERVES);
         this.addStatSetPlayer(serverAtPointStart, STAT.SERVES);
@@ -797,7 +988,10 @@ export class Match {
       squadStatsA: { ...this.squadA.stats },
       squadStatsB: { ...this.squadB.stats },
       setPlayerStats: Object.fromEntries(
-        Object.entries(this.currentSet?.stats?.players ?? {}).map(([id, s]) => [id, { ...s }])
+        Object.entries(this.currentSet?.stats?.players ?? {}).map(([id, s]) => [
+          id,
+          { ...s },
+        ]),
       ),
       setSquadStatsA: { ...(this.currentSet?.stats?.squads?.a ?? {}) },
       setSquadStatsB: { ...(this.currentSet?.stats?.squads?.b ?? {}) },
@@ -871,7 +1065,7 @@ export class Match {
       this.currentSet.scoreA = snap.setScoreA;
       this.currentSet.scoreB = snap.setScoreB;
       this.currentSet.stats.players = Object.fromEntries(
-        Object.entries(snap.setPlayerStats).map(([id, s]) => [id, { ...s }])
+        Object.entries(snap.setPlayerStats).map(([id, s]) => [id, { ...s }]),
       );
       this.currentSet.stats.squads.a = { ...snap.setSquadStatsA };
       this.currentSet.stats.squads.b = { ...snap.setSquadStatsB };
@@ -887,11 +1081,8 @@ export class Match {
     player.addStat(type);
   }
 
-  //
   addStatSquad(player, type) {
-    //console.log("addStatSquad");
     const squad = player.team === "a" ? this.squadA : this.squadB;
-    //console.log(player);
     squad.addStat(type);
   }
 
@@ -904,17 +1095,99 @@ export class Match {
     this.currentSet?.recordSquadStat(squad, type);
   }
 
+  /** Decrementa una statistica di un player (minimo 0) */
+  subtractStatPlayer(player, type) {
+    if (type in player.stats && player.stats[type] > 0) player.stats[type]--;
+  }
+
+  /** Decrementa una statistica della squadra del player (minimo 0) */
+  subtractStatSquad(player, type) {
+    const squad = player.team === "a" ? this.squadA : this.squadB;
+    if (type in squad.stats && squad.stats[type] > 0) squad.stats[type]--;
+  }
+
+  /** Decrementa una statistica di set del player (minimo 0) */
+  subtractStatSetPlayer(player, type) {
+    const val = this.currentSet?.stats?.players?.[player.id]?.[type];
+    if (val > 0) this.currentSet.stats.players[player.id][type]--;
+  }
+
+  /** Decrementa una statistica di set della squadra del player (minimo 0) */
+  subtractStatSetSquad(player, type) {
+    const stats = this.currentSet?.stats?.squads?.[player.team];
+    if (stats && stats[type] > 0) stats[type]--;
+  }
+
+  /** Trova un Player in campo o in panchina dato il suo id */
+  _findPlayerById(id) {
+    const all = [
+      ...this.squadA.players, ...this.squadA.bench,
+      ...this.squadB.players, ...this.squadB.bench,
+    ];
+    return all.find((p) => p.id === id) ?? null;
+  }
+
+  /**
+   * Scenario 1 difesa fallita: il primo ricevitore non è riuscito a tenere
+   * il pallone in gioco (LOST_BALL sul primo tocco del team ricevente).
+   *
+   * Conversioni:
+   *   attacker: ATTACK_SUCCESSFUL → ATTACK_WIN  (TOTAL_ATTACK rimane)
+   *   receiver: DEF_POS → DEF_NEG               (TOTAL_RECEIVE rimane)
+   *
+   * Il punto viene assegnato alla squadra dell'attaccante; nessuna stat
+   * "BALL_LOST" viene aggiunta (è una difesa fallita, non una palla persa).
+   */
+  scoreDefenseError(receiver, attacker) {
+    // Converti attacker: ATTACK_SUCCESSFUL → ATTACK_WIN
+    this.subtractStatPlayer(attacker, STAT.ATTACK_SUCCESSFUL);
+    this.subtractStatSquad(attacker, STAT.ATTACK_SUCCESSFUL);
+    this.subtractStatSetPlayer(attacker, STAT.ATTACK_SUCCESSFUL);
+    this.subtractStatSetSquad(attacker, STAT.ATTACK_SUCCESSFUL);
+
+    this.addStatPlayer(attacker, STAT.ATTACK_WIN);
+    this.addStatSquad(attacker, STAT.ATTACK_WIN);
+    this.addStatSetPlayer(attacker, STAT.ATTACK_WIN);
+    this.addStatSetSquad(attacker, STAT.ATTACK_WIN);
+
+    // Converti receiver: DEF_POS → DEF_NEG
+    this.subtractStatPlayer(receiver, STAT.DEF_POS);
+    this.subtractStatSquad(receiver, STAT.DEF_POS);
+    this.subtractStatSetPlayer(receiver, STAT.DEF_POS);
+    this.subtractStatSetSquad(receiver, STAT.DEF_POS);
+
+    this.addStatPlayer(receiver, STAT.DEF_NEG);
+    this.addStatSquad(receiver, STAT.DEF_NEG);
+    this.addStatSetPlayer(receiver, STAT.DEF_NEG);
+    this.addStatSetSquad(receiver, STAT.DEF_NEG);
+
+    // Segna il punto per la squadra dell'attaccante.
+    // statType = null → scorePoint non aggiunge nessuna stat extra.
+    this.scorePoint(receiver, false, null, false);
+  }
+
   // ── Serializzazione localStorage ─────────────────────────────────
   serialize() {
     const serializePlayer = (p) => ({
-      id: p.id, shirtNumber: p.shirtNumber, name: p.name, surname: p.surname,
-      role: p.role, team: p.team, libero: p.libero, onCourt: p.onCourt,
+      id: p.id,
+      shirtNumber: p.shirtNumber,
+      name: p.name,
+      surname: p.surname,
+      role: p.role,
+      team: p.team,
+      libero: p.libero,
+      onCourt: p.onCourt,
       stats: { ...p.stats },
     });
 
     const serializeSquad = (sq) => ({
-      teamId: sq.teamId, name: sq.name, shortName: sq.shortName, side: sq.side,
-      score: sq.score, setsWon: sq.setsWon, timeout: sq.timeout,
+      teamId: sq.teamId,
+      name: sq.name,
+      shortName: sq.shortName,
+      side: sq.side,
+      score: sq.score,
+      setsWon: sq.setsWon,
+      timeout: sq.timeout,
       stats: { ...sq.stats },
       players: sq.players.map(serializePlayer),
       bench: sq.bench.map(serializePlayer),
@@ -922,14 +1195,17 @@ export class Match {
 
     return {
       format: {
-        maxSet: this.maxSet, setsToWin: this.setsToWin,
-        setPoints: this.setPoints, tieBreakPoints: this.tieBreakPoints,
+        maxSet: this.maxSet,
+        setsToWin: this.setsToWin,
+        setPoints: this.setPoints,
+        tieBreakPoints: this.tieBreakPoints,
       },
       squadA: serializeSquad(this.squadA),
       squadB: serializeSquad(this.squadB),
-      sets: this.sets.map(s => ({
+      sets: this.sets.map((s) => ({
         number: s.number,
-        scoreA: s.scoreA, scoreB: s.scoreB,
+        scoreA: s.scoreA,
+        scoreB: s.scoreB,
         winner: s.winner,
         startingLineup: s.startingLineup,
         events: [...s.events],
@@ -942,7 +1218,7 @@ export class Match {
         },
       })),
       currentSetNumber: this.currentSetNumber,
-      servingSide: this.servingSquad?.side ?? 'a',
+      servingSide: this.servingSquad?.side ?? "a",
       changeFieldDone: this.changeFieldDone,
       snapshots: this._snapshots,
     };
@@ -951,8 +1227,13 @@ export class Match {
   static deserialize(data) {
     const makePlayer = (pd) => {
       const p = new Player({
-        id: pd.id, shirtNumber: pd.shirtNumber, name: pd.name,
-        surname: pd.surname, role: pd.role, team: pd.team, libero: pd.libero,
+        id: pd.id,
+        shirtNumber: pd.shirtNumber,
+        name: pd.name,
+        surname: pd.surname,
+        role: pd.role,
+        team: pd.team,
+        libero: pd.libero,
       });
       p.onCourt = pd.onCourt;
       p.stats = { ...pd.stats };
@@ -960,7 +1241,12 @@ export class Match {
     };
 
     const makeSquad = (sd) => {
-      const sq = new Squad({ teamId: sd.teamId, name: sd.name, shortName: sd.shortName, side: sd.side });
+      const sq = new Squad({
+        teamId: sd.teamId,
+        name: sd.name,
+        shortName: sd.shortName,
+        side: sd.side,
+      });
       sq.score = sd.score;
       sq.setsWon = sd.setsWon;
       sq.timeout = sd.timeout;
@@ -975,7 +1261,7 @@ export class Match {
     const squadB = makeSquad(data.squadB);
     const match = new Match(squadA, squadB, data.format);
 
-    match.sets = data.sets.map(sd => {
+    match.sets = data.sets.map((sd) => {
       const s = new Sset(sd.number);
       s.scoreA = sd.scoreA;
       s.scoreB = sd.scoreB;
@@ -990,7 +1276,7 @@ export class Match {
 
     match.currentSetNumber = data.currentSetNumber;
     match.currentSet = match.sets[match.sets.length - 1] ?? null;
-    match.servingSquad = data.servingSide === 'a' ? squadA : squadB;
+    match.servingSquad = data.servingSide === "a" ? squadA : squadB;
     match.changeFieldDone = data.changeFieldDone ?? false;
     match._snapshots = data.snapshots ?? [];
 
