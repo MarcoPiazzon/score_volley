@@ -93,6 +93,7 @@ export default function SetLineupModal({ match, side, setNumber, onClose }) {
     return c;
   });
 
+  const [showConfirm, setShowConfirm] = useState(false);
   const dragSource = useRef(null);
 
   const courtIds  = new Set(Object.values(court).filter(Boolean).map(p => p.id));
@@ -184,7 +185,7 @@ export default function SetLineupModal({ match, side, setNumber, onClose }) {
             </span>
 
             <button
-              onClick={handleConfirm}
+              onClick={() => setShowConfirm(true)}
               disabled={startersCount < 6}
               className="px-4 py-2 bg-teamA/20 border border-teamA/30 rounded-xl
                          text-sm font-condensed font-semibold text-teamA
@@ -299,6 +300,39 @@ export default function SetLineupModal({ match, side, setNumber, onClose }) {
             </div>
           </div>
         </div>
+
+        {/* Popup conferma */}
+        {showConfirm && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-black/60 backdrop-blur-sm">
+            <div
+              className="bg-surf2 border border-white/10 rounded-2xl p-6 mx-6 shadow-2xl max-w-sm w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="font-condensed font-bold text-lg text-text mb-1">
+                Confermi la formazione?
+              </h3>
+              <p className="text-muted text-sm font-condensed mb-5">
+                La formazione per il Set {setNumber} verrà applicata e non sarà più modificabile.
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowConfirm(false)}
+                  className="px-4 py-2 rounded-xl text-sm font-condensed font-semibold
+                             text-muted hover:text-text hover:bg-surf3 border border-white/10 transition-colors"
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={handleConfirm}
+                  className="px-4 py-2 rounded-xl text-sm font-condensed font-semibold
+                             bg-teamA/20 border border-teamA/30 text-teamA hover:bg-teamA/30 transition-colors"
+                >
+                  Sì, conferma
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
