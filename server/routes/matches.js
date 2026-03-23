@@ -314,8 +314,9 @@ router.post("/:id/lineup", async (req, res) => {
       await client.query(
         `
                 INSERT INTO match_lineups
-                    (match_id, team_id, player_id, position_number, is_starter, is_libero)
-                VALUES ($1, $2, $3, $4, $5, $6)
+                    (match_id, team_id, player_id, shirt_number, position_number, is_starter, is_libero)
+                SELECT $1, $2, $3, p.shirt_number, $4, $5, $6
+                FROM players p WHERE p.id = $3
             `,
         [
           matchId,
