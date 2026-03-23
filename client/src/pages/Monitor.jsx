@@ -936,7 +936,14 @@ if (type === 'LOST_BALL' && !servePhase) {
                  onClick={() => handleBenchClick(p)}>
               <div className="bp-num a">{p.shirtNumber}</div>
               <div className="bp-name">
-                {p.displayName}<br />
+                {p.displayName}
+                {(p.stats[STAT.CARD_YELLOW] > 0 || p.stats[STAT.CARD_RED] > 0) && (
+                  <span className="bp-cards">
+                    {'🟨'.repeat(p.stats[STAT.CARD_YELLOW])}
+                    {'🟥'.repeat(p.stats[STAT.CARD_RED])}
+                  </span>
+                )}
+                <br />
                 <span style={{ fontSize:'9px', color:'var(--subtle)', textTransform:'capitalize' }}>
                   {ROLE_MAP[p.role] ?? p.role}{p.libero ? ' · L' : ''}
                 </span>
@@ -1021,6 +1028,12 @@ if (type === 'LOST_BALL' && !servePhase) {
            title={`#${p.shirtNumber} ${p.fullName} · ${ROLE_MAP[p.role] ?? p.role}`}>
         {p.shirtNumber}
       </div>
+      {(p.stats[STAT.CARD_YELLOW] > 0 || p.stats[STAT.CARD_RED] > 0) && (
+        <span className="court-player-cards">
+          {'🟨'.repeat(p.stats[STAT.CARD_YELLOW])}
+          {'🟥'.repeat(p.stats[STAT.CARD_RED])}
+        </span>
+      )}
     </div>
   );
 })}
@@ -1042,6 +1055,12 @@ if (type === 'LOST_BALL' && !servePhase) {
            title={`#${p.shirtNumber} ${p.fullName} · ${ROLE_MAP[p.role] ?? p.role}`}>
         {p.shirtNumber}
       </div>
+      {(p.stats[STAT.CARD_YELLOW] > 0 || p.stats[STAT.CARD_RED] > 0) && (
+        <span className="court-player-cards">
+          {'🟨'.repeat(p.stats[STAT.CARD_YELLOW])}
+          {'🟥'.repeat(p.stats[STAT.CARD_RED])}
+        </span>
+      )}
     </div>
   );
 })}
@@ -1144,7 +1163,14 @@ if (type === 'LOST_BALL' && !servePhase) {
                  onClick={() => handleBenchClick(p)}>
               <div className="bp-num b">{p.shirtNumber}</div>
               <div className="bp-name">
-                {p.displayName}<br />
+                {p.displayName}
+                {(p.stats[STAT.CARD_YELLOW] > 0 || p.stats[STAT.CARD_RED] > 0) && (
+                  <span className="bp-cards">
+                    {'🟨'.repeat(p.stats[STAT.CARD_YELLOW])}
+                    {'🟥'.repeat(p.stats[STAT.CARD_RED])}
+                  </span>
+                )}
+                <br />
                 <span style={{ fontSize:'9px', color:'var(--subtle)', textTransform:'capitalize' }}>
                   {ROLE_MAP[p.role] ?? p.role}{p.libero ? ' · L' : ''}
                 </span>

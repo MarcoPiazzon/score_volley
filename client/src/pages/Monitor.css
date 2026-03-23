@@ -326,6 +326,12 @@
   text-overflow: ellipsis;
 }
 
+.bp-cards {
+  margin-left: 4px;
+  font-size: 10px;
+  vertical-align: middle;
+}
+
 /* ── COURT AREA ── */
 .mon-court-area {
   flex: 1;
@@ -1485,4 +1491,16 @@
 
 .court-player-hit>.court-player.out-selected {
   transform: scale(1.15);
+}
+
+/* Icone cartellino sui giocatori in campo */
+.court-player-cards {
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 8px;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 15;
 }
