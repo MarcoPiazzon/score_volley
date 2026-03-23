@@ -216,15 +216,7 @@ export default function LineupModal({ match, teamId, onClose }) {
     setError('');
     try {
       await persistLineup();
-      try {
-        await apiPost(`/matches/${match.id}/save`, {
-          homeTeamId: match.home_team_id,
-          awayTeamId: match.away_team_id,
-          setsWonHome: 0, setsWonAway: 0,
-          homeTotalPts: 0, awayTotalPts: 0,
-          sets: [], players: [],
-        });
-      } catch { /* se fallisce apriamo lo stesso il monitor */ }
+      await apiPost(`/matches/${match.id}/start`, {});
       localStorage.setItem('openMatch', JSON.stringify(match));
       navigate(`/monitor/${match.id}`);
     } catch {

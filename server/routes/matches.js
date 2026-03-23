@@ -285,6 +285,28 @@ router.get("/:id/lineup", async (req, res) => {
 });
 
 // ================================================================
+//  POST /api/matches/:id/start  →  imposta status = 'in_progress'
+// ================================================================
+router.post("/:id/start", async (req, res) => {
+  const matchId = parseInt(req.params.id);
+  try {
+    const result = await q(
+      `UPDATE matches SET status = 'in_progress', played_at = NOW()
+       WHERE id = $1 AND status = 'scheduled'
+       RETURNING id`,
+      [matchId],
+    );
+    if (!result.length) {
+      return res.status(400).json({ error: "Partita non trovata o già avviata" });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[matches] POST /:id/start", err);
+    res.status(500).json({ error: "Errore interno del server" });
+  }
+});
+
+// ================================================================
 //  POST /api/matches/:id/lineup
 //  Body: { team_id, players: [{ player_id, position_number,
 //                               is_starter, is_libero }] }

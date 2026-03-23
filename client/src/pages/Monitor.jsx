@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { apiGet, apiPost } from '@/lib/api';
 import { Match, Squad, Player } from '@/lib/match-engine';
 import { STAT } from '@/lib/enums';
+import SetLineupModal from '@/components/SetLineupModal';
 import './Monitor.css';
 
 // ── Court position maps ───────────────────────────────────────────
@@ -375,6 +376,9 @@ export default function Monitor() {
   // Modal fine turno
   const [showEndTurn, setShowEndTurn] = useState(false);
 
+  // Modal formazione inizio set (set 2+)
+  const [setLineupTarget, setSetLineupTarget] = useState(null); // { side, setNumber }
+
   // ── Flash ──────────────────────────────────────────────────────
   const flashMsg = useCallback((msg, color = '#e8eaf2') => {
     const el = flashRef.current;
@@ -429,6 +433,12 @@ export default function Monitor() {
             setTiebreakSwapped(false);
             autoSelectServer();
             rerender();
+            // Mostra il modal formazione per il prossimo set (solo se la partita non è finita)
+            const matchOver = match.squadA.setsWon >= match.setsToWin
+                           || match.squadB.setsWon >= match.setsToWin;
+            if (!matchOver) {
+              setSetLineupTarget({ side: 'a', setNumber: match.currentSetNumber });
+            }
           };
           match._onMatchEnd = (winner) => {
             const other = winner === match.squadA ? match.squadB : match.squadA;
@@ -490,14 +500,19 @@ export default function Monitor() {
             const pl = new Player({ id: p.player_id, shirtNumber: p.shirt_number,
               name: p.name ?? '', surname: p.surname ?? '',
               role: p.role, team: side, libero: !!p.is_libero });
-            pl.onCourt = true;
+            pl.onCourt  = true;
+            pl.photoUrl = p.photo_url ?? null;
             return pl;
           });
-          squad.bench = teamData.bench.map(p => new Player({
-            id: p.player_id, shirtNumber: p.shirt_number,
-            name: p.name ?? '', surname: p.surname ?? '',
-            role: p.role, team: side, libero: !!p.is_libero,
-          }));
+          squad.bench = teamData.bench.map(p => {
+            const pl = new Player({
+              id: p.player_id, shirtNumber: p.shirt_number,
+              name: p.name ?? '', surname: p.surname ?? '',
+              role: p.role, team: side, libero: !!p.is_libero,
+            });
+            pl.photoUrl = p.photo_url ?? null;
+            return pl;
+          });
           return squad;
         };
 
@@ -827,6 +842,16 @@ if (type === 'LOST_BALL' && !servePhase) {
           onCancel={() => { setShowSave(false); setIsMatchEnd(false); }}
           saving={saving}
           isMatchEnd={isMatchEnd}
+        />
+      )}
+
+      {/* FORMAZIONE INIZIO SET */}
+      {setLineupTarget && matchRef.current && (
+        <SetLineupModal
+          match={matchRef.current}
+          side={setLineupTarget.side}
+          setNumber={setLineupTarget.setNumber}
+          onClose={() => { setSetLineupTarget(null); autoSelectServer(); rerender(); }}
         />
       )}
 
