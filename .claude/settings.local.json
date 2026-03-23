@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find \"c:/Users/Marco/Desktop/Progetti/score_volley/client/src/components\" -type f -name \"*.{jsx,js,tsx,ts}\")"
+    ]
+  }
+}

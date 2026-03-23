@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AppShell from '@/components/layout/AppShell';
 import { apiGet, apiPost } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import LineupModal from '@/components/LineupModal';
 
 // ── Helpers ──────────────────────────────────────────────────────
 function formatDate(str) {
@@ -120,6 +121,7 @@ export default function Dashboard() {
   const [error,        setError]        = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [compFilter,   setCompFilter]   = useState(null);  // null = tutte le competizioni
+  const [lineupMatch,  setLineupMatch]  = useState(null);  // partita di cui editare la formazione
 
   const teamId = selectedTeam?.id ?? null;
 
@@ -159,25 +161,11 @@ export default function Dashboard() {
     statusFilter === 'all' || m.status === statusFilter
   );
 
-  const handleOpenMatch = async (match) => {
-    console.log(match.status);
+  const handleOpenMatch = (match) => {
     if (match.status === 'scheduled') {
-      // Avvia la partita → imposta in_progress + apri monitor
-      try {
-        await apiPost(`/matches/${match.id}/save`, {
-          homeTeamId: match.home_team_id,
-          awayTeamId: match.away_team_id,
-          setsWonHome: 0, setsWonAway: 0,
-          homeTotalPts: 0, awayTotalPts: 0,
-          sets: [], players: [],
-        });
-        // Salva dati partita per monitor
-        localStorage.setItem('openMatch', JSON.stringify(match));
-        navigate(`/monitor/${match.id}`);
-      } catch {
-        localStorage.setItem('openMatch', JSON.stringify(match));
-        navigate(`/monitor/${match.id}`);
-      }
+      // Apri il modal formazione invece di avviare subito la partita
+      setLineupMatch(match);
+      return;
     } else if (match.status === 'in_progress') {
       localStorage.setItem('openMatch', JSON.stringify(match));
       navigate(`/monitor/${match.id}`);
@@ -197,6 +185,7 @@ export default function Dashboard() {
   );
 
   return (
+    <>
     <AppShell title="Dashboard">
       <div className="max-w-5xl mx-auto space-y-6">
 
@@ -305,5 +294,15 @@ export default function Dashboard() {
         </div>
       </div>
     </AppShell>
+
+    {/* Lineup modal — solo per partite scheduled */}
+    {lineupMatch && (
+      <LineupModal
+        match={lineupMatch}
+        teamId={teamId}
+        onClose={() => setLineupMatch(null)}
+      />
+    )}
+    </>
   );
 }

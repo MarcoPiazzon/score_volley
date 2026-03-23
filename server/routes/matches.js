@@ -241,7 +241,7 @@ router.get("/:id/lineup", async (req, res) => {
             SELECT
                 ml.team_id, ml.player_id, ml.position_number,
                 ml.is_starter, ml.is_libero,
-                p.name, p.surname, p.shirt_number, p.role
+                p.name, p.surname, p.shirt_number, p.role, p.photo_url
             FROM  match_lineups ml
             JOIN  players p ON p.id = ml.player_id
             WHERE ml.match_id = $1

@@ -117,7 +117,7 @@ router.get("/:id/players", async (req, res) => {
     const rows = await q(
       `
             SELECT p.id, p.name, p.surname, p.shirt_number, p.role,
-                   p.is_active, p.created_at
+                   p.photo_url, p.is_active, p.created_at
             FROM   players p
             WHERE  p.team_id = $1
             ORDER  BY p.shirt_number

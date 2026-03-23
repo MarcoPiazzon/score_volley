@@ -64,3 +64,25 @@ this.restoreFromSnapshot(snap);
 container.appendChild(div);
 });
 }
+
+provare a ricreare il modello che avevo fatto in precedenza, ti do tutte le specifiche. Quando una partita è in
+"scheduled" vuol dire che è pronta per essere giocata (ovvero manca meno di un giorno). l'allenatore può decidere di
+caricare la formazione titolare e panchina. bisogna creare un pulsante al posto di "vedi riepilogo" in caso di partita
+"completed" che ti apre questo popup: a sx hai l'elenco completo di tutti i giocatori della squadra, a dx hai una meta
+campo di gioco dove il lato alto è il lato "sotto rete", la disposizione sono 2 righe e 3 colonne dove la prima riga
+(partendo da sx) sono rispetttivamtne le posizioni 4,3,2, la seconda riga (partendo da sx) sono le posizioni 5,6,1. ogni
+giocatore in "campo" viene rappresnetato un rettangolo dove lo sfondo è la foto del player e in sovraimpressione si
+hanno 3 caratterisiche: 1) nome e cognome 2) numero di maglia 3) ruolo. per facilitare l'inserimento, era possibile fare
+un drag and drop dalla colonna sx al campo (per inserire un player nella formazione titolare) e dal campo alla colonna
+(per rimuovere un giocatore). se dalla colonna prendevo un player e lo lasciavo sopra ad una posizione della formazione
+titolare già occupata, i due giocatori venivano scambiati automaticamente. stessa cosa per il procedimento inverso.
+prima di procedere dimmi se c'è qualcosa che non ti è chiaro
+
+
+
+1) corretto, per le parttite scheduled si deve vedere il pulsante per inserire le formazioni, con completed il pulsatne
+per il timeline. 2) i giocatori in panchina rimangono nella colonna a sx. 3) per ora non esistono foto dei player (non è
+presente neanche un campo nel db): adatta il db per questa modifica, per ora se la foto non è esistente non inserire
+nulla. 4) inserisci un pulsante salva. 5) non ricordo se esiste già una api per salvare la formazione, se non è presente
+creala tu. La lista dei giocatori più prenderla in questo modo: sapendo l'id della squadra, vai nella tabella players e
+cerca per quel'id. come prima, dimmi se ti è tuto chairo
