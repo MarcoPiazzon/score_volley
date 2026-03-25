@@ -1,4 +1,5 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { apiGet, apiPost } from '@/lib/api';
 
@@ -19,46 +20,43 @@ const COURT_ROWS = [
 ];
 
 // ── PositionSlot ─────────────────────────────────────────────────
-function PositionSlot({ position, player, onDragStart, onDrop }) {
-  const [isDragOver, setIsDragOver] = useState(false);
-
+function PositionSlot({ position, player, onPointerDown, isDropTarget }) {
   return (
     <div
+      data-slot-pos={position}
       className={`relative rounded-xl border-2 aspect-[9/16] transition-colors overflow-hidden
-        ${isDragOver
+        ${isDropTarget
           ? 'border-teamA bg-teamA/15'
           : player
             ? 'border-white/15'
             : 'border-white/20 border-dashed bg-black/20'}`}
-      onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
-      onDragLeave={() => setIsDragOver(false)}
-      onDrop={(e) => { setIsDragOver(false); onDrop(e, position); }}
     >
       {/* Position number */}
-      <span className="absolute top-1 left-1.5 z-10 text-white/50 font-condensed font-bold text-[11px] leading-none">
+      <span className="absolute top-1 left-1.5 z-10 text-white/50 font-condensed font-bold text-[11px] leading-none pointer-events-none">
         {position}
       </span>
 
       {player ? (
         <div
-          draggable
-          onDragStart={(e) => onDragStart(e, 'court', player, position)}
+          onPointerDown={(e) => onPointerDown(e, 'court', player, position)}
           className="absolute inset-0 cursor-grab active:cursor-grabbing select-none"
-          style={player.photo_url
-            ? { backgroundImage: `url(${player.photo_url})`, backgroundSize: 'cover', backgroundPosition: 'center top' }
-            : { background: 'linear-gradient(135deg, rgba(80,140,200,0.25), rgba(20,30,50,0.8))' }
-          }
+          style={{
+            touchAction: 'none',
+            ...(player.photo_url
+              ? { backgroundImage: `url(${player.photo_url})`, backgroundSize: 'cover', backgroundPosition: 'center top' }
+              : { background: 'linear-gradient(135deg, rgba(80,140,200,0.25), rgba(20,30,50,0.8))' })
+          }}
         >
           {/* Scrim */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
 
           {/* Shirt number badge */}
-          <div className="absolute top-1 right-1.5 z-10 bg-black/60 rounded px-1 py-0.5">
+          <div className="absolute top-1 right-1.5 z-10 bg-black/60 rounded px-1 py-0.5 pointer-events-none">
             <span className="text-white font-condensed font-bold text-[10px]">#{player.shirt_number}</span>
           </div>
 
           {/* Info overlay */}
-          <div className="absolute bottom-0 left-0 right-0 p-1.5 z-10">
+          <div className="absolute bottom-0 left-0 right-0 p-1.5 z-10 pointer-events-none">
             <p className="text-white font-condensed font-semibold text-[11px] leading-tight truncate">
               {player.name} {player.surname}
             </p>
@@ -68,8 +66,8 @@ function PositionSlot({ position, player, onDragStart, onDrop }) {
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-center h-full">
-          {isDragOver
+        <div className="flex items-center justify-center h-full pointer-events-none">
+          {isDropTarget
             ? <span className="text-teamA font-condensed text-xs">↓</span>
             : <span className="text-white/15 font-condensed text-xs">—</span>
           }
@@ -90,7 +88,12 @@ export default function LineupModal({ match, teamId, onClose }) {
   const [starting, setStarting]     = useState(false);
   const [error,    setError]        = useState('');
 
-  const dragSource = useRef(null);
+  // ── Drag state ──────────────────────────────────────────────────
+  const dragRef      = useRef(null);          // current drag payload
+  const ghostDomRef  = useRef(null);          // ghost DOM node (imperative position update)
+  const [isDragging, setIsDragging]  = useState(false);
+  const [ghostLabel, setGhostLabel]  = useState('');
+  const [dropTarget, setDropTarget]  = useState(null); // number | 'bench' | null
 
   // ── Load players + existing lineup ──────────────────────────────
   useEffect(() => {
@@ -134,42 +137,79 @@ export default function LineupModal({ match, teamId, onClose }) {
   const courtIds  = new Set(Object.values(court).filter(Boolean).map(p => p.id));
   const benchPool = allPlayers.filter(p => !courtIds.has(p.id));
 
-  // ── Drag handlers ────────────────────────────────────────────────
-  const handleDragStart = (e, source, player, position = null) => {
-    dragSource.current = { source, player, position };
-    e.dataTransfer.effectAllowed = 'move';
-  };
+  // ── Pointer drag handlers ─────────────────────────────────────
+  const findDropTarget = useCallback((x, y) => {
+    const els = document.elementsFromPoint(x, y);
+    for (const el of els) {
+      if (el.dataset.slotPos !== undefined) return parseInt(el.dataset.slotPos);
+      if (el.dataset.bench  !== undefined) return 'bench';
+    }
+    return null;
+  }, []);
 
-  const handleDropOnPosition = (e, targetPos) => {
+  const startDrag = useCallback((e, source, player, position = null) => {
     e.preventDefault();
-    const drag = dragSource.current;
-    if (!drag) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    dragRef.current = {
+      source, player, position,
+      offsetX: e.clientX - rect.left,
+      offsetY: e.clientY - rect.top,
+    };
+    setGhostLabel(`#${player.shirt_number} ${player.surname ?? player.name}`);
+    setIsDragging(true);
+    // Position ghost immediately (DOM ref set after render via callback ref)
+    // We store initial coords so the ghost can be placed on first paint
+    dragRef.current.initX = e.clientX;
+    dragRef.current.initY = e.clientY;
+  }, []);
 
-    setCourt(prev => {
-      const next      = { ...prev };
-      const displaced = next[targetPos]; // could be null
+  // Register global pointer listeners when dragging
+  useEffect(() => {
+    if (!isDragging) return;
 
-      if (drag.source === 'bench') {
-        next[targetPos] = drag.player;
-        // displaced player automatically goes back to bench (not in court)
-      } else if (drag.source === 'court') {
-        next[targetPos]    = drag.player;
-        next[drag.position] = displaced; // swap (or null if slot was empty)
+    const onMove = (e) => {
+      const drag = dragRef.current;
+      if (!drag) return;
+      // Update ghost position imperatively (no state = no re-render per frame)
+      if (ghostDomRef.current) {
+        ghostDomRef.current.style.left = `${e.clientX - drag.offsetX}px`;
+        ghostDomRef.current.style.top  = `${e.clientY - drag.offsetY}px`;
       }
-      return next;
-    });
+      setDropTarget(findDropTarget(e.clientX, e.clientY));
+    };
 
-    dragSource.current = null;
-  };
+    const onUp = (e) => {
+      const drag   = dragRef.current;
+      const target = findDropTarget(e.clientX, e.clientY);
 
-  const handleDropOnBench = (e) => {
-    e.preventDefault();
-    const drag = dragSource.current;
-    if (!drag || drag.source !== 'court') return;
+      if (drag) {
+        if (target === 'bench' && drag.source === 'court') {
+          setCourt(prev => ({ ...prev, [drag.position]: null }));
+        } else if (typeof target === 'number') {
+          setCourt(prev => {
+            const next      = { ...prev };
+            const displaced = next[target];
+            next[target] = drag.player;
+            if (drag.source === 'court') next[drag.position] = displaced;
+            return next;
+          });
+        }
+      }
 
-    setCourt(prev => ({ ...prev, [drag.position]: null }));
-    dragSource.current = null;
-  };
+      dragRef.current = null;
+      setIsDragging(false);
+      setDropTarget(null);
+    };
+
+    window.addEventListener('pointermove',   onMove,  { passive: false });
+    window.addEventListener('pointerup',     onUp);
+    window.addEventListener('pointercancel', onUp);
+    return () => {
+      window.removeEventListener('pointermove',   onMove);
+      window.removeEventListener('pointerup',     onUp);
+      window.removeEventListener('pointercancel', onUp);
+    };
+  }, [isDragging, findDropTarget]);
 
   // ── Save lineup ──────────────────────────────────────────────────
   const buildPayload = () => {
@@ -313,9 +353,8 @@ export default function LineupModal({ match, teamId, onClose }) {
 
             {/* ── Left: player pool ── */}
             <div
+              data-bench="1"
               className="w-52 flex-shrink-0 border-r border-white/7 overflow-y-auto min-h-0"
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={handleDropOnBench}
             >
               <div className="p-3 space-y-1.5">
                 <p className="text-muted text-[11px] font-condensed uppercase tracking-wide mb-2">
@@ -325,15 +364,15 @@ export default function LineupModal({ match, teamId, onClose }) {
                 {benchPool.map(player => (
                   <div
                     key={player.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, 'bench', player)}
+                    onPointerDown={(e) => startDrag(e, 'bench', player)}
                     className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-surf2
                                border border-white/7 cursor-grab active:cursor-grabbing
                                hover:border-teamA/30 transition-colors select-none"
+                    style={{ touchAction: 'none' }}
                   >
                     {/* Avatar */}
                     <div className="w-7 h-7 flex-shrink-0 rounded-full bg-teamA/20
-                                    border border-teamA/30 overflow-hidden flex items-center justify-center">
+                                    border border-teamA/30 overflow-hidden flex items-center justify-center pointer-events-none">
                       {player.photo_url
                         ? <img src={player.photo_url} alt="" className="w-full h-full object-cover" />
                         : <span className="text-teamA font-condensed font-bold text-xs">{player.shirt_number}</span>
@@ -341,7 +380,7 @@ export default function LineupModal({ match, teamId, onClose }) {
                     </div>
 
                     {/* Info */}
-                    <div className="min-w-0">
+                    <div className="min-w-0 pointer-events-none">
                       <p className="text-text font-condensed text-xs font-semibold truncate leading-tight">
                         {player.name} {player.surname}
                       </p>
@@ -392,8 +431,8 @@ export default function LineupModal({ match, teamId, onClose }) {
                             key={pos}
                             position={pos}
                             player={court[pos]}
-                            onDragStart={handleDragStart}
-                            onDrop={handleDropOnPosition}
+                            onPointerDown={startDrag}
+                            isDropTarget={dropTarget === pos}
                           />
                         ))}
                       </div>
@@ -417,6 +456,34 @@ export default function LineupModal({ match, teamId, onClose }) {
           </div>
         )}
       </div>
+
+      {/* ── Drag ghost (portal) ── */}
+      {isDragging && createPortal(
+        <div
+          ref={ghostDomRef}
+          style={{
+            position:      'fixed',
+            left:          dragRef.current ? dragRef.current.initX - dragRef.current.offsetX : 0,
+            top:           dragRef.current ? dragRef.current.initY - dragRef.current.offsetY : 0,
+            pointerEvents: 'none',
+            zIndex:        9999,
+            background:    'rgba(74, 154, 255, 0.35)',
+            border:        '2px solid rgba(74, 154, 255, 0.9)',
+            borderRadius:  10,
+            padding:       '6px 12px',
+            color:         '#fff',
+            fontSize:      12,
+            fontWeight:    700,
+            whiteSpace:    'nowrap',
+            userSelect:    'none',
+            backdropFilter:'blur(4px)',
+            boxShadow:     '0 4px 20px rgba(0,0,0,0.5)',
+          }}
+        >
+          {ghostLabel}
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
