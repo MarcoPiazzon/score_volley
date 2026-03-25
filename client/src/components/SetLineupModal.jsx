@@ -20,7 +20,7 @@ function PositionSlot({ position, player, onPointerDown, isDropTarget }) {
   return (
     <div
       data-slot-pos={position}
-      className={`relative rounded-xl border-2 aspect-[9/16] transition-colors overflow-hidden
+      className={`relative rounded-xl border-2 h-full transition-colors overflow-hidden
         ${isDropTarget
           ? 'border-teamA bg-teamA/15'
           : player
@@ -206,7 +206,7 @@ export default function SetLineupModal({ match, side, setNumber, onClose }) {
 
       <div
         className="relative z-10 bg-surf1 border border-white/10 rounded-2xl
-                   w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl"
+                   w-full max-w-4xl h-[90vh] flex flex-col shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -288,26 +288,26 @@ export default function SetLineupModal({ match, side, setNumber, onClose }) {
           </div>
 
           {/* Right: court */}
-          <div className="flex-1 p-6 flex items-center justify-center overflow-auto">
-            <div className="w-full max-w-xl">
-              <p className="text-muted text-[11px] font-condensed uppercase tracking-wide text-center mb-3">
+          <div className="flex-1 min-h-0 p-4 flex flex-col">
+            <div className="flex-1 min-h-0 flex flex-col w-full max-w-xl mx-auto">
+              <p className="flex-shrink-0 text-muted text-[11px] font-condensed uppercase tracking-wide text-center mb-2">
                 Rotazione iniziale
               </p>
 
               <div
-                className="rounded-2xl overflow-hidden border border-white/10"
+                className="flex-1 min-h-0 rounded-2xl overflow-hidden border border-white/10 flex flex-col"
                 style={{ background: 'linear-gradient(180deg, #0d2b1a 0%, #0d2b1a 100%)' }}
               >
-                <div className="p-4 space-y-2">
-                  <div className="flex items-center gap-2 mb-1">
+                <div className="flex-1 min-h-0 p-3 flex flex-col gap-1.5">
+                  <div className="flex-shrink-0 flex items-center gap-2">
                     <div className="flex-1 h-px bg-white/10" />
                     <span className="text-white/30 text-[10px] font-condensed tracking-wider">↑ RETE</span>
                     <div className="flex-1 h-px bg-white/10" />
                   </div>
-                  <div className="w-full h-0.5 rounded-full bg-white/25 mb-2" />
+                  <div className="flex-shrink-0 w-full h-0.5 rounded-full bg-white/25" />
 
                   {COURT_ROWS.map((row, rowIdx) => (
-                    <div key={rowIdx} className="grid grid-cols-3 gap-2">
+                    <div key={rowIdx} className="flex-1 min-h-0 grid grid-cols-3 gap-2">
                       {row.map(pos => (
                         <PositionSlot
                           key={pos}
@@ -320,7 +320,7 @@ export default function SetLineupModal({ match, side, setNumber, onClose }) {
                     </div>
                   ))}
 
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="flex-shrink-0 flex items-center gap-2">
                     <div className="flex-1 h-px bg-white/5" />
                     <span className="text-white/15 text-[10px] font-condensed">fondocampo</span>
                     <div className="flex-1 h-px bg-white/5" />
@@ -328,7 +328,7 @@ export default function SetLineupModal({ match, side, setNumber, onClose }) {
                 </div>
               </div>
 
-              <p className="text-subtle text-[10px] font-condensed text-center mt-3">
+              <p className="flex-shrink-0 text-subtle text-[10px] font-condensed text-center mt-2">
                 Trascina i giocatori dalla rosa alle posizioni · Rilascia sul campo per rimuovere
               </p>
             </div>

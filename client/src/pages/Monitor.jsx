@@ -920,7 +920,8 @@ if (type === 'LOST_BALL' && !servePhase) {
       <div className="mon-main">
 
         {/* Bench A */}
-        <div className={`bench-panel a${subMode || cardMode ? ' bench-visible' : ''}`}>
+        <div className={`bench-panel a${courtSwapped ? ' bench-from-right' : ''}${subMode || cardMode ? ' bench-visible' : ''}`}
+             style={{ order: courtSwapped ? 3 : 1 }}>
           <div className="bench-header">
             <div className="bench-title a">{squadA.name}</div>
             <div className={`bench-timeout ${squadA.timeout > 0 ? 'has-to' : ''}`}>
@@ -953,7 +954,7 @@ if (type === 'LOST_BALL' && !servePhase) {
         </div>
 
         {/* Court + Actions */}
-        <div className="mon-court-area">
+        <div className="mon-court-area" style={{ order: 2 }}>
 
           {/* Campo */}
           <div className="mon-court-wrap">
@@ -1139,6 +1140,9 @@ if (type === 'LOST_BALL' && !servePhase) {
             <div className="util-controls">
               <button className="ctrl-btn undo" onClick={() => registerEvent('UNDO')}>↩ Undo</button>
               <button className="ctrl-btn" onClick={() => registerEvent('SWAP_SERVE')}>⇄ Battuta</button>
+              <button className="ctrl-btn" onClick={() => setTiebreakSwapped(s => !s)} title="Inverti lati campo">
+                ⇆ Lati
+              </button>
               <button className="ctrl-btn" onClick={() => { setIsMatchEnd(false); setShowSave(true); }} disabled={saving}>
                 ↑ Salva
               </button>
@@ -1147,7 +1151,8 @@ if (type === 'LOST_BALL' && !servePhase) {
         </div>
 
         {/* Bench B */}
-        <div className={`bench-panel b${subMode || cardMode ? ' bench-visible' : ''}`}>
+        <div className={`bench-panel b${courtSwapped ? ' bench-from-left' : ''}${subMode || cardMode ? ' bench-visible' : ''}`}
+             style={{ order: courtSwapped ? 1 : 3 }}>
           <div className="bench-header">
             <div className="bench-title b">{squadB.name}</div>
             <div className={`bench-timeout ${squadB.timeout > 0 ? 'has-to' : ''}`}>

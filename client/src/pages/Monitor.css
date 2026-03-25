@@ -234,6 +234,21 @@
   transition: transform 0.28s ease, margin-left 0.28s ease, opacity 0.2s ease;
 }
 
+/* override direzione animazione dopo swap lati */
+.bench-panel.bench-from-right {
+  transform: translateX(100%);
+  margin-right: 0;
+  margin-left: -170px;
+  transition: transform 0.28s ease, margin-left 0.28s ease, opacity 0.2s ease;
+}
+
+.bench-panel.bench-from-left {
+  transform: translateX(-100%);
+  margin-right: -170px;
+  margin-left: 0;
+  transition: transform 0.28s ease, margin-right 0.28s ease, opacity 0.2s ease;
+}
+
 /* visibile durante cambio o cartellino */
 .bench-panel.bench-visible {
   transform: translateX(0);
