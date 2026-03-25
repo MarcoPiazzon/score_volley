@@ -217,11 +217,30 @@
   gap: 6px;
   border-right: 1px solid var(--border);
   overflow-y: auto;
+  /* nascosta: scorre fuori a sinistra e non occupa spazio */
+  transform: translateX(-100%);
+  margin-right: -170px;
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.28s ease, margin-right 0.28s ease, opacity 0.2s ease;
 }
 
 .bench-panel.b {
   border-right: none;
   border-left: 1px solid var(--border);
+  transform: translateX(100%);
+  margin-right: 0;
+  margin-left: -170px;
+  transition: transform 0.28s ease, margin-left 0.28s ease, opacity 0.2s ease;
+}
+
+/* visibile durante cambio o cartellino */
+.bench-panel.bench-visible {
+  transform: translateX(0);
+  margin-right: 0;
+  margin-left: 0;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .bench-header {

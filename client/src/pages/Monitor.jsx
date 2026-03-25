@@ -920,7 +920,7 @@ if (type === 'LOST_BALL' && !servePhase) {
       <div className="mon-main">
 
         {/* Bench A */}
-        <div className="bench-panel a">
+        <div className={`bench-panel a${subMode || cardMode ? ' bench-visible' : ''}`}>
           <div className="bench-header">
             <div className="bench-title a">{squadA.name}</div>
             <div className={`bench-timeout ${squadA.timeout > 0 ? 'has-to' : ''}`}>
@@ -1147,7 +1147,7 @@ if (type === 'LOST_BALL' && !servePhase) {
         </div>
 
         {/* Bench B */}
-        <div className="bench-panel b">
+        <div className={`bench-panel b${subMode || cardMode ? ' bench-visible' : ''}`}>
           <div className="bench-header">
             <div className="bench-title b">{squadB.name}</div>
             <div className={`bench-timeout ${squadB.timeout > 0 ? 'has-to' : ''}`}>
