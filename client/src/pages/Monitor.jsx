@@ -462,6 +462,10 @@ export default function Monitor() {
             const parsed = JSON.parse(saved);
             const match = Match.deserialize(parsed);
             const matchData = await apiGet(`/matches/${matchId}`);
+            if (matchData.status !== 'in_progress') {
+              setError('Questa partita non è in corso.');
+              return;
+            }
             matchMeta.current = matchData;
             attachCallbacks(match);
             match.assignServe();
@@ -479,6 +483,10 @@ export default function Monitor() {
           apiGet(`/matches/${matchId}`),
           apiGet(`/matches/${matchId}/lineup`),
         ]);
+        if (matchData.status !== 'in_progress') {
+          setError('Questa partita non è in corso.');
+          return;
+        }
         matchMeta.current = matchData;
 
         const format = {

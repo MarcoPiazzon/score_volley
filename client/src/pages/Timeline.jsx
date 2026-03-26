@@ -125,6 +125,10 @@ export default function Timeline() {
           apiGet(`/matches/${matchId}/timeline`),
           apiGet(`/matches/${matchId}/stats`).catch(() => null),
         ]);
+        if (matchRes.status !== 'completed') {
+          setError('Partita non ancora terminata — la timeline è disponibile solo a fine partita.');
+          return;
+        }
         setMatchData(matchRes);
         setLineup(lineupRes);
         setSets(timelineRes.sets ?? []);
@@ -257,7 +261,21 @@ export default function Timeline() {
   }
 
   if (loading) return <div className="tl-root"><div className="tl-center">Caricamento…</div></div>;
-  if (error)   return <div className="tl-root"><div className="tl-center" style={{color:'var(--red)'}}>Errore: {error}</div></div>;
+  if (error)   return (
+    <div className="tl-root">
+      <div className="tl-center" style={{ flexDirection:'column', gap:'16px', textAlign:'center', padding:'24px' }}>
+        <div style={{ fontSize:'36px' }}>⚠️</div>
+        <div style={{ color:'var(--red)', fontWeight:'700', fontSize:'16px', maxWidth:'340px' }}>{error}</div>
+        <button onClick={() => navigate('/')}
+                style={{ marginTop:'8px', padding:'10px 24px', borderRadius:'12px',
+                         background:'var(--surf-2)', border:'1px solid var(--border)',
+                         color:'var(--text)', fontFamily:'Barlow Condensed,sans-serif',
+                         fontSize:'14px', fontWeight:'700', cursor:'pointer' }}>
+          ← Torna alla Dashboard
+        </button>
+      </div>
+    </div>
+  );
 
   const homeShort = lineup?.home?.short_name ?? lineup?.home?.team_name?.slice(0,3).toUpperCase() ?? 'HOM';
   const awayShort = lineup?.away?.short_name ?? lineup?.away?.team_name?.slice(0,3).toUpperCase() ?? 'AWY';
