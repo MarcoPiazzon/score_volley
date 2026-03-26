@@ -4,7 +4,8 @@
       "Bash(find \"c:/Users/Marco/Desktop/Progetti/score_volley/client/src/components\" -type f -name \"*.{jsx,js,tsx,ts}\")",
       "Bash(xargs ls:*)",
       "Bash(grep -l \"bench\\\\|starters\\\\|in campo\\\\|panchina\" /c/Users/Marco/Desktop/Progetti/score_volley/client/src/pages/*.jsx)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(npm run:*)"
     ]
   }
 }

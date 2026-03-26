@@ -298,11 +298,11 @@ router.get("/:id/players/stats", async (req, res) => {
                 COALESCE(SUM(spm.ace), 0)                          AS ace,
                 COALESCE(SUM(spm.total_attack), 0)                 AS atk,
                 COALESCE(SUM(spm.attack_win), 0)                  AS kills,
-                COALESCE(SUM(spm.block_successful), 0)                   AS blk,
-                COALESCE(SUM(spm.total_serves), 0)                  AS serve_total,
-                COALESCE(SUM(spm.serves_err), 0)                  AS serve_errors,
-                COALESCE(SUM(spm.def_pos), 0)              AS recv_total,
-                COALESCE(SUM(spm.def_neg), 0)            AS recv_pos,
+                COALESCE(SUM(spm.block_successful), 0)             AS blk,
+                COALESCE(SUM(spm.total_serves), 0)                 AS serve_total,
+                COALESCE(SUM(spm.serves_err), 0)                   AS serve_errors,
+                COALESCE(SUM(spm.def_pos), 0)                      AS recv_total,
+                COALESCE(SUM(spm.def_neg), 0)                      AS recv_pos,
 
                 ROUND(
                     SUM(spm.attack_win)::NUMERIC /
@@ -314,11 +314,11 @@ router.get("/:id/players/stats", async (req, res) => {
                     NULLIF(SUM(spm.total_receive), 0) * 100, 1
                 )                                                   AS recv_pct
 
-            FROM  stats_player_match spm
-            JOIN  players p ON p.id = spm.player_id
-            JOIN  matches m ON m.id = spm.match_id AND m.status = 'completed'
+            FROM  players p
+            LEFT JOIN stats_player_match spm ON spm.player_id = p.id
+            LEFT JOIN matches m ON m.id = spm.match_id AND m.status = 'completed'
             ${mdJoin}
-            WHERE spm.team_id = $1
+            WHERE p.team_id = $1
             ${whereClause}
             GROUP BY p.id, p.name, p.surname, p.shirt_number, p.role
             ORDER BY ${orderBy}

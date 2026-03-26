@@ -53,6 +53,12 @@ app.get("/api/health", (_req, res) => {
   res.json({ ok: true, uptime: process.uptime() });
 });
 
+// ── Disabilita cache su tutte le route API ────────────────────────
+app.use("/api", (_req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  next();
+});
+
 // ── Routes API ───────────────────────────────────────────────────
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/teams", require("./routes/teams"));
