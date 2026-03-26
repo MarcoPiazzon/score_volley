@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
 import { apiGet, apiPost } from '@/lib/api';
 
 // ── Constants ────────────────────────────────────────────────────
@@ -78,14 +77,11 @@ function PositionSlot({ position, player, onPointerDown, isDropTarget }) {
 }
 
 // ── Main Component ───────────────────────────────────────────────
-export default function LineupModal({ match, teamId, onClose }) {
-  const navigate = useNavigate();
-
+export default function LineupModal({ match, teamId, onClose, onSaved }) {
   const [allPlayers, setAllPlayers] = useState([]);
   const [court, setCourt]           = useState({ 1: null, 2: null, 3: null, 4: null, 5: null, 6: null });
   const [loading,  setLoading]      = useState(true);
   const [saving,   setSaving]       = useState(false);
-  const [starting, setStarting]     = useState(false);
   const [error,    setError]        = useState('');
 
   // ── Drag state ──────────────────────────────────────────────────
@@ -243,25 +239,12 @@ export default function LineupModal({ match, teamId, onClose }) {
     setError('');
     try {
       await persistLineup();
+      onSaved?.();
       onClose();
     } catch {
       setError('Errore nel salvataggio della formazione');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleStartMatch = async () => {
-    setStarting(true);
-    setError('');
-    try {
-      await persistLineup();
-      await apiPost(`/matches/${match.id}/start`, {});
-      localStorage.setItem('openMatch', JSON.stringify(match));
-      navigate(`/monitor/${match.id}`);
-    } catch {
-      setError('Errore durante l\'avvio della partita');
-      setStarting(false);
     }
   };
 
@@ -304,24 +287,12 @@ export default function LineupModal({ match, teamId, onClose }) {
             {/* Salva */}
             <button
               onClick={handleSave}
-              disabled={saving || starting}
-              className="px-4 py-2 bg-surf2 border border-white/10 rounded-xl
-                         text-sm font-condensed font-semibold text-text
-                         hover:bg-surf3 transition-colors disabled:opacity-40"
-            >
-              {saving ? 'Salvataggio…' : 'Salva'}
-            </button>
-
-            {/* Avvia partita */}
-            <button
-              onClick={handleStartMatch}
-              disabled={saving || starting || startersCount < 6}
-              title={startersCount < 6 ? 'Devi schierare 6 titolari' : ''}
+              disabled={saving}
               className="px-4 py-2 bg-teamA/20 border border-teamA/30 rounded-xl
                          text-sm font-condensed font-semibold text-teamA
                          hover:bg-teamA/30 transition-colors disabled:opacity-40"
             >
-              {starting ? 'Avvio…' : 'Avvia partita →'}
+              {saving ? 'Salvataggio…' : 'Salva formazione'}
             </button>
 
             {/* Chiudi */}

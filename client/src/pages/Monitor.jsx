@@ -845,13 +845,23 @@ if (type === 'LOST_BALL' && !servePhase) {
         />
       )}
 
-      {/* FORMAZIONE INIZIO SET */}
+      {/* FORMAZIONE INIZIO SET — prima squadra A, poi B in sequenza */}
       {setLineupTarget && matchRef.current && (
         <SetLineupModal
           match={matchRef.current}
           side={setLineupTarget.side}
           setNumber={setLineupTarget.setNumber}
-          onClose={() => { setSetLineupTarget(null); autoSelectServer(); rerender(); }}
+          onClose={() => {
+            if (setLineupTarget.side === 'a') {
+              // dopo A mostra B
+              setSetLineupTarget({ side: 'b', setNumber: setLineupTarget.setNumber });
+            } else {
+              // dopo B, chiudi tutto
+              setSetLineupTarget(null);
+              autoSelectServer();
+              rerender();
+            }
+          }}
         />
       )}
 

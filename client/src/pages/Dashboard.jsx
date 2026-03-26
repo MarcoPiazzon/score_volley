@@ -28,12 +28,19 @@ function StatusBadge({ status }) {
   );
 }
 
-function MatchCard({ match, onOpen }) {
+function MatchCard({ match, lineupStatus, onLineupClick, onStartMatch, onOpen }) {
+  const isScheduled = match.status === 'scheduled';
+  const homeOk  = lineupStatus?.home ?? false;
+  const awayOk  = lineupStatus?.away ?? false;
+  const bothReady = homeOk && awayOk;
+
+  const cardClickable = !isScheduled;
+
   return (
     <div
-      onClick={() => onOpen(match)}
-      className="bg-surf1 border border-white/7 rounded-2xl p-4 cursor-pointer
-                 hover:border-teamA/30 hover:bg-surf2/50 transition-all duration-150 group"
+      onClick={cardClickable ? () => onOpen(match) : undefined}
+      className={`bg-surf1 border border-white/7 rounded-2xl p-4 transition-all duration-150
+                  ${cardClickable ? 'cursor-pointer hover:border-teamA/30 hover:bg-surf2/50 group' : ''}`}
     >
       {/* Top row: date + status */}
       <div className="flex items-center justify-between mb-3">
@@ -47,9 +54,7 @@ function MatchCard({ match, onOpen }) {
       {/* Teams + score */}
       <div className="flex items-center gap-3">
         <div className="flex-1 min-w-0">
-          <p className="font-condensed font-bold text-base text-text truncate">
-            {match.home_team}
-          </p>
+          <p className="font-condensed font-bold text-base text-text truncate">{match.home_team}</p>
           <p className="text-muted text-xs mt-0.5">Casa</p>
         </div>
 
@@ -70,30 +75,64 @@ function MatchCard({ match, onOpen }) {
             <span className="font-condensed text-muted text-lg font-bold">vs</span>
           )}
           {match.matchday && (
-            <p className="text-subtle text-[10px] mt-0.5 font-condensed">
-              Giornata {match.matchday}
-            </p>
+            <p className="text-subtle text-[10px] mt-0.5 font-condensed">Giornata {match.matchday}</p>
           )}
         </div>
 
         <div className="flex-1 min-w-0 text-right">
-          <p className="font-condensed font-bold text-base text-text truncate">
-            {match.away_team}
-          </p>
+          <p className="font-condensed font-bold text-base text-text truncate">{match.away_team}</p>
           <p className="text-muted text-xs mt-0.5">Ospite</p>
         </div>
       </div>
 
-      {/* Action hint */}
-      <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between">
-        <span className="text-subtle text-xs font-condensed">
-          {match.status === 'scheduled' ? 'Imposta formazione →' :
-           match.status === 'in_progress' ? '🔴 Partita in corso →' :
-           match.status === 'completed' ? 'Vedi riepilogo →' : ''}
-        </span>
-        <span className="text-teamA opacity-0 group-hover:opacity-100 transition-opacity text-sm">
-          →
-        </span>
+      {/* Action row */}
+      <div className="mt-3 pt-3 border-t border-white/5">
+        {isScheduled ? (
+          <div className="flex items-center gap-2">
+            {/* Formazione Casa */}
+            <button
+              onClick={(e) => { e.stopPropagation(); onLineupClick(match, match.home_team_id); }}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl
+                          text-xs font-condensed font-semibold transition-all border
+                          ${homeOk
+                            ? 'bg-green/10 border-green/25 text-green'
+                            : 'bg-surf2 border-white/10 text-muted hover:border-white/25 hover:text-text'}`}
+            >
+              {homeOk ? '✓' : '○'} Casa
+            </button>
+            {/* Formazione Ospite */}
+            <button
+              onClick={(e) => { e.stopPropagation(); onLineupClick(match, match.away_team_id); }}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl
+                          text-xs font-condensed font-semibold transition-all border
+                          ${awayOk
+                            ? 'bg-green/10 border-green/25 text-green'
+                            : 'bg-surf2 border-white/10 text-muted hover:border-white/25 hover:text-text'}`}
+            >
+              {awayOk ? '✓' : '○'} Ospite
+            </button>
+            {/* Avvia */}
+            <button
+              onClick={(e) => { e.stopPropagation(); onStartMatch(match); }}
+              disabled={!bothReady}
+              title={!bothReady ? 'Imposta entrambe le formazioni prima di avviare' : ''}
+              className={`px-4 py-1.5 rounded-xl text-xs font-condensed font-semibold border transition-all
+                          ${bothReady
+                            ? 'bg-teamA/20 border-teamA/30 text-teamA hover:bg-teamA/30 cursor-pointer'
+                            : 'bg-surf2 border-white/5 text-subtle cursor-not-allowed'}`}
+            >
+              Avvia →
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between">
+            <span className="text-subtle text-xs font-condensed">
+              {match.status === 'in_progress' ? '🔴 Partita in corso →' :
+               match.status === 'completed'   ? 'Vedi riepilogo →' : ''}
+            </span>
+            <span className="text-teamA opacity-0 group-hover:opacity-100 transition-opacity text-sm">→</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -120,8 +159,9 @@ export default function Dashboard() {
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [compFilter,   setCompFilter]   = useState(null);  // null = tutte le competizioni
-  const [lineupMatch,  setLineupMatch]  = useState(null);  // partita di cui editare la formazione
+  const [compFilter,   setCompFilter]   = useState(null);
+  const [lineupEdit,   setLineupEdit]   = useState(null);   // { match, teamId }
+  const [lineupStatus, setLineupStatus] = useState({});     // { [matchId]: { home, away } }
 
   const teamId = selectedTeam?.id ?? null;
 
@@ -148,6 +188,22 @@ export default function Dashboard() {
         ]);
         setMatches(matchesData ?? []);
         setStats(statsData ?? null);
+
+        // Carica stato formazioni per le partite scheduled
+        const scheduled = (matchesData ?? []).filter(m => m.status === 'scheduled');
+        const statuses = {};
+        await Promise.all(scheduled.map(async (m) => {
+          try {
+            const lineup = await apiGet(`/matches/${m.id}/lineup`);
+            statuses[m.id] = {
+              home: (lineup?.home?.starters?.length ?? 0) >= 6,
+              away: (lineup?.away?.starters?.length ?? 0) >= 6,
+            };
+          } catch {
+            statuses[m.id] = { home: false, away: false };
+          }
+        }));
+        setLineupStatus(statuses);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -157,22 +213,41 @@ export default function Dashboard() {
     load();
   }, [teamId, compFilter]);
 
+  const refreshLineupStatus = async (matchId) => {
+    try {
+      const lineup = await apiGet(`/matches/${matchId}/lineup`);
+      setLineupStatus(prev => ({
+        ...prev,
+        [matchId]: {
+          home: (lineup?.home?.starters?.length ?? 0) >= 6,
+          away: (lineup?.away?.starters?.length ?? 0) >= 6,
+        },
+      }));
+    } catch {}
+  };
+
   const filteredMatches = matches.filter(m =>
     statusFilter === 'all' || m.status === statusFilter
   );
 
   const handleOpenMatch = (match) => {
-    if (match.status === 'scheduled') {
-      // Apri il modal formazione invece di avviare subito la partita
-      setLineupMatch(match);
-      return;
-    } else if (match.status === 'in_progress') {
+    if (match.status === 'in_progress') {
       localStorage.setItem('openMatch', JSON.stringify(match));
       navigate(`/monitor/${match.id}`);
-    } else if(match.status === 'completed'){
+    } else if (match.status === 'completed') {
       navigate(`/timeline/${match.id}`);
-    }else{
+    } else {
       navigate(`/monitor/${match.id}`);
+    }
+  };
+
+  const handleStartMatch = async (match) => {
+    try {
+      await apiPost(`/matches/${match.id}/start`, {});
+      localStorage.setItem('openMatch', JSON.stringify(match));
+      navigate(`/monitor/${match.id}`);
+    } catch {
+      setError('Errore durante l\'avvio della partita');
     }
   };
 
@@ -287,7 +362,14 @@ export default function Dashboard() {
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
               {filteredMatches.map(m => (
-                <MatchCard key={m.id} match={m} onOpen={handleOpenMatch} />
+                <MatchCard
+                  key={m.id}
+                  match={m}
+                  lineupStatus={lineupStatus[m.id]}
+                  onLineupClick={(match, tid) => setLineupEdit({ match, teamId: tid })}
+                  onStartMatch={handleStartMatch}
+                  onOpen={handleOpenMatch}
+                />
               ))}
             </div>
           )}
@@ -295,12 +377,13 @@ export default function Dashboard() {
       </div>
     </AppShell>
 
-    {/* Lineup modal — solo per partite scheduled */}
-    {lineupMatch && (
+    {/* Lineup modal — formazione casa o ospite */}
+    {lineupEdit && (
       <LineupModal
-        match={lineupMatch}
-        teamId={teamId}
-        onClose={() => setLineupMatch(null)}
+        match={lineupEdit.match}
+        teamId={lineupEdit.teamId}
+        onClose={() => setLineupEdit(null)}
+        onSaved={() => refreshLineupStatus(lineupEdit.match.id)}
       />
     )}
     </>
