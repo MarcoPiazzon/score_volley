@@ -23,7 +23,7 @@ function PositionSlot({ position, player, onPointerDown, isDropTarget }) {
   return (
     <div
       data-slot-pos={position}
-      className={`relative rounded-xl border-2 h-full transition-colors overflow-hidden
+      className={`relative rounded-xl border-2 h-full aspect-[9/16] transition-colors overflow-hidden
         ${isDropTarget
           ? 'border-teamA bg-teamA/15'
           : player
@@ -394,7 +394,7 @@ export default function LineupModal({ match, teamId, onClose, onSaved }) {
 
                     {/* Rows — si dividono l'altezza rimanente */}
                     {COURT_ROWS.map((row, rowIdx) => (
-                      <div key={rowIdx} className="flex-1 min-h-0 grid grid-cols-3 gap-2">
+                      <div key={rowIdx} className="flex-1 min-h-0 flex gap-2 justify-center">
                         {row.map(pos => (
                           <PositionSlot
                             key={pos}
